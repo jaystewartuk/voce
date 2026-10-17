@@ -9,18 +9,13 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 - "PHP 8" is read as the language version, not as eight Philippine pesos; likewise BSD, CRC and CVE before a
   version-like number. Sums of money such as "PHP 500" are still money.
+- The mouse wheel scrolls down as well as up on macOS, whose own ncurses has no fifth button and reports
+  wheel-down differently.
 
 ### Added
 
 - `docs/hearing/check.py` fetches tricky phrases from the real voice, transcribes them with whisper.cpp and
   checks what was heard. It is how rewrites for the voice are verified and new ones found.
-
-## [Unreleased]
-
-### Fixed
-
-- The mouse wheel scrolls down as well as up on macOS, whose own ncurses has no fifth button and reports
-  wheel-down differently.
 
 ## [0.1.0] - 2026-10-17
 
