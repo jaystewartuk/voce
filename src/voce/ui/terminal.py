@@ -28,6 +28,15 @@ def decode_sgr_mouse(seq: str) -> tuple[int, int, int] | None:
     return None
 
 
+def wheel_down(bstate: int) -> bool:
+    """Whether a curses mouse state is the wheel rolling down, on either ncurses mouse version."""
+    button5 = getattr(curses, "BUTTON5_PRESSED", 0)
+    if button5:
+        return bool(bstate & button5)
+    # Mouse version 1 has no button 5; wheel-down arrives as a bare position report (we never ask for motion).
+    return bstate == curses.REPORT_MOUSE_POSITION
+
+
 class Terminal:
     def __init__(self, scr) -> None:
         self.scr = scr
@@ -51,7 +60,9 @@ class Terminal:
     def enable_mouse(self) -> None:
         """Ask curses for mouse events; if it can't on this terminal, ask the terminal directly (SGR encoding)."""
         try:
-            available, _ = curses.mousemask(curses.ALL_MOUSE_EVENTS)
+            # REPORT_MOUSE_POSITION too: ncurses built with mouse version 1 (macOS's own) has no button 5 and
+            # reports wheel-down under that bit. Without it in the mask the event is dropped and getmouse() fails.
+            available, _ = curses.mousemask(curses.ALL_MOUSE_EVENTS | curses.REPORT_MOUSE_POSITION)
             curses.mouseinterval(0)
         except curses.error:
             available = 0
@@ -77,7 +88,7 @@ class Terminal:
             return (CLICK, x, y)
         if b & curses.BUTTON4_PRESSED:
             return (WHEEL_UP, x, y)
-        if b & getattr(curses, "BUTTON5_PRESSED", 1 << 21):
+        if wheel_down(b):
             return (WHEEL_DOWN, x, y)
         return None
 

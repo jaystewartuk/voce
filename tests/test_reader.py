@@ -158,3 +158,19 @@ def test_odd_state_files_start_fresh(tmp_path, bad):
     (tmp_path / "s.json").write_text(bad)
     state = State(tmp_path / "s.json")
     assert state.data["files"] == {} and state.month_chars() == 0
+
+
+def test_wheel_down_on_either_ncurses_mouse_version(monkeypatch):
+    import curses
+
+    from voce.ui import terminal
+
+    # ncurses mouse version 2 (Linux, Homebrew): button 5 exists and is the only thing that counts
+    monkeypatch.setattr(curses, "BUTTON5_PRESSED", 1 << 21, raising=False)
+    assert terminal.wheel_down(1 << 21)
+    assert not terminal.wheel_down(curses.REPORT_MOUSE_POSITION)
+    # ncurses mouse version 1 (macOS's own): no button 5, wheel-down is a bare position report
+    monkeypatch.delattr(curses, "BUTTON5_PRESSED", raising=False)
+    assert terminal.wheel_down(curses.REPORT_MOUSE_POSITION)
+    assert not terminal.wheel_down(curses.BUTTON4_PRESSED)
+    assert not terminal.wheel_down(curses.REPORT_MOUSE_POSITION | curses.BUTTON1_PRESSED)
