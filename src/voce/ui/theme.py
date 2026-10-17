@@ -101,6 +101,11 @@ class Theme:
     def text(self, block: Block, base: int, roles: frozenset, mark: str | None) -> int:
         """The attribute for a run of text with these roles, under the sentence or word highlight if marked."""
         if block.kind == "code":
+            if mark == "word":
+                return self.pair("word") | curses.A_BOLD if self.colour else curses.A_REVERSE | curses.A_BOLD
+            if mark == "sentence":  # the line being read sits on the band, like a sentence of prose
+                return self.pair("sentence") | (ITALIC if "comment" in roles else 0) if self.colour \
+                    else base | curses.A_UNDERLINE
             for role in roles:
                 if role in _CODE:
                     name, extra = _CODE[role]

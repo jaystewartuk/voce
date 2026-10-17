@@ -66,6 +66,7 @@ def parser() -> argparse.ArgumentParser:
     ap.add_argument("-c", "--clip", action="store_true", help="read what is on the clipboard")
     ap.add_argument("--start", action="store_true", help="start the file from the top")
     ap.add_argument("--one", action="store_true", help="stop at the end of the file instead of carrying on")
+    ap.add_argument("--skip-code", action="store_true", help="show code blocks without reading them")
     ap.add_argument("--speed", type=speed, metavar="X", help="playback speed from 0.5 to 3, for example 1.2")
 
     playlist = ap.add_argument_group("playlists")
@@ -162,12 +163,12 @@ def relative(path: Path) -> str:
         return str(path).replace(str(Path.home()), "~", 1)
 
 
-def check(paths: list[Path]) -> None:
+def check(paths: list[Path], skip_code: bool = False) -> None:
     """How each file will read: sentences, words, minutes, characters for the voice, quiz pairing, oddities."""
     total_words = total_chars = 0
     for path in paths:
         try:
-            doc = load(path)
+            doc = load(path, skip_code=skip_code)
         except (OSError, UnicodeDecodeError) as e:
             print(f"{relative(Path(path))}\n    couldn't read it: {e}")
             continue
@@ -178,7 +179,8 @@ def check(paths: list[Path]) -> None:
         notes = []
         code = sum(1 for b in doc.blocks if b.kind == "code")
         if code:
-            notes.append(f"{code} code block{'s' * (code != 1)} shown, not read")
+            how = "shown, not read" if skip_code else "read line by line"
+            notes.append(f"{code} code block{'s' * (code != 1)}, {how}")
         long = [u for u in doc.units if len(u.say) > 400]
         if long:
             notes.append(f"{len(long)} sentence{'s' * (len(long) != 1)} over 400 characters")
@@ -270,7 +272,7 @@ def main(argv: list[str] | None = None) -> None:
         targets = [Path(p) for p in args.check] or [e.path for e in entries]
         if not targets:
             sys.exit("Nothing to check: give files, or set a playlist with --playlist DIR.")
-        check(targets)
+        check(targets, args.skip_code)
         return
     if args.list:
         if not entries:
@@ -288,7 +290,7 @@ def main(argv: list[str] | None = None) -> None:
         if not paths:
             sys.exit("Nothing to export: give files, use -r or -c, or set a playlist with --playlist DIR.")
         try:
-            export_mp3([load(p) for p in paths], Path(args.export), voice, state)
+            export_mp3([load(p, skip_code=args.skip_code) for p in paths], Path(args.export), voice, state)
         except ExportError as e:
             sys.exit(str(e))
         return
@@ -322,8 +324,8 @@ def main(argv: list[str] | None = None) -> None:
     from voce.ui.theme import Theme
 
     message = "" if google or args.mac else "Using the Mac voice. Google's voices sound better: see voce --help."
-    options = Options(one=args.one, quiz_only=quiz_only, speed=args.speed or state.get("speed", 1.0),
-                      message=message)
+    options = Options(one=args.one, quiz_only=quiz_only, skip_code=args.skip_code,
+                      speed=args.speed or state.get("speed", 1.0), message=message)
 
     def next_voice(current: Voice) -> Voice | None:
         if current.mac or google is None:

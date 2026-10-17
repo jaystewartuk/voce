@@ -14,6 +14,7 @@ import re
 from dataclasses import dataclass, field
 
 from voce import highlight
+from voce.speech import spoken_code
 
 Span = tuple[int, int, frozenset]  # (start, end, roles) over a block's text
 
@@ -215,6 +216,17 @@ def _is_table_start(lines: list[str], i: int) -> bool:
     return i + 1 < len(lines) and bool(_TABLE_DIVIDER.fullmatch(lines[i + 1].strip())) and "|" in lines[i + 1]
 
 
+def _spoken_cell(cell: str, spans: list) -> str:
+    """A table cell as the voice says it: inline code read the way a person reads code aloud."""
+    out, pos = [], 0
+    for start, end, roles in spans:
+        if "code" in roles:
+            out += [cell[pos:start], " ", spoken_code(cell[start:end]), " "]
+            pos = end
+    out.append(cell[pos:])
+    return re.sub(r"\s+", " ", "".join(out)).strip()
+
+
 def _table_blocks(rows: list[list[tuple[str, list]]], aligns: list[str], header: bool) -> list[Block]:
     """Table rows as blocks: padded into aligned columns when they fit, joined plainly when they don't."""
     columns = max(len(r) for r in rows)
@@ -237,7 +249,7 @@ def _table_blocks(rows: list[list[tuple[str, list]]], aligns: list[str], header:
         is_header = header and n == 0
         if is_header and text:
             spans = [(0, len(text), frozenset({"bold"})), *spans]
-        say = ", ".join(cell for cell, _ in row if cell)
+        say = ", ".join(_spoken_cell(cell, cell_spans) for cell, cell_spans in row if cell)
         blocks.append(Block("row", text, spans, say=say))
         if is_header and fits:
             blocks.append(Block("rule", "─┼─".join("─" * w for w in widths), spoken=False))
@@ -287,7 +299,7 @@ def parse(md: str) -> list[Block]:
                 strip = min(indent, len(raw) - len(raw.lstrip(" ")))
                 body.append(_CONTROL.sub("", raw[strip:].expandtabs(4)))
             code = "\n".join(body)
-            add(Block("code", code, highlight.code_spans(code, lang), spoken=False, lang=lang))
+            add(Block("code", code, highlight.code_spans(code, lang), lang=lang))
             i = j + 1
             continue
 

@@ -43,6 +43,12 @@ def read_clipboard() -> str:
     return subprocess.run(["pbpaste"], capture_output=True, text=True).stdout
 
 
+def write_clipboard(text: str) -> None:
+    if not shutil.which("pbcopy"):
+        raise ClipError("pbcopy not found: copying needs macOS.")
+    subprocess.run(["pbcopy"], input=text, text=True, check=False)
+
+
 def read_stdin() -> str:
     """Everything piped in, then the keyboard back on standard input for the reader."""
     text = sys.stdin.read()

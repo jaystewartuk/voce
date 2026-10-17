@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from voce.markdown import Block, parse
-from voce.speech import sentences, speakable
+from voce.speech import sentences, speakable, spoken_code, spoken_line
 
 WORDS_PER_MINUTE = 150  # speaking speed at 1x, for time estimates
 
@@ -33,18 +33,49 @@ class Doc:
 
 
 PAUSE_AFTER = {"h1": 0.8, "h2": 0.7, "h3": 0.55, "h4": 0.45, "h5": 0.4, "h6": 0.4,
-               "p": 0.4, "li": 0.3, "quote": 0.4, "row": 0.3}
+               "p": 0.4, "li": 0.3, "quote": 0.4, "row": 0.3, "code": 0.5}
 
 
-def block_units(blocks: list[Block], b: int) -> list[Unit]:
+def spoken_text(block: Block, a: int, z: int) -> str:
+    """block.text[a:z], with each run of inline code said the way a person reads code aloud."""
+    out, pos = [], a
+    for start, end, roles in block.spans:
+        if "code" not in roles or end <= a or start >= z:
+            continue
+        start, end = max(start, a), min(end, z)
+        out += [block.text[pos:start], " ", spoken_code(block.text[start:end]), " "]
+        pos = end
+    out.append(block.text[pos:z])
+    return "".join(out)
+
+
+def code_units(b: int, code: str) -> list[Unit]:
+    """A code block read line by line, each line the way a person reads it aloud. Blank lines are a pause."""
+    units, offset = [], 0
+    for line in code.split("\n"):
+        say = speakable(spoken_line(line))
+        if re.search(r"\w", say):
+            units.append(Unit(b, offset, offset + len(line), say, pause=0.25))
+        elif units and not line.strip():
+            units[-1].pause = 0.45
+        offset += len(line) + 1
+    return units
+
+
+def block_units(blocks: list[Block], b: int, skip_code: bool = False) -> list[Unit]:
     block = blocks[b]
-    if not block.spoken:
+    if not block.spoken or (skip_code and block.kind == "code"):
         return []
     whole = block.kind.startswith("h") or block.kind == "row"
+    if block.kind == "code":
+        units = code_units(b, block.text)
+        if units:
+            units[-1].pause = PAUSE_AFTER["code"]
+        return units
     spans = [(0, len(block.text))] if whole else sentences(block.text)
     units = []
     for k, (a, z) in enumerate(spans):
-        say = speakable(block.say if block.say and whole else block.text[a:z])
+        say = speakable(block.say if block.say and whole else spoken_text(block, a, z))
         if k == 0 and block.kind == "li" and block.ordered:
             say = block.prefix.strip() + " " + say
         if not re.search(r"\w", say):
@@ -64,7 +95,7 @@ def quiz_pairs(blocks: list[Block]) -> list[tuple[int, int]]:
     return []
 
 
-def build_units(doc: Doc, quiz_only: bool = False) -> list[Unit]:
+def build_units(doc: Doc, quiz_only: bool = False, skip_code: bool = False) -> list[Unit]:
     """What the voice says, in order. Quiz answers are read straight after their question, after a wait."""
     blocks = doc.blocks
     pairs = quiz_pairs(blocks)
@@ -76,10 +107,10 @@ def build_units(doc: Doc, quiz_only: bool = False) -> list[Unit]:
             continue
         if b in in_answers:
             continue
-        units += block_units(blocks, b)
+        units += block_units(blocks, b, skip_code)
         if b in answer_of and units:
             units[-1].wait = True
-            answer = block_units(blocks, answer_of[b])
+            answer = block_units(blocks, answer_of[b], skip_code)
             if answer:
                 answer[0].say = "Answer. " + re.sub(r"^\d+\.?\s*", "", answer[0].say)
             units += answer
@@ -92,15 +123,21 @@ def build_units(doc: Doc, quiz_only: bool = False) -> list[Unit]:
 def title_of(blocks: list[Block], path: Path) -> str:
     return next((b.text for b in blocks if b.kind == "h1"), None) \
         or next((b.text for b in blocks if b.kind.startswith("h")), None) \
-        or next((b.text[:60] for b in blocks if b.spoken), path.stem)
+        or next((b.text[:60] for b in blocks if b.spoken and b.kind != "code"), path.stem)
 
 
-def load(path: Path | str, quiz_only: bool = False) -> Doc:
+def load(path: Path | str, quiz_only: bool = False, skip_code: bool = False) -> Doc:
     path = Path(path).resolve()
     blocks = parse(path.read_text(encoding="utf-8"))
     doc = Doc(path, title_of(blocks, path), blocks)
-    build_units(doc, quiz_only)
+    build_units(doc, quiz_only, skip_code)
     return doc
+
+
+def spoken(md: str) -> str:
+    """What the voice says for a piece of Markdown, as one string."""
+    doc = Doc(Path("-"), "", parse(md))
+    return " ".join(u.say for u in build_units(doc))
 
 
 def word_count(doc: Doc) -> int:

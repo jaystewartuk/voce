@@ -81,6 +81,7 @@ voce --quiz file.md    # one file's quiz
 to the voice, the quiz pairing, and any sentences long enough to be hard to follow by ear. A few habits help:
 
 - Keep sentences under about 30 words. Long ones are hard to hold in your head.
-- Put code in fenced blocks. It is shown on screen but not read, and the prose around it can say what it does.
+- Put code in fenced blocks. It is highlighted and read line by line, the way a person reads code aloud, so keep
+  examples short. `--skip-code` shows code without reading it.
 - Use a `<details>` block for anything that is for the eye only. It is shown but never read.
 - Lines that are only links, such as breadcrumbs at the top or "Next:" at the bottom, are shown and skipped.

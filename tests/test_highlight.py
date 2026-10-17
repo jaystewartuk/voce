@@ -27,3 +27,10 @@ def test_offsets_match_the_source():
     code = "def é():\n    pass"
     for a, z, _ in code_spans(code, "python"):
         assert 0 <= a < z <= len(code)
+
+
+def test_php_without_an_opening_tag_is_still_highlighted():
+    spans = code_spans("$total = number_format($cents / 100, 2); // edge\n", "php")
+    roles = {role for _, _, roles in spans for role in roles}
+    assert {"variable", "comment"} <= roles
+    assert any(r for _, _, r in code_spans("<?php\n$x = 1;", "php"))

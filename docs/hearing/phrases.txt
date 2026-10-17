@@ -1,4 +1,4 @@
-# What is written => what must be heard, with | between acceptable hearings. See check.py.
+# What is written (Markdown) => what must be heard, with | between acceptable hearings. See check.py.
 
 # Currency codes that are something else in technical writing.
 Requires PHP 8 or later. => PHP 8
@@ -15,3 +15,17 @@ It costs USD 8 a month. => 8 United States dollars | 8 US dollars | USD 8
 Try a cache, e.g. Redis. => for example
 Go from a → b. => from a to b
 It takes ~3 seconds. => about 3 seconds
+
+# Inline code, read the way a person reads code aloud (speech.spoken_code).
+Wrap it in `array_values` to get a clean list. => array values
+Use `str_contains` and `mb_strlen` on names. => string contains and MB string length | string contains and M B string length
+Read `$guest->email` from the model. => guest arrow email
+Sort with `usort` and the `<=>` operator. => U sort and the spaceship operator | you sort and the spaceship operator
+Call `Str::slug` on the name. => string double colon slug
+Compare with `===`, never `==`. => triple equals, never double equals
+
+# Code blocks, read line by line (speech.spoken_line).
+```php\n'1' == 1;   // true: the string is converted\n``` => the string 1 double equals 1. true: the string is converted
+```php\nforeach ($list as &$item) {\n``` => for each list as ampersand item
+```php\n$all = [...$airbnb, ...$booking];\n``` => all equals array of spread airbnb, spread booking
+```php\n$label = ['airbnb' => 'Airbnb'];   // the channel's display name\n``` => double arrow

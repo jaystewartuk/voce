@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>voce · Read Markdown aloud in your terminal</title>
-<meta name="description" content="voce reads Markdown aloud in your terminal. Each sentence lights up as it is read, and each word as it is spoken. Built for Claude Code replies and study notes.">
+<meta name="description" content="voce reads Markdown aloud in your terminal. Each sentence lights up as it is read, and each word as it is spoken. Code is read the way a pairing partner says it, operator names and all. Built for Claude Code replies and study notes.">
 <meta name="theme-color" content="#0E1116">
 <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -226,6 +226,7 @@ footer a:hover { color: var(--text); }
     <a class="brand" href="#" aria-label="voce home"><img src="assets/logo.svg" alt="">voce</a>
     <nav aria-label="Main">
       <a href="#features">Features</a>
+      <a href="#code">Code</a>
       <a href="#claude-code">Claude Code</a>
       <a href="#voices">Voices</a>
       <a href="#install">Install</a>
@@ -240,10 +241,10 @@ footer a:hover { color: var(--text); }
 <main id="main">
   <section class="hero">
     <div class="wrap">
-      <span class="eyebrow"><b>New</b> voce -r reads Claude Code's latest reply</span>
+      <span class="eyebrow"><b>New</b> code is read the way a pairing partner says it</span>
       <h1>Your terminal, <span class="said">read <b>aloud</b></span>.</h1>
       <p class="lede">voce (Italian for &ldquo;voice&rdquo;, said <em>VOH-chay</em>) reads Markdown to you in the terminal. Each sentence lights up as it is read, and each word
-        as it is spoken. Code is shown, not read. Your place is always kept.</p>
+        as it is spoken. Code is read the way a pairing partner says it, operator names and all. Your place is always kept.</p>
       <div class="cta">
         <div class="install"><span class="p">$</span><code id="install-cmd">uv tool install git+https://github.com/jaystewartuk/voce</code>
           <button class="copy" data-copy="install-cmd" type="button">Copy</button></div>
@@ -262,10 +263,10 @@ footer a:hover { color: var(--text); }
           <div class="body" id="demo">
             <h3><span class="s" data-say="Why the cache misses">Why the cache misses</span></h3>
             <p><span class="s">The cache key ignores the <strong>query string</strong>, so <span class="ic">/search?q=a</span> and <span class="ic">/search?q=b</span> share one entry.</span> <span class="s">Add the query to the key, and keep the TTL short while you test.</span></p>
-            <pre><span class="lang">python</span><span class="k">def</span> <span class="f">cache_key</span>(request):
-    <span class="cm"># Include the query string, sorted so ?a=1&amp;b=2 matches ?b=2&amp;a=1</span>
-    query = <span class="str">"&amp;"</span>.join(<span class="b">sorted</span>(request.query.split(<span class="str">"&amp;"</span>)))
-    <span class="k">return</span> <span class="str">f"{request.path}?{query}"</span></pre>
+            <pre><span class="lang">python</span><span class="s" data-say="def cache key request colon"><span class="k">def</span> <span class="f">cache_key</span>(request):</span>
+    <span class="s" data-say="Include the query string, sorted so a equals 1 and b equals 2 matches b equals 2 and a equals 1"><span class="cm"># Include the query string, sorted so ?a=1&amp;b=2 matches ?b=2&amp;a=1</span></span>
+    <span class="s" data-say="query equals an ampersand dot join sorted request dot query dot split an ampersand">query = <span class="str">"&amp;"</span>.join(<span class="b">sorted</span>(request.query.split(<span class="str">"&amp;"</span>)))</span>
+    <span class="s" data-say="return f string request dot path question mark query"><span class="k">return</span> <span class="str">f"{request.path}?{query}"</span></span></pre>
             <table>
               <thead><tr><th><span class="s" data-say="Request, Before, After">Request</span></th><th>Before</th><th>After</th></tr></thead>
               <tbody>
@@ -278,8 +279,8 @@ footer a:hover { color: var(--text); }
               <li><span class="chk">☐</span><span class="s">Ship the fix behind a flag</span></li>
             </ul>
           </div>
-          <div class="status"><span id="demo-state">▶ reading</span><span id="demo-pos">1/8 · 1× · Charon</span></div>
-          <div class="keys">space pause · ←→ sentence · ↑↓ paragraph · [ ] section · +- speed · v voice · q quit</div>
+          <div class="status"><span id="demo-state">▶ reading</span><span id="demo-pos">1/12 · 1× · Charon</span></div>
+          <div class="keys">space pause · ←→ sentence · ↑↓ paragraph · [ ] section · +- speed · v voice · c copy · q quit</div>
         </div>
       </div>
       <div class="controls">
@@ -300,7 +301,7 @@ footer a:hover { color: var(--text); }
         <div class="card"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h10M4 17h7"/><rect x="13" y="10" width="8" height="4" rx="2" fill="currentColor" stroke="none"/></svg></div>
           <h3>Follows along</h3><p>The sentence being read sits on a pale band, the word being spoken on a darker one, timed from the audio itself.</p></div>
         <div class="card"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/></svg></div>
-          <h3>Shows code, reads prose</h3><p>Code blocks are syntax highlighted in every language Pygments knows, and skipped by the voice.</p></div>
+          <h3>Reads code like a pairing partner</h3><p>Highlighted in every language Pygments knows, and read line by line with the real names: "double arrow", "null coalescing", "spaceship".</p></div>
         <div class="card"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 10h18M10 4v16"/></svg></div>
           <h3>Tables that line up</h3><p>Columns are aligned on screen and read one row at a time, cell by cell.</p></div>
         <div class="card"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-6-4-6 4z"/></svg></div>
@@ -315,6 +316,42 @@ footer a:hover { color: var(--text); }
           <h3>Click to jump</h3><p>Click any sentence to hear it, or use the arrows to move by sentence, paragraph or section.</p></div>
         <div class="card"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M5 8v8M19 8v8M8.5 5.5v13M15.5 5.5v13"/></svg></div>
           <h3>Gapless and in time</h3><p>A tiny native player keeps sentences flowing, pauses mid-word and changes speed without changing pitch.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="code">
+    <div class="wrap">
+      <p class="kicker">New</p>
+      <h2>Code, read the way a pairing partner says it.</h2>
+      <p class="intro">Every reader that speaks code gets it wrong in one of two ways. Screen readers spell out the
+        symbols: "dollar, totals, left bracket, dollar, channel". Text-to-speech apps read code as prose, and
+        <code>Str::slug</code> comes out as "stress log". voce says what the person next to you would say, one line at a
+        time, and the line lights up as it is read.</p>
+      <div class="pair">
+        <div class="card"><h4>On the line</h4>
+          <ul class="said-list">
+            <li><code>$totals[$channel] ??= 0;</code></li>
+            <li><code>fn ($a, $b) =&gt; $a['nights'] &lt;=&gt; $b['nights']</code></li>
+            <li><code>foreach ($rows as &amp;$row) {</code></li>
+            <li><code>if (strpos($s, 'Hi') !== false) { ... }</code></li>
+            <li><code>(int) (19.99 * 100);   // 1998, a cent short</code></li>
+            <li><code>Str::slug('Sea View');</code></li>
+          </ul></div>
+        <div class="card"><h4>What you hear</h4>
+          <ul class="said-list">
+            <li>"totals channel null coalescing assignment zero"</li>
+            <li>"F N a, b double arrow a nights spaceship b nights"</li>
+            <li>"for each rows as ampersand row"</li>
+            <li>"if string position s, Hi not identical false and so on"</li>
+            <li>"cast to int 19.99 times 100. 1998, a cent short"</li>
+            <li>"string double colon slug Sea View"</li>
+          </ul></div>
+      </div>
+      <div class="grid" style="margin-top: 18px">
+        <div class="card"><h3>Real names, so you learn them</h3><p>Operators are called what they are called: arrow, double arrow, double colon, triple equals, null coalescing, spaceship, nullable, cast, spread, variadic. After a few sessions you say them without thinking, which is what a pair-programming interview or a code review asks of you.</p></div>
+        <div class="card"><h3>Names as words</h3><p><code>array_values</code> is "array values", <code>strlen</code> is "string length", <code>usort</code> is "U sort", <code>isset</code> is "is set". A variable's dollar sign, the brackets and the semicolon are silent. A string is read by its contents, and a trailing comment as prose.</p></div>
+        <div class="card"><h3>Checked by ear</h3><p>Every rule is fetched from the real voice, transcribed with whisper and compared with what should be heard. Written for PHP and Laravel first; most rules carry to any language with the same symbols, and the rest are a line each. Prefer the prose alone? <code>--skip-code</code>.</p></div>
       </div>
     </div>
   </section>
@@ -358,7 +395,7 @@ footer a:hover { color: var(--text); }
         <div class="card"><h4>Spoken</h4>
           <ul class="said-list">
             <li>"Bold, italic, code and links"</li>
-            <li class="skip-it">Shown, highlighted, not read</li>
+            <li>"array values", "triple equals", "arrow"</li>
             <li>"Request, Before, After", then each row</li>
             <li>"for example, a to b, about 3 times faster"</li>
             <li class="skip-it">Shown, not read</li>
@@ -389,7 +426,7 @@ footer a:hover { color: var(--text); }
     <div class="wrap">
       <p class="kicker">Keys</p>
       <h2 id="keys-h">Everything is one key away.</h2>
-      <p class="intro">Your hands stay where they are. The mouse works too: click a sentence to jump, scroll to look around.</p>
+      <p class="intro">Your hands stay where they are. The mouse works too: click a sentence to jump, click code to copy it, scroll to look around.</p>
       <div class="keys-grid">
         <div class="key"><span><kbd>space</kbd></span><span>pause or carry on</span></div>
         <div class="key"><span><kbd>←</kbd><kbd>→</kbd></span><span>sentence</span></div>
@@ -400,6 +437,7 @@ footer a:hover { color: var(--text); }
         <div class="key"><span><kbd>v</kbd></span><span>next voice</span></div>
         <div class="key"><span><kbd>m</kbd></span><span>playlist menu</span></div>
         <div class="key"><span><kbd>r</kbd></span><span>hear it again</span></div>
+        <div class="key"><span><kbd>c</kbd></span><span>copy the sentence</span></div>
         <div class="key"><span><kbd>q</kbd></span><span>quit, keeping your place</span></div>
       </div>
     </div>

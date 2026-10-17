@@ -36,7 +36,7 @@ def test_check_command(tmp_path, capsys):
     path.write_text("# A\n\nOne sentence. Another.\n\n```\nx\n```\n")
     cli.main(["--check", str(path)])
     out = capsys.readouterr().out
-    assert "3 sentences" in out and "1 code block shown, not read" in out
+    assert "4 sentences" in out and "1 code block, read line by line" in out
 
 
 def test_help_and_version(capsys):

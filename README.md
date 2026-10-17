@@ -7,7 +7,8 @@
 
 <p align="center">
   <strong>Read Markdown aloud in your terminal.</strong><br>
-  Each sentence lights up as it is read, and each word as it is spoken.
+  Each sentence lights up as it is read, and each word as it is spoken.<br>
+  Code is read the way a pairing partner says it.
 </p>
 
 <p align="center">
@@ -30,13 +31,16 @@
 </p>
 
 voce (Italian for "voice", said *VOH-chay*) reads Markdown to you in the terminal. It shows the page as it should
-look, with headings, bold, links, highlighted code and lined-up tables. It reads only the prose, so you can look
-away, follow along, or jump around with the keyboard or the mouse.
+look, with headings, bold, links, highlighted code and lined-up tables, and reads it the way a person would: the
+prose as prose, and the code the way a pairing partner says it out loud. You can look away, follow along, or
+jump around with the keyboard or the mouse.
 
 It was built to listen to long Claude Code replies and study notes, but it reads any Markdown.
 
-- **Reads what a person would read.** Markup is never spoken. Code blocks are shown with syntax highlighting but
-  not read. Tables are read row by row, and links by their text.
+- **Reads code like a pairing partner.** `$totals[$channel] ??= 0;` is heard as "totals channel null coalescing
+  assignment zero". Operators get their real names, so you learn to say them. See [Code, read aloud](#code-read-aloud).
+- **Reads what a person would read.** Markup is never spoken. Tables are read row by row, and links by their
+  text. Things meant for the eye stay on the screen.
 - **Follows along.** The sentence being read sits on a pale band, and the word being spoken on a darker one. The
   page scrolls to keep your place, and a click on any sentence jumps there.
 - **Knows Claude Code.** `voce -r` reads Claude's latest reply in the folder you are in, with no copying.
@@ -96,10 +100,52 @@ voce --check notes.md      # how it will read: sentences, minutes, characters
 | <kbd>v</kbd> | next voice (Google voices) |
 | <kbd>m</kbd> | the playlist menu |
 | <kbd>r</kbd> | hear this sentence again, or the file again at the end |
+| <kbd>c</kbd> <kbd>C</kbd> | copy the sentence, or the whole paragraph |
 | <kbd>q</kbd> | quit, keeping your place |
+
+A click on a sentence jumps to it, and a click on a code block copies the code. To select text with the mouse as
+in any terminal, hold <kbd>shift</kbd> while you drag.
 
 A click on a sentence jumps to it. The mouse wheel scrolls, and the page follows the voice again at the next
 sentence. Vim users can use <kbd>h</kbd> <kbd>j</kbd> <kbd>k</kbd> <kbd>l</kbd>.
+
+## Code, read aloud
+
+Every reader that speaks code gets it wrong in one of two ways. Screen readers read the symbols one by one:
+"dollar, totals, left bracket, dollar, channel...". Text-to-speech apps read code as if it were prose, and `Str::slug`
+comes out as "stress log". Neither says what a colleague sitting next to you would say.
+
+voce reads code the way a pairing partner says it out loud, one line at a time, and the line sits on the band
+as it is read, with the word being spoken marked, just like a sentence of prose.
+
+| On the line | What you hear |
+| --- | --- |
+| `$totals[$channel] ??= 0;` | totals channel null coalescing assignment zero |
+| `usort($rows, fn ($a, $b) => $a['nights'] <=> $b['nights']);` | U sort rows, F N a, b double arrow a nights spaceship b nights |
+| `foreach ($rows as &$row) {` | for each rows as ampersand row |
+| `if (strpos($s, 'Hi') !== false) { ... }` | if string position s, Hi not identical false and so on |
+| `(int) (19.99 * 100);   // 1998, a cent short` | cast to int 19.99 times 100. 1998, a cent short |
+| `Str::slug('Sea View');` | string double colon slug Sea View |
+
+The rules are the ones a person uses without thinking. Names are said as words: `array_values` is "array
+values", `strlen` is "string length", `mb_strlen` is "M B string length", `usort` is "U sort", `isset` is "is
+set", `checkIn` is "check In". A variable's dollar sign is silent, and so are brackets and semicolons. Operators
+get their real names: `->` is "arrow", `=>` is "double arrow", `::` is "double colon", `===` is "triple equals",
+`!==` is "not identical", `??` is "null coalescing", `?:` is "short ternary", `<=>` is "spaceship", `?string` is
+"nullable string", `(int)` is "cast to int", `...` is "spread" in a call and "variadic" in a signature. A string
+is read by its contents, so `''` is "the empty string" and `','` is "a comma". A trailing comment is read as
+prose. Inline code in a sentence is read the same way.
+
+Because the names are the real ones, you learn them as you listen. After a few sessions, "null coalescing
+assignment" and "spaceship" come out of your mouth as easily as "equals", which is exactly what you want in a
+pair-programming interview or a code review.
+
+The rules were written for PHP and Laravel first, checked by ear against the real voice with
+[docs/hearing/check.py](docs/hearing/check.py), and most of them carry to any language with the same symbols.
+Python, JavaScript and SQL get their names as words and their operators by name; what they lack is the odd
+language-specific abbreviation. Those are a one-line addition each, and welcome.
+
+If you would rather hear only the prose, `--skip-code` shows code without reading it.
 
 ## Use it with Claude Code
 
@@ -172,6 +218,9 @@ respect column alignment, and are read one row at a time.
 It also handles a few things that suit listening. Anything inside `<details>` is shown but not read. Lines that
 are only links, such as breadcrumbs or "Next:" links, are shown but not read. Symbols such as →, ≈ and ×, and
 abbreviations such as "e.g." and "i.e.", are read as words.
+
+Code, in fenced blocks and in sentences, is read the way a pairing partner says it: see [Code, read
+aloud](#code-read-aloud).
 
 ## Privacy
 

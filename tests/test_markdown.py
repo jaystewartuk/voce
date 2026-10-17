@@ -23,7 +23,7 @@ def test_lists_ordered_nested_and_tasks():
 def test_fenced_code_keeps_language_spacing_and_highlighting():
     md = "Before.\n\n```python\ndef f(x):\n    return 'hi'  # greet\n```\n\nAfter."
     code = parse(md)[1]
-    assert code.kind == "code" and code.lang == "python" and not code.spoken
+    assert code.kind == "code" and code.lang == "python" and code.spoken
     assert code.text == "def f(x):\n    return 'hi'  # greet"
     roles = {code.text[a:z]: set(r) for a, z, r in code.spans}
     assert roles["def"] == {"keyword"}

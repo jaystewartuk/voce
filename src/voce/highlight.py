@@ -63,9 +63,12 @@ def _role(token_type) -> str:
 
 def _lexer(code: str, lang: str):
     lang = _ALIASES.get(lang.lower(), lang.lower())
+    options = {"stripnl": False, "ensurenl": False}
+    if lang == "php" and not code.lstrip().startswith("<?"):
+        options["startinline"] = True  # a snippet without an opening tag is otherwise shown as plain text
     try:
         if lang:
-            return get_lexer_by_name(lang, stripnl=False, ensurenl=False)
+            return get_lexer_by_name(lang, **options)
         if len(code.strip().splitlines()) < 2:
             return None  # guessing from a single line is mostly wrong
         return guess_lexer(code, stripnl=False, ensurenl=False)

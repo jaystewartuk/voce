@@ -5,8 +5,18 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+### Changed
+
+- Code blocks are read, line by line, the way a pairing partner says code aloud: names as words (`array_values`
+  is "array values", `usort` is "U sort"), operators by their real names (`===` is "triple equals", `=>` is
+  "double arrow", `??` is "null coalescing", `<=>` is "spaceship"), brackets and semicolons silent, strings by
+  their contents, and a trailing comment as prose. The line being read sits on the band and the word being
+  spoken is marked, as in prose. `--skip-code` keeps the old behaviour, showing code without reading it.
+
 ### Fixed
 
+- PHP code blocks are highlighted even when they do not start with an opening `<?php` tag, as snippets in notes
+  rarely do.
 - "PHP 8" is read as the language version, not as eight Philippine pesos; likewise BSD, CRC and CVE before a
   version-like number. Sums of money such as "PHP 500" are still money.
 - The mouse wheel scrolls down as well as up on macOS, whose own ncurses has no fifth button and reports
@@ -14,6 +24,10 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ### Added
 
+- `c` copies the sentence being read and `C` its paragraph; a click on a code block copies the code. Shift-drag
+  still selects text the terminal's own way.
+- Inline code is read the same way: `array_values` in a sentence is "array values", and `===` on its own is
+  "triple equals". Before, the voice got the raw text, so study notes had to spell names out in prose.
 - `docs/hearing/check.py` fetches tricky phrases from the real voice, transcribes them with whisper.cpp and
   checks what was heard. It is how rewrites for the voice are verified and new ones found.
 

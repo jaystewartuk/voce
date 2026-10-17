@@ -7,6 +7,7 @@ import time
 from dataclasses import dataclass
 from typing import Callable
 
+from voce.clips import ClipError, write_clipboard
 from voce.document import Doc, load, minutes
 from voce.playlist import Entry
 from voce.state import State
@@ -20,7 +21,7 @@ AHEAD = 8              # sentences fetched ahead of the one playing
 MAX_WIDTH = 92         # the text column never gets wider than this
 SPEEDS = [0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.75, 2.0]
 KEYS = ["space pause", "←→ sentence", "↑↓ paragraph", "[ ] section", "+- speed", "n p file", "v voice", "m menu",
-        "r restart", "q quit"]
+        "r restart", "c copy", "q quit"]
 STATUS = {"playing": "▶ reading", "loading": "… fetching the voice", "gap": "▶ reading",
           "gap-start": "▶ next file", "paused": "⏸ paused (space to carry on)",
           "held": "⏸ paused (space to carry on)",
@@ -56,6 +57,7 @@ def key_hints(width: int) -> str:
 class Options:
     one: bool = False         # stop at the end of the file instead of carrying on through the playlist
     quiz_only: bool = False
+    skip_code: bool = False   # show code blocks without reading them
     speed: float = 1.0
     message: str = ""         # shown in the status bar when the reader opens
 
@@ -107,7 +109,7 @@ class Reader:
         self.ended = False
         path = self.playlist[index].path
         try:
-            self.doc = load(path, self.options.quiz_only)
+            self.doc = load(path, self.options.quiz_only, self.options.skip_code)
             self.mtime = self.doc.path.stat().st_mtime
         except (OSError, UnicodeDecodeError) as e:
             self.doc = Doc(path, self.playlist[index].title, [])
@@ -137,7 +139,7 @@ class Reader:
         self.mtime = mtime
         old = self.doc
         try:
-            doc = load(old.path, self.options.quiz_only)
+            doc = load(old.path, self.options.quiz_only, self.options.skip_code)
         except Exception as e:
             self.say(f"Couldn't reload the file: {str(e)[:60]}")
             return
@@ -274,8 +276,22 @@ class Reader:
             self.change_voice()
         elif k == ord("m"):
             self.menu()
+        elif k == ord("c"):
+            unit = units[self.pos]
+            self.copy(self.doc.blocks[unit.block].text[unit.start:unit.end], "the sentence")
+        elif k == ord("C"):
+            self.copy(self.doc.blocks[units[self.pos].block].text, "the paragraph")
         elif k == ord("?"):
             self.say(" · ".join(KEYS))
+
+    def copy(self, text: str, what: str) -> None:
+        """Put text on the clipboard and say so."""
+        try:
+            write_clipboard(text)
+        except ClipError as e:
+            self.say(str(e))
+            return
+        self.say(f"Copied {what}")
 
     def toggle(self) -> None:
         """Space: pause, carry on, or move past a quiz question."""
@@ -365,6 +381,11 @@ class Reader:
             return
         line = self.lines[n]
         if line.block < 0:
+            return
+        block = self.doc.blocks[line.block]
+        if block.kind == "code":
+            lines = block.text.count("\n") + 1
+            self.copy(block.text + "\n", f"the code, {lines} line{'s' * (lines != 1)}")
             return
         at = line.start + max(0, x - self.margin - line.indent - len(line.prefix))
         at = min(at, max(line.start, line.end - 1))

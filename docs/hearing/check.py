@@ -9,11 +9,13 @@ so it needs Google set up (or --mac), ffmpeg, and whisper.cpp with a model:
     curl -LO https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin
     .venv/bin/python docs/hearing/check.py --model ggml-base.en.bin
 
-Each line of phrases.txt is "what is written => what should be heard", with | between acceptable hearings. A
-phrase is heard right when the transcript, lowercased and stripped of spaces and punctuation, contains one of
-them treated the same way. Pass --raw to hear the text as written, without speakable: that shows what the
-voice gets wrong on its own. Audio goes through the normal cache, so a phrase already heard is free to check
-again, and the characters sent to Google count towards the month like any other.
+Each line of phrases.txt is "what is written => what should be heard", with | between acceptable hearings. What
+is written is Markdown, so inline code in backticks is read the way voce reads it, and a literal \n makes a
+line break, so a fenced code block fits on one line. A phrase is heard right when
+the transcript, lowercased and stripped of spaces and punctuation, contains one of them treated the same way.
+Pass --raw to hear the text as written, without any rewrite: that shows what the voice gets wrong on its own.
+Audio goes through the normal cache, so a phrase already heard is free to check again, and the characters sent
+to Google count towards the month like any other.
 """
 
 from __future__ import annotations
@@ -27,7 +29,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from voce.speech import speakable
+from voce.document import spoken
 from voce.state import State
 from voce.voices import DEFAULT_GOOGLE_VOICE, Google, Voice
 
@@ -39,8 +41,9 @@ def read_phrases(path: Path) -> list[tuple[str, list[str]]]:
     for line in path.read_text().splitlines():
         if not line.strip() or line.lstrip().startswith("#"):
             continue
-        written, _, heard = line.partition("=>")
-        out.append((written.strip(), [h.strip() for h in heard.split("|") if h.strip()]))
+        written, _, heard = line.rpartition("=>")
+        written = written.strip().replace("\\n", "\n")  # a literal \n makes a line break, for code blocks
+        out.append((written, [h.strip() for h in heard.split("|") if h.strip()]))
     return out
 
 
@@ -70,7 +73,7 @@ def main() -> int:
                     help="a whisper.cpp model file (or set WHISPER_MODEL)")
     ap.add_argument("--voice", default="", help="voice name, as for voce --voice")
     ap.add_argument("--mac", action="store_true", help="use the Mac's voice instead of Google")
-    ap.add_argument("--raw", action="store_true", help="send the text as written, without speakable")
+    ap.add_argument("--raw", action="store_true", help="send the text as written, without any rewrite")
     args = ap.parse_args()
 
     for tool in ("ffmpeg", "whisper-cli"):
@@ -88,7 +91,7 @@ def main() -> int:
     print(f"Voice: {voice.label}{'  (raw text)' if args.raw else ''}")
 
     phrases = read_phrases(args.phrases)
-    texts = [written if args.raw else speakable(written) for written, _ in phrases]
+    texts = [written if args.raw else spoken(written) for written, _ in phrases]
     for text in texts:
         voice.want(text)
     failed = 0

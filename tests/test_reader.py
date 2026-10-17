@@ -83,7 +83,7 @@ def play_through(r, ticks=200):
 
 
 def test_an_empty_file_in_a_playlist_stops_cleanly(tmp_path):
-    r = reader(tmp_path, {"a.md": "One.", "b.md": "```\ncode only\n```", "c.md": "Three."})
+    r = reader(tmp_path, {"a.md": "One.", "b.md": "[Next](c.md)", "c.md": "Three."})
     play_through(r)
     assert r.index == 1 and r.mode == "end" and "Nothing to read" in r.message
     r.key(ord(" "))  # space at the end moves on
@@ -174,3 +174,18 @@ def test_wheel_down_on_either_ncurses_mouse_version(monkeypatch):
     assert terminal.wheel_down(curses.REPORT_MOUSE_POSITION)
     assert not terminal.wheel_down(curses.BUTTON4_PRESSED)
     assert not terminal.wheel_down(curses.REPORT_MOUSE_POSITION | curses.BUTTON1_PRESSED)
+
+
+def test_copy_keys_and_a_click_on_code(tmp_path, monkeypatch):
+    copied = []
+    monkeypatch.setattr("voce.ui.reader.write_clipboard", copied.append)
+    r = reader(tmp_path, {"a.md": "First one. Second one.\n\n```php\n$x = 1;\n$y = 2;\n```\n\nAfter."})
+    r.key(ord("c"))
+    assert copied == ["First one."] and r.message == "Copied the sentence"
+    r.key(ord("C"))
+    assert copied[-1] == "First one. Second one." and r.message == "Copied the paragraph"
+    r.draw()
+    code_line = next(n for n, ln in enumerate(r.lines) if ln.block >= 0 and r.doc.blocks[ln.block].kind == "code")
+    r.mouse((1, 10, code_line + 1))
+    assert copied[-1] == "$x = 1;\n$y = 2;\n" and r.message == "Copied the code, 2 lines"
+    assert r.pos == 0  # a click on code copies, it does not jump
