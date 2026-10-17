@@ -3,6 +3,18 @@
 All notable changes to voce are listed here. The format follows [Keep a Changelog](https://keepachangelog.com),
 and versions follow [Semantic Versioning](https://semver.org).
 
+## [Unreleased]
+
+### Fixed
+
+- "PHP 8" is read as the language version, not as eight Philippine pesos; likewise BSD, CRC and CVE before a
+  version-like number. Sums of money such as "PHP 500" are still money.
+
+### Added
+
+- `docs/hearing/check.py` fetches tricky phrases from the real voice, transcribes them with whisper.cpp and
+  checks what was heard. It is how rewrites for the voice are verified and new ones found.
+
 ## [0.1.0] - 2026-10-17
 
 The first public release.

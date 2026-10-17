@@ -42,6 +42,21 @@ docs/demo/record.sh
 The script reads `docs/demo/reply.md` through a throwaway Claude Code transcript, with empty state and cache
 folders, so nothing from your machine appears in the recording.
 
+## Checking what the voice says
+
+Voices misread some text: Google turns "PHP 8" into "eight Philippine pesos". `speech.speakable` rewrites such
+text before it is spoken, and `docs/hearing/check.py` checks those rewrites by ear: it fetches each phrase in
+`docs/hearing/phrases.txt` from the real voice, transcribes it with whisper.cpp and compares.
+
+```bash
+brew install whisper-cpp ffmpeg
+curl -LO https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin
+.venv/bin/python docs/hearing/check.py --model ggml-base.en.bin
+```
+
+Run it with `--raw` to hear the text as written, which is how to confirm a misreading before adding a rewrite.
+It uses your Google voice and counts towards your monthly characters, so it is not part of the test suite.
+
 ## The website
 
 The site in `site/` is a single static page with no build step. Open `site/index.html` in a browser to work on it.

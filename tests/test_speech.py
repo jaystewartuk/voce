@@ -25,5 +25,12 @@ def test_speakable_symbols_and_abbreviations():
     assert speakable("a → b, e.g. x & y, ~3 vs 4") == "a to b, for example, x and y, about 3 versus 4"
 
 
+def test_speakable_versioned_codes_are_not_money():
+    assert speakable("PHP 8 and PHP 7.4.1") == "P H P 8 and P H P 7.4.1"
+    assert speakable("BSD 3, CRC 32, CVE 24") == "B S D 3, C R C 32, C V E 24"
+    assert speakable("PHP is fine. PHP8 and CVE-2024-3094 too") == "PHP is fine. PHP8 and CVE-2024-3094 too"
+    assert speakable("PHP 1,500 or PHP 500 or USD 8") == "PHP 1,500 or PHP 500 or USD 8"
+
+
 def test_speakable_table_separators():
     assert speakable("Name │ Size") == "Name, Size"

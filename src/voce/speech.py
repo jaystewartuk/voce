@@ -30,6 +30,10 @@ def sentences(text: str) -> list[tuple[int, int]]:
 
 _SYMBOLS = {"→": " to ", "←": " from ", "≈": " about ", "×": " times ", "−": " minus ", "&": " and ",
             "▸": "", "│": ", ", "☐": "", "☑": ""}
+# Currency codes that mean something else in technical writing. Google reads "PHP 8" as "eight Philippine
+# pesos", so before a version-like number (one or two digits, maybe dotted) these are spelled out: "P H P 8".
+# Sums of money keep their code: "PHP 500", "PHP 1,500". Checked by ear with docs/hearing/check.py.
+_VERSIONED_CODES = re.compile(r"\b(PHP|BSD|CRC|CVE)(?=\s+\d{1,2}(?:\.\d+)*(?!\d|,\d))")
 
 
 def speakable(s: str) -> str:
@@ -40,6 +44,7 @@ def speakable(s: str) -> str:
     s = re.sub(r"\bi\.e\.,?", "that is,", s)
     s = re.sub(r"\betc\.", "and so on.", s)
     s = re.sub(r"(?<=\s)vs\.?(?=\s)", "versus", s)
+    s = _VERSIONED_CODES.sub(lambda m: " ".join(m.group(1)), s)
     s = re.sub(r"#(\d+)", r"\1", s)
     s = re.sub(r"~(?=\d)", "about ", s)
     s = re.sub(r"\s+([,.;:!?])", r"\1", s)

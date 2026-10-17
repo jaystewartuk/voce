@@ -1,0 +1,17 @@
+# What is written => what must be heard, with | between acceptable hearings. See check.py.
+
+# Currency codes that are something else in technical writing.
+Requires PHP 8 or later. => PHP 8
+PHP 7.4 reached end of life. => PHP 7.4
+The code is under a BSD 3 clause license. => BSD 3
+It stores a CRC 32, not a hash. => CRC 32
+Fixed in CVE-2024-3094. => CVE 2024 3094
+
+# Sums of money are still money.
+The fee is PHP 500. => 500 Philippine pesos | PHP 500
+It costs USD 8 a month. => 8 United States dollars | 8 US dollars | USD 8
+
+# Other rewrites in speech.speakable.
+Try a cache, e.g. Redis. => for example
+Go from a → b. => from a to b
+It takes ~3 seconds. => about 3 seconds
