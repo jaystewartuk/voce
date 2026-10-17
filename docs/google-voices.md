@@ -62,8 +62,9 @@ figures, and set a [budget alert](https://cloud.google.com/billing/docs/how-to/b
 
 ## When something goes wrong
 
-If a request fails, voce reads that sentence with the Mac voice and shows Google's error in the status bar. After
-three failures in a row it stops trying Google until you start voce again. The usual causes are:
+If Google is busy or rate-limits a request, voce waits and tries again. If a request still fails, voce reads that
+sentence with the Mac voice and shows Google's error in the status bar. After three failures in a row it rests
+Google for a minute, using the Mac voice, then tries again. The usual causes are:
 
 | Message | Fix |
 | --- | --- |

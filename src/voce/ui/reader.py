@@ -26,6 +26,22 @@ STATUS = {"playing": "▶ reading", "loading": "… fetching the voice", "gap": 
           "held": "⏸ paused (space to carry on)",
           "waiting": "Your turn: answer out loud, then press space for the answer", "end": "■ finished"}
 HEADINGS = ("h1", "h2", "h3")
+STALL_SECONDS = 5.0    # grace after a sentence's length before the player counts as stuck
+
+
+def same_place(old: list, new: list, pos: int) -> int:
+    """Where pos in the old units is in the new ones: the same words (the same repeat of them), else the same block."""
+    if not old:
+        return 0
+    here = old[min(pos, len(old) - 1)]
+    matches = [i for i, u in enumerate(new) if u.say == here.say]
+    if matches:
+        nth = sum(1 for u in old[:pos] if u.say == here.say)  # the third "Yes." stays the third "Yes."
+        return matches[nth] if nth < len(matches) else min(matches, key=lambda i: abs(i - pos))
+    in_block = [i for i, u in enumerate(new) if u.block == here.block]
+    if in_block:
+        return min(in_block, key=lambda i: abs(i - pos))
+    return min(pos, len(new) - 1)
 
 
 def key_hints(width: int) -> str:
@@ -70,6 +86,8 @@ class Reader:
         self.ended = False
         self.mtime = 0.0
         self.next_check = 0.0
+        self.deadline = 0.0     # when a sentence that hasn't finished counts as stuck
+        self.held_left = 0.0
 
     @property
     def units(self) -> list:
@@ -83,13 +101,21 @@ class Reader:
     def open(self, index: int, fresh: bool = False) -> None:
         self.player.stop()
         self.index = index
-        self.doc = load(self.playlist[index].path, self.options.quiz_only)
-        self.mtime = self.doc.path.stat().st_mtime
+        self.future = None
         self.width = 0
         self.top = 0
+        self.ended = False
+        path = self.playlist[index].path
+        try:
+            self.doc = load(path, self.options.quiz_only)
+            self.mtime = self.doc.path.stat().st_mtime
+        except (OSError, UnicodeDecodeError) as e:
+            self.doc = Doc(path, self.playlist[index].title, [])
+            self.mode = "end"
+            self.say(f"Couldn't read {path.name}: {str(e)[:60]}. n for the next file, q to quit.")
+            return
         fresh = fresh or self.options.quiz_only
         self.pos = 0 if fresh else self.state.resume(self.doc.path, self.doc.units)
-        self.ended = False
         if not self.doc.units:
             self.mode = "end"
             self.say("Nothing to read in this file. n for the next, q to quit.")
@@ -118,18 +144,16 @@ class Reader:
         if not doc.units:
             return
         here = old.units[self.pos] if old.units else None
-        pos = next((i for i, u in enumerate(doc.units) if here and u.say == here.say), None)
-        if pos is None:
-            block = here.block if here else -1
-            pos = next((i for i, u in enumerate(doc.units) if u.block == block), min(self.pos, len(doc.units) - 1))
+        pos = same_place(old.units, doc.units, self.pos)
         self.doc = doc
         self.width = 0
         self.say("File changed on disk, reloaded")
-        if self.mode in ("playing", "held", "loading", "end"):
+        changed = here is None or doc.units[pos].say != here.say
+        if self.mode == "paused" or (changed and self.mode in ("playing", "held", "loading")):
+            self.go(pos, keep_pause=self.mode == "paused")
+        else:  # carry on: the sentence playing, the gap after it or a quiz wait stay as they are
             self.pos = pos
             self.prefetch()
-        else:
-            self.go(pos, keep_pause=True)
 
     def go(self, pos: int, keep_pause: bool = False) -> None:
         self.player.stop()
@@ -162,7 +186,7 @@ class Reader:
             self.mode = "end"
             more = "n for the next file, m for the menu, " if len(self.playlist) > 1 else ""
             self.say(f"Finished. {more}r to hear it again, q to quit.")
-        else:
+        elif self.units:  # next_file opened a file with something to read
             self.gap_until = time.monotonic() + 1.0
             self.mode = "gap-start"
 
@@ -180,12 +204,18 @@ class Reader:
                 return
             self.player.play(path, duration, self.speed)
             self.mode = "playing"
+            self.deadline = now + duration / self.speed + STALL_SECONDS
             if self.player.error:
                 self.say(self.player.error)
                 self.player.error = ""
             if self.voice.warning:
                 self.say(self.voice.warning)
                 self.voice.warning = ""
+        elif self.mode == "playing" and not self.player.finished() and now > self.deadline:
+            self.say("The audio player stopped responding; carrying on.")
+            self.player.stop()
+            self.gap_until = now
+            self.mode = "gap"
         elif self.mode == "playing" and self.player.finished():
             unit = self.units[self.pos]
             if unit.wait:
@@ -254,12 +284,14 @@ class Reader:
         elif self.mode == "playing" and self.player.can_pause:
             self.player.pause()
             self.mode = "held"
+            self.held_left = self.deadline - time.monotonic()
         elif self.mode in ("playing", "loading", "gap", "gap-start"):
             self.player.stop()
             self.mode = "paused"
         elif self.mode == "held":
             self.player.resume()
             self.mode = "playing"
+            self.deadline = time.monotonic() + self.held_left
         elif self.mode == "paused":
             self.go(self.pos)
         elif self.mode == "end":
@@ -327,13 +359,15 @@ class Reader:
             self.top = max(0, min(self.top + step, max(0, len(self.lines) - body)))
             self.scrolled = True
             return
+        h, _ = self.term.size()
         n = self.top + y - 1
-        if y < 1 or n < 0 or n >= len(self.lines):
+        if not 1 <= y <= max(1, h - 3) or n >= len(self.lines):
             return
         line = self.lines[n]
         if line.block < 0:
             return
         at = line.start + max(0, x - self.margin - line.indent - len(line.prefix))
+        at = min(at, max(line.start, line.end - 1))
         units = self.units
         same = [i for i, u in enumerate(units) if u.block == line.block]
         if same:
@@ -341,10 +375,11 @@ class Reader:
             if pick is None:
                 before = [i for i in same if units[i].start <= at]
                 pick = before[-1] if before else same[0]
-        else:  # an unspoken block (code, a Next link): the next thing that is read
-            pick = next((i for i, u in enumerate(units) if u.block > line.block), None)
-            if pick is None:
+        else:  # an unspoken block (code, a Next link): the nearest block after it that is read
+            after = [(u.block, i) for i, u in enumerate(units) if u.block > line.block]
+            if not after:
                 return
+            pick = min(after)[1]
         self.go(pick)
 
     # ---- drawing

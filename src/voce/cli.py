@@ -46,6 +46,16 @@ https://github.com/jaystewartuk/voce
 """
 
 
+def speed(value: str) -> float:
+    try:
+        x = float(value)
+    except ValueError:
+        x = float("nan")
+    if not 0.5 <= x <= 3.0:  # also false for NaN
+        raise argparse.ArgumentTypeError(f"{value!r} isn't a speed from 0.5 to 3")
+    return x
+
+
 def parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(
         prog="voce", description="Read Markdown aloud in your terminal, highlighting each sentence and word.",
@@ -56,7 +66,7 @@ def parser() -> argparse.ArgumentParser:
     ap.add_argument("-c", "--clip", action="store_true", help="read what is on the clipboard")
     ap.add_argument("--start", action="store_true", help="start the file from the top")
     ap.add_argument("--one", action="store_true", help="stop at the end of the file instead of carrying on")
-    ap.add_argument("--speed", type=float, metavar="X", help="playback speed, for example 1.2")
+    ap.add_argument("--speed", type=speed, metavar="X", help="playback speed from 0.5 to 3, for example 1.2")
 
     playlist = ap.add_argument_group("playlists")
     playlist.add_argument("--playlist", metavar="DIR", help="use this folder's README.md playlist from now on")
@@ -156,7 +166,11 @@ def check(paths: list[Path]) -> None:
     """How each file will read: sentences, words, minutes, characters for the voice, quiz pairing, oddities."""
     total_words = total_chars = 0
     for path in paths:
-        doc = load(path)
+        try:
+            doc = load(path)
+        except (OSError, UnicodeDecodeError) as e:
+            print(f"{relative(Path(path))}\n    couldn't read it: {e}")
+            continue
         words, chars = word_count(doc), sum(len(u.say) for u in doc.units)
         total_words += words
         total_chars += chars
@@ -198,10 +212,12 @@ def prepare(paths: list[Path], voice: Voice, state: State) -> None:
           f"({chars:,} characters).")
     if voice.uses_google and chars + state.month_chars() > FREE_CHARS:
         print(f"Warning: that takes this month past the {FREE_CHARS:,} free characters.")
-    done = 0
+    done = failed = 0
     try:
-        for _ in concurrent.futures.as_completed([voice.pool.submit(voice.fetch, t) for t in todo]):
+        for future in concurrent.futures.as_completed([voice.pool.submit(voice.fetch, t) for t in todo]):
             done += 1
+            if future.exception() is not None:
+                failed += 1
             if done % 10 == 0 or done == len(todo):
                 print(f"\r  {done}/{len(todo)}", end="", flush=True)
                 state.save()
@@ -210,6 +226,8 @@ def prepare(paths: list[Path], voice: Voice, state: State) -> None:
     finally:
         voice.close()
         state.save(force=True)
+    if failed:
+        print(f"\n{failed} sentence{'s' * (failed != 1)} couldn't be fetched; they will be tried again when read.")
     if voice.warning:
         print(f"\n{voice.warning}")
     if voice.uses_google:

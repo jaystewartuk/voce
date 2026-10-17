@@ -37,15 +37,21 @@ class Block:
 _ESCAPABLE = set("\\`*_{}[]()#+-.!|>~<")
 _LINK = re.compile(r"!?\[((?:[^\[\]]|\[[^\]]*\])*)\]\(([^)]*)\)")
 _AUTOLINK = re.compile(r"<((?:https?://|mailto:)[^>\s]+)>")
-_TAG = re.compile(r"<!--.*?-->|</?[A-Za-z][A-Za-z0-9-]*(?:\s[^<>]*)?/?>", re.S)
+_HTML_TAGS = ("a|abbr|b|bdi|bdo|big|blockquote|br|center|cite|code|dd|del|details|dfn|div|dl|dt|em|figcaption|"
+              "figure|font|h[1-6]|hr|i|img|ins|kbd|li|mark|ol|p|picture|pre|q|s|samp|section|small|source|span|"
+              "strike|strong|sub|summary|sup|table|tbody|td|th|thead|tr|tt|u|ul|var|video|wbr")
+# Only real HTML tags are removed, so generics such as List<String> or Map<K, V> stay as written.
+_TAG = re.compile(rf"<!--.*?-->|</?(?:{_HTML_TAGS})(?:\s[^<>]*)?/?>", re.S | re.I)
 _BREAK = re.compile(r"<br\s*/?>", re.I)
-_ENTITY = re.compile(r"&(nbsp|amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);")
+_ENTITY = re.compile(r"&(nbsp|amp|lt|gt|quot|apos|#\d{1,8}|#[xX][0-9a-fA-F]{1,8});")
 _ENTITIES = {"nbsp": " ", "amp": "&", "lt": "<", "gt": ">", "quot": '"', "apos": "'"}
-_STRONG_STAR = re.compile(r"\*\*(?=\S)(.+?)(?<=\S)\*\*")
-_STRONG_UNDERSCORE = re.compile(r"(?<!\w)__(?=\S)(.+?)(?<=\S)__(?!\w)")
-_EM_STAR = re.compile(r"(?<![\w*])\*(?=[^\s*])(.+?)(?<=[^\s*])\*(?![\w*])")
-_EM_UNDERSCORE = re.compile(r"(?<!\w)_(?=[^\s_])(.+?)(?<=[^\s_])_(?!\w)")
-_STRIKE = re.compile(r"~~(?=\S)(.+?)(?<=\S)~~")
+# Emphasis looks at most 2,000 characters ahead, so a paragraph full of stray asterisks stays fast.
+_STRONG_STAR = re.compile(r"\*\*(?=\S)(.{1,2000}?)(?<=\S)\*\*")
+_STRONG_UNDERSCORE = re.compile(r"(?<!\w)__(?=\S)(.{1,2000}?)(?<=\S)__(?!\w)")
+_EM_STAR = re.compile(r"(?<![\w*])\*(?=[^\s*])(.{1,2000}?)(?<=[^\s*])\*(?![\w*])")
+_EM_UNDERSCORE = re.compile(r"(?<!\w)_(?=[^\s_])(.{1,2000}?)(?<=[^\s_])_(?!\w)")
+_STRIKE = re.compile(r"~~(?=\S)(.{1,2000}?)(?<=\S)~~")
+_CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
 
 
 class _Out:
@@ -57,6 +63,8 @@ class _Out:
 
     def add(self, text: str, style: frozenset) -> None:
         for ch in text:
+            if (ch < " " and ch not in "\t\n\r") or ch == "\x7f":
+                continue  # control characters can't be drawn
             if ch.isspace():
                 if not self.chars or self.chars[-1] == " ":
                     continue
@@ -120,13 +128,7 @@ def _walk(s: str, out: _Out, style: frozenset) -> None:
         if c == "&":
             m = _ENTITY.match(s, i)
             if m:
-                name = m.group(1)
-                if name.startswith("#x"):
-                    out.add(chr(int(name[2:], 16)), style)
-                elif name.startswith("#"):
-                    out.add(chr(int(name[1:])), style)
-                else:
-                    out.add(_ENTITIES[name], style)
+                out.add(_entity(m.group(1)) or m.group(0), style)
                 i = m.end()
                 continue
         if c in "*_~":
@@ -143,6 +145,19 @@ def _walk(s: str, out: _Out, style: frozenset) -> None:
                 continue
         out.add(c, style)
         i += 1
+
+
+def _entity(name: str) -> str:
+    """The character an entity stands for, or "" if it isn't one that can be shown."""
+    if not name.startswith("#"):
+        return _ENTITIES[name]
+    try:
+        code = int(name[2:], 16) if name[1:2] in "xX" and len(name) > 2 else int(name[1:])
+    except ValueError:
+        return ""
+    if code < 32 or 0xD800 <= code <= 0xDFFF or code > 0x10FFFF:
+        return ""
+    return chr(code)
 
 
 def inline(s: str) -> tuple[str, list[Span]]:
@@ -233,15 +248,19 @@ def parse(md: str) -> list[Block]:
     """The blocks of a Markdown document, in order."""
     blocks: list[Block] = []
     para: list[str] = []
-    lines = md.splitlines()
-    section, details, i = "", 0, 0
+    lines = md.lstrip("\ufeff").splitlines()
+    section, i = "", 0
+    opened: list[int] = []                    # where each <details> still open began, as a block index
+    hidden: list[tuple[int, bool]] = []       # blocks silenced by <details>, with whether they were spoken
 
     def add(block: Block) -> None:
         block.section = section
-        if details:
+        if not (block.text.strip() or block.kind == "hr"):
+            return
+        if opened:
+            hidden.append((len(blocks), block.spoken))
             block.spoken = False
-        if block.text.strip() or block.kind == "hr":
-            blocks.append(block)
+        blocks.append(block)
 
     def flush() -> None:
         if para:
@@ -266,7 +285,7 @@ def parse(md: str) -> list[Block]:
             body = []
             for raw in lines[i + 1:j]:
                 strip = min(indent, len(raw) - len(raw.lstrip(" ")))
-                body.append(raw[strip:].expandtabs(4))
+                body.append(_CONTROL.sub("", raw[strip:].expandtabs(4)))
             code = "\n".join(body)
             add(Block("code", code, highlight.code_spans(code, lang), spoken=False, lang=lang))
             i = j + 1
@@ -281,19 +300,28 @@ def parse(md: str) -> list[Block]:
             flush()
             while i < len(lines) and "-->" not in lines[i]:
                 i += 1
+            if i < len(lines):
+                rest = lines[i].split("-->", 1)[1]
+                if rest.strip():
+                    lines[i] = rest  # text after the comment on the same line is read as usual
+                    continue
             i += 1
             continue
 
         if _BLOCK_HTML.match(s):
             flush()
-            if re.match(r"<details", s, re.I):
-                details += 1
+            for _ in re.findall(r"<details\b", s, re.I):
+                opened.append(len(blocks))
             summary = re.search(r"<summary>(.*?)</summary>", s, re.I)
             if summary:
                 text, spans = inline(summary.group(1))
                 add(Block("html", "▸ " + text, [(a + 2, z + 2, r) for a, z, r in spans], spoken=False))
-            if re.search(r"</details>", s, re.I):
-                details = max(0, details - 1)
+            text, spans = inline(re.sub(r"<summary>.*?</summary>", " ", s, flags=re.I))
+            if text:  # <p>Real text.</p> and the like: the words inside are a paragraph
+                add(Block("p", text, spans))
+            for _ in re.findall(r"</details>", s, re.I):
+                if opened:
+                    opened.pop()
             i += 1
             continue
 
@@ -369,4 +397,8 @@ def parse(md: str) -> list[Block]:
         para.append(s)
         i += 1
     flush()
+    if opened:  # a <details> never closed: read what follows it rather than silencing the rest of the file
+        for b, was_spoken in hidden:
+            if b >= opened[0]:
+                blocks[b].spoken = was_spoken
     return blocks

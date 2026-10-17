@@ -121,5 +121,5 @@ class Terminal:
         text = text[:max(0, w - x - (1 if y == h - 1 else 0))]
         try:
             self.scr.addstr(y, x, text, attr)
-        except curses.error:
+        except (curses.error, ValueError):  # ValueError: a character curses can't draw
             pass

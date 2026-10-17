@@ -32,7 +32,13 @@ from voce import paths
 CHIRP_VOICES = ["Charon", "Leda", "Orus", "Kore", "Puck", "Aoede", "Fenrir", "Despina"]
 DEFAULT_GOOGLE_VOICE = "en-US-Chirp3-HD-Charon"
 FREE_CHARS = 1_000_000  # Chirp 3 HD characters free each month, at the time of writing
-_GIVE_UP_AFTER = 3      # consecutive Google failures before using the Mac voice for the rest of the session
+_GIVE_UP_AFTER = 3      # Google outages in a row before resting it
+_REST_SECONDS = 60      # how long to use the Mac voice before trying Google again
+_RETRY = {429, 500, 502, 503, 504}
+
+
+class GoogleRefused(RuntimeError):
+    """Google turned down this one text (HTTP 400): not a reason to stop using Google."""
 
 
 @dataclass
@@ -75,6 +81,7 @@ class Voice:
         self.lock = threading.Lock()
         self.token, self.token_at = "", 0.0
         self.failures = 0
+        self.resting_until = 0.0
         self.durations: dict[Path, float] = {}
         self.warning = ""
         self.pool = concurrent.futures.ThreadPoolExecutor(max_workers=4)
@@ -130,7 +137,7 @@ class Voice:
         if self.google.api_key:
             url += "?key=" + quote(self.google.api_key)
         headers = self._headers()
-        for attempt in range(3):
+        for attempt in range(4):
             conn = getattr(self.local, "conn", None)
             if conn is None:
                 conn = self.local.conn = http.client.HTTPSConnection("texttospeech.googleapis.com", timeout=30)
@@ -140,15 +147,20 @@ class Voice:
                 data = response.read()
             except (OSError, http.client.HTTPException):
                 self.local.conn = None
-                if attempt == 2:
+                if attempt == 3:
                     raise
-                time.sleep(0.5 * (attempt + 1))
+                time.sleep(0.5 * 2 ** attempt)
                 continue
-            if response.status == 401 and attempt < 2 and not self.google.api_key:
+            if response.status in _RETRY and attempt < 3:
+                time.sleep(0.5 * 2 ** attempt)  # busy or rate-limited: back off and try again
+                continue
+            if response.status == 401 and attempt < 3 and not self.google.api_key:
                 with self.lock:
                     self.token = ""
                 headers = self._headers()
                 continue
+            if response.status == 400:
+                raise GoogleRefused(f"Google Text-to-Speech refused this sentence: {_error_message(data)}")
             if response.status != 200:
                 raise RuntimeError(f"Google Text-to-Speech said {response.status}: {_error_message(data)}")
             self.state.count(len(text))
@@ -159,6 +171,7 @@ class Voice:
 
     def _say(self, text: str, out: Path, name: str) -> None:
         voice = ["-v", name] if name else []
+        text = text.replace("[[", "[ [")  # [[ starts an embedded command for say, such as [[slnc 6000]]
         subprocess.run(["say", *voice, "-o", str(out), "--file-format=AIFF"], input=text, text=True,
                        check=True, capture_output=True)
 
@@ -173,14 +186,22 @@ class Voice:
         tmp = path.with_name(f"{path.name}.{threading.get_ident()}.tmp")
         if self.mac:
             self._say(text, tmp, self.name)
-        elif self.failures >= _GIVE_UP_AFTER:
+        elif time.monotonic() < self.resting_until:
             return self._fallback(text)
         else:
             try:
                 tmp.write_bytes(self._synthesize(text))
-                self.failures = 0
+                with self.lock:
+                    self.failures = 0
+            except GoogleRefused as e:
+                self.warning = f"{str(e)[:110]} Using the Mac voice for that one."
+                return self._fallback(text)
             except Exception as e:
-                self.failures += 1
+                with self.lock:
+                    self.failures += 1
+                    if self.failures >= _GIVE_UP_AFTER:
+                        self.failures = 0
+                        self.resting_until = time.monotonic() + _REST_SECONDS
                 self.warning = f"Google voice failed ({str(e)[:90]}); using the Mac voice for now."
                 return self._fallback(text)
         tmp.replace(path)

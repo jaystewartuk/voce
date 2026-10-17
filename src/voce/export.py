@@ -49,14 +49,22 @@ def export_mp3(docs: list[Doc], out: Path, voice: Voice, state, say: Callable[[s
         f"({chars:,} characters).")
     if voice.uses_google and chars + state.month_chars() > FREE_CHARS:
         say(f"Warning: that takes this month past the {FREE_CHARS:,} free characters.")
-    futures = [voice.pool.submit(voice.fetch, t) for t in todo]
-    for done, _ in enumerate(concurrent.futures.as_completed(futures), start=1):
+    audio_of: dict[str, Path] = {}
+    warnings: set[str] = set()
+    futures = {voice.pool.submit(voice.fetch, t): t for t in todo}
+    for done, future in enumerate(concurrent.futures.as_completed(futures), start=1):
+        audio_of[futures[future]] = future.result()  # a failure here stops the export with its reason
+        if voice.warning:
+            warnings.add(voice.warning)
+            voice.warning = ""
         if done % 10 == 0 or done == len(todo):
             print(f"\r  {done}/{len(todo)}", end="", flush=True)
             state.save()
     if todo:
         print()
     state.save(force=True)
+    for warning in sorted(warnings):
+        say(warning)
 
     work = Path(tempfile.mkdtemp(prefix="voce-export-"))
     try:
@@ -85,7 +93,8 @@ def export_mp3(docs: list[Doc], out: Path, voice: Voice, state, say: Callable[[s
 
         lines = []
         for unit in units:
-            lines.append(quoted(audio(voice.fetch(unit.say))))
+            # Each sentence once: what was just fetched, or what was cached before
+            lines.append(quoted(audio(audio_of.get(unit.say) or voice.fetch(unit.say))))
             lines.append(quoted(silence(silence_after(unit))))
         listing = work / "list.txt"
         listing.write_text("\n".join(lines) + "\n", encoding="utf-8")

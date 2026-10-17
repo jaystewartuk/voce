@@ -97,6 +97,9 @@ class NativePlayer:
             return self.pos
 
     def finished(self) -> bool:
+        if self.proc.poll() is not None:  # the player has gone: don't wait for it
+            self.error = self.error or "The audio player stopped."
+            return True
         with self.lock:
             return self.id in self.done
 

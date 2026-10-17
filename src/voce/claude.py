@@ -56,9 +56,11 @@ def last_reply(transcript: Path) -> str:
                 entry = json.loads(line)
             except ValueError:
                 continue
-            if entry.get("isSidechain") or entry.get("isMeta"):
+            if not isinstance(entry, dict) or entry.get("isSidechain") or entry.get("isMeta"):
                 continue
-            message = entry.get("message") or {}
+            message = entry.get("message")
+            if not isinstance(message, dict):
+                continue
             texts = [t for t in _texts(message.get("content")) if t.strip()]
             if entry.get("type") == "user" and texts and not texts[0].lstrip().startswith(_NOT_A_PROMPT):
                 replies.append([])

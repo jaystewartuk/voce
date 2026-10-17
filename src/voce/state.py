@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime
 import json
+import os
 import threading
 import time
 from pathlib import Path
@@ -22,6 +23,11 @@ class State:
             self.data: dict[str, Any] = json.loads(self.path.read_text())
         except (OSError, ValueError):
             self.data = {}
+        if not isinstance(self.data, dict):
+            self.data = {}
+        for key in ("files", "usage"):
+            if not isinstance(self.data.get(key), dict):
+                self.data.pop(key, None)
         self.data.setdefault("files", {})
         self.data.setdefault("usage", {})
         self.saved_at = 0.0
@@ -72,13 +78,14 @@ class State:
         return max(0, min(pos, len(units) - 1))
 
     def done(self, path: Path, value: bool = True) -> None:
-        self.file(path)["done"] = value
+        f = self.file(path)
+        f["done"] = value
         if value:
-            self.file(path)["pos"] = 0
+            f.update(pos=0, at="")
 
     def restart(self, path: Path) -> None:
-        self.done(path, False)
-        self.file(path)["pos"] = 0
+        """Back to the top, as if never started."""
+        self.file(path).update(done=False, pos=0, at="", total=0)
 
     # ---- usage
 
@@ -98,6 +105,6 @@ class State:
         self.saved_at = time.monotonic()
         with self.lock:
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            tmp = self.path.with_suffix(".tmp")
+            tmp = self.path.with_name(f"{self.path.name}.{os.getpid()}.tmp")  # two voces never share a temp file
             tmp.write_text(json.dumps(self.data, indent=1))
             tmp.replace(self.path)
