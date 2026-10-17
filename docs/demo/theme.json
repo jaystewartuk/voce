@@ -1,0 +1,8 @@
+{
+  "name": "voce",
+  "black": "#1b1f27", "red": "#e5534b", "green": "#57ab5a", "yellow": "#c69026",
+  "blue": "#2f6feb", "magenta": "#b083f0", "cyan": "#39c5cf", "white": "#c9d1d9",
+  "brightBlack": "#6e7681", "brightRed": "#ff7b72", "brightGreen": "#7ee787", "brightYellow": "#e3b341",
+  "brightBlue": "#6ca4f8", "brightMagenta": "#d2a8ff", "brightCyan": "#56d4dd", "brightWhite": "#f0f6fc",
+  "background": "#0e1116", "foreground": "#e6edf3", "selection": "#264f78", "cursor": "#2f6feb"
+}

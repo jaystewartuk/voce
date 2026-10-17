@@ -1,0 +1,10 @@
+name: Idea
+description: Suggest something voce could do
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like to do that you can't now?
+    validations:
+      required: true

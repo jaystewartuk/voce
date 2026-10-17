@@ -1,0 +1,592 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>voce · Read Markdown aloud in your terminal</title>
+<meta name="description" content="voce reads Markdown aloud in your terminal. Each sentence lights up as it is read, and each word as it is spoken. Built for Claude Code replies and study notes.">
+<meta name="theme-color" content="#0E1116">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:title" content="voce · Read Markdown aloud in your terminal">
+<meta property="og:description" content="Each sentence lights up as it is read, and each word as it is spoken. Built for Claude Code replies and study notes.">
+<meta property="og:image" content="https://jaystewartuk.github.io/voce/assets/og.png">
+<meta property="og:url" content="https://jaystewartuk.github.io/voce/">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+:root {
+  --ink: #0E1116;
+  --paper: #F6F3EE;
+  --blue: #2F6FEB;
+  --blue-soft: #6CA4F8;
+  --band: #AFD7FF;
+  --slate: #3B4452;
+
+  --bg: #FBFAF7;
+  --bg-alt: #F1EEE8;
+  --text: #14181F;
+  --muted: #5B6470;
+  --line: #E1DDD5;
+  --card: #FFFFFF;
+  --accent: #2F6FEB;
+  --term: #0E1116;
+  --term-text: #E6EDF3;
+  --term-dim: #8B949E;
+  --shadow: 0 1px 2px rgba(14,17,22,.06), 0 12px 40px -12px rgba(14,17,22,.22);
+  --radius: 14px;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0B0E13; --bg-alt: #10141B; --text: #E6EDF3; --muted: #9AA4B0; --line: #222934;
+    --card: #121720; --accent: #6CA4F8; --term: #0E1116;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 20px 50px -20px rgba(0,0,0,.8);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0B0E13; --bg-alt: #10141B; --text: #E6EDF3; --muted: #9AA4B0; --line: #222934;
+  --card: #121720; --accent: #6CA4F8; --term: #0E1116;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 20px 50px -20px rgba(0,0,0,.8);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.6 var(--sans); }
+a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { text-decoration-thickness: 2px; }
+code, kbd, pre { font-family: var(--mono); }
+.wrap { width: min(1120px, 100% - 32px); margin-inline: auto; }
+.skip { position: absolute; left: -999px; }
+.skip:focus { left: 16px; top: 16px; background: var(--card); padding: 8px 12px; border-radius: 8px; z-index: 10; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+
+/* ---- header */
+header.top { position: sticky; top: 0; z-index: 5; backdrop-filter: saturate(1.4) blur(12px);
+  -webkit-backdrop-filter: saturate(1.4) blur(12px); background: color-mix(in srgb, var(--bg) 82%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
+.top .wrap { display: flex; align-items: center; gap: 24px; height: 60px; }
+.brand { display: flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none;
+  font: 700 21px/1 var(--mono); letter-spacing: -.5px; }
+.brand img { width: 30px; height: 30px; }
+.top nav { display: flex; gap: 22px; margin-left: auto; align-items: center; }
+.top nav a { color: var(--muted); text-decoration: none; font-size: 15px; }
+.top nav a:hover { color: var(--text); }
+.top nav a.gh { display: inline-flex; align-items: center; gap: 7px; color: var(--text); border: 1px solid var(--line);
+  padding: 6px 12px; border-radius: 999px; }
+.top nav a.gh:hover { border-color: var(--muted); }
+@media (max-width: 720px) { .top nav a:not(.gh) { display: none; } }
+@media (max-width: 520px) { .cta .install, .cta .btn { width: 100%; justify-content: center; } .hero { padding-top: 48px; } }
+
+/* ---- hero */
+.hero { padding: 72px 0 40px; text-align: center; }
+.eyebrow { max-width: 100%; display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted);
+  border: 1px solid var(--line); border-radius: 999px; padding: 5px 14px; background: var(--card); }
+.eyebrow b { color: var(--accent); font-weight: 600; }
+h1 { font-size: clamp(40px, 7vw, 76px); line-height: 1.02; letter-spacing: -0.035em; margin: 22px auto 18px;
+  max-width: 16ch; text-wrap: balance; font-weight: 750; }
+h1 .said { white-space: nowrap; background: linear-gradient(transparent 12%, var(--band) 12%, var(--band) 92%, transparent 92%);
+  color: var(--ink); padding: 0 .12em; border-radius: .12em; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+h1 .said b { background: var(--blue); color: #fff; padding: 0 .08em; border-radius: .1em; font-weight: inherit; }
+.lede { font-size: clamp(18px, 2.2vw, 21px); color: var(--muted); max-width: 40em; margin: 0 auto 30px; }
+.cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; align-items: center; }
+.install { display: inline-flex; align-items: center; gap: 12px; background: var(--term); color: var(--term-text);
+  border-radius: 12px; padding: 12px 12px 12px 18px; font: 15px/1.2 var(--mono); box-shadow: var(--shadow);
+  max-width: 100%; }
+.install code { white-space: nowrap; overflow-x: auto; scrollbar-width: none; min-width: 0; }
+.install .p { color: var(--blue-soft); user-select: none; }
+.copy { flex: none; border: 1px solid #2A313C; background: #171C24; color: var(--term-text); border-radius: 8px;
+  font: 13px var(--sans); padding: 7px 10px; cursor: pointer; }
+.copy:hover { background: #1E2530; }
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 18px; border-radius: 12px; font-weight: 600;
+  text-decoration: none; font-size: 16px; border: 1px solid var(--line); color: var(--text); background: var(--card); }
+.btn:hover { border-color: var(--muted); }
+.small { font-size: 14px; color: var(--muted); margin-top: 14px; }
+
+/* ---- the terminal demo */
+.stage { padding: 28px 0 80px; }
+.term { background: var(--term); color: var(--term-text); border-radius: 16px; box-shadow: var(--shadow);
+  overflow: hidden; max-width: 940px; margin: 0 auto; border: 1px solid #1D232D; }
+.term .bar { display: flex; align-items: center; gap: 8px; padding: 12px 16px; background: #141922;
+  border-bottom: 1px solid #1D232D; }
+.dot { width: 12px; height: 12px; border-radius: 50%; background: #3A4150; }
+.dot.r { background: #FF5F57; } .dot.y { background: #FEBC2E; } .dot.g { background: #28C840; }
+.term .bar .t { margin-left: 10px; color: var(--term-dim); font: 13px var(--mono); }
+.screen { font: clamp(13px, 1.55vw, 16px)/1.6 var(--mono); padding: 0; }
+.screen .titlebar, .screen .status { display: flex; justify-content: space-between; background: #E6EDF3; color: #0E1116;
+  padding: 2px 14px; white-space: nowrap; overflow: hidden; gap: 16px; }
+.screen .body { padding: 14px 22px 18px; min-height: 300px; }
+.screen .keys { color: var(--term-dim); padding: 2px 14px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.screen h3 { color: #4C9AFF; font: inherit; font-weight: 700; margin: 0 0 12px; }
+.screen p, .screen ul { margin: 0 0 14px; }
+.screen ul { list-style: none; padding: 0; }
+.screen .s { border-radius: 3px; transition: background-color .15s, color .15s; }
+.screen .s.on { background: var(--band); color: #0E1116; }
+.screen .s.on .ic { color: #870000; }
+.screen .w { border-radius: 3px; transition: background-color .08s; }
+.screen .w.on { background: var(--blue); color: #fff; font-weight: 700; }
+.screen .ic { color: #D7875F; }
+.screen strong { font-weight: 700; }
+.screen pre { margin: 0 0 14px; border-left: 3px solid #3B4452; padding: 0 0 0 14px; overflow-x: auto; font: inherit; }
+.screen pre .lang { color: var(--term-dim); display: block; }
+.k { color: #AF5FAF; } .f { color: #5F87D7; } .str { color: #5FAF5F; } .cm { color: #8A8A8A; font-style: italic; }
+.b { color: #00AFAF; }
+.screen table { border-collapse: collapse; margin: 0 0 14px; }
+.screen th { text-align: left; font-weight: 700; border-bottom: 1px solid #3B4452; }
+.screen th, .screen td { padding: 0 14px 0 0; }
+.screen th + th, .screen td + td { border-left: 1px solid #3B4452; padding-left: 14px; }
+.screen .chk { color: var(--term-dim); margin-right: .6ch; }
+.controls { display: flex; gap: 10px; justify-content: center; margin-top: 18px; flex-wrap: wrap; align-items: center; }
+.controls button { font: 600 15px var(--sans); border-radius: 999px; padding: 10px 18px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--card); color: var(--text); display: inline-flex; gap: 8px; align-items: center; }
+.controls button.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+.controls button:hover { filter: brightness(1.06); }
+.controls .note { font-size: 14px; color: var(--muted); width: 100%; text-align: center; }
+
+/* ---- sections */
+section.band { padding: 88px 0; border-top: 1px solid var(--line); }
+section.alt { background: var(--bg-alt); }
+.kicker { font: 600 13px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin: 0 0 10px; }
+h2 { font-size: clamp(30px, 4.2vw, 46px); line-height: 1.08; letter-spacing: -0.025em; margin: 0 0 16px; max-width: 20ch; }
+.intro { color: var(--muted); font-size: 19px; max-width: 42em; margin: 0 0 40px; }
+
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+@media (max-width: 900px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; }
+.card h3 { margin: 14px 0 6px; font-size: 18px; letter-spacing: -.01em; }
+.card p { margin: 0; color: var(--muted); font-size: 16px; }
+.icon { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center;
+  background: color-mix(in srgb, var(--blue) 14%, transparent); color: var(--accent); }
+.icon svg { width: 22px; height: 22px; }
+
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; }
+@media (max-width: 900px) { .split { grid-template-columns: 1fr; gap: 32px; } }
+.steps { counter-reset: step; list-style: none; padding: 0; margin: 0; }
+.steps li { counter-increment: step; position: relative; padding: 0 0 22px 50px; }
+.steps li::before { content: counter(step); position: absolute; left: 0; top: -2px; width: 34px; height: 34px;
+  border-radius: 50%; display: grid; place-items: center; font: 700 15px var(--mono); color: var(--accent);
+  border: 1.5px solid color-mix(in srgb, var(--accent) 50%, transparent); }
+.steps h3 { margin: 0 0 4px; font-size: 18px; }
+.steps p { margin: 0; color: var(--muted); }
+.mini { background: var(--term); color: var(--term-text); border-radius: 12px; font: 14px/1.7 var(--mono);
+  padding: 16px 18px; box-shadow: var(--shadow); overflow-x: auto; border: 1px solid #1D232D; }
+.mini + .mini { margin-top: 14px; }
+.mini .p { color: #4C9AFF; } .mini .d { color: var(--term-dim); }
+.mini .hl { background: var(--band); color: #0E1116; border-radius: 3px; }
+.mini .hw { background: var(--blue); color: #fff; border-radius: 3px; font-weight: 700; }
+
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 760px) { .pair { grid-template-columns: 1fr; } }
+.pair .card h4 { margin: 0 0 12px; font: 600 13px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.said-list { margin: 0; padding: 0; list-style: none; }
+.said-list li { padding: 8px 0; border-bottom: 1px dashed var(--line); font-size: 16px; }
+.said-list li:last-child { border-bottom: 0; }
+.said-list .skip-it { color: var(--muted); font-style: italic; }
+
+.keys-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.key { display: flex; align-items: center; gap: 14px; background: var(--card); border: 1px solid var(--line);
+  border-radius: 12px; padding: 12px 14px; font-size: 16px; }
+kbd { display: inline-grid; place-items: center; min-width: 30px; height: 30px; padding: 0 8px; border-radius: 7px;
+  font-size: 14px; background: var(--bg); border: 1px solid var(--line); border-bottom-width: 3px; color: var(--text); }
+.key span:first-child { display: flex; gap: 5px; flex: none; }
+
+.voices { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 760px) { .voices { grid-template-columns: 1fr; } }
+.voices .card p + p { margin-top: 10px; }
+.pill { display: inline-block; font: 600 12px var(--mono); padding: 3px 9px; border-radius: 999px;
+  background: color-mix(in srgb, var(--blue) 14%, transparent); color: var(--accent); margin-bottom: 4px; }
+
+.install-steps { display: grid; gap: 14px; max-width: 760px; }
+.install-steps .mini { margin: 0; }
+.privacy { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+@media (max-width: 760px) { .privacy { grid-template-columns: 1fr; } }
+
+footer { border-top: 1px solid var(--line); padding: 36px 0 48px; color: var(--muted); font-size: 15px; }
+footer .wrap { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+footer .brand { font-size: 17px; }
+footer .brand img { width: 24px; height: 24px; }
+footer nav { display: flex; gap: 18px; margin-left: auto; flex-wrap: wrap; }
+footer a { color: var(--muted); text-decoration: none; }
+footer a:hover { color: var(--text); }
+.theme-toggle { background: none; border: 1px solid var(--line); color: var(--muted); border-radius: 999px;
+  padding: 5px 12px; font: 14px var(--sans); cursor: pointer; }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#" aria-label="voce home"><img src="assets/logo.svg" alt="">voce</a>
+    <nav aria-label="Main">
+      <a href="#features">Features</a>
+      <a href="#claude-code">Claude Code</a>
+      <a href="#voices">Voices</a>
+      <a href="#install">Install</a>
+      <a class="gh" href="https://github.com/jaystewartuk/voce">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        GitHub
+      </a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <section class="hero">
+    <div class="wrap">
+      <span class="eyebrow"><b>New</b> voce -r reads Claude Code's latest reply</span>
+      <h1>Your terminal, <span class="said">read <b>aloud</b></span>.</h1>
+      <p class="lede">voce reads Markdown to you in the terminal. Each sentence lights up as it is read, and each word
+        as it is spoken. Code is shown, not read. Your place is always kept.</p>
+      <div class="cta">
+        <div class="install"><span class="p">$</span><code id="install-cmd">uv tool install git+https://github.com/jaystewartuk/voce</code>
+          <button class="copy" data-copy="install-cmd" type="button">Copy</button></div>
+        <a class="btn" href="https://github.com/jaystewartuk/voce">View on GitHub</a>
+      </div>
+      <p class="small">Free and open source · macOS · Python 3.9+</p>
+    </div>
+  </section>
+
+  <section class="stage" aria-label="Live demo">
+    <div class="wrap">
+      <div class="term" role="img" aria-label="A terminal running voce, highlighting the sentence and word being read">
+        <div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="t">~/project — voce -r</span></div>
+        <div class="screen">
+          <div class="titlebar"><span>Why the cache misses</span><span>voce</span></div>
+          <div class="body" id="demo">
+            <h3><span class="s" data-say="Why the cache misses">Why the cache misses</span></h3>
+            <p><span class="s">The cache key ignores the <strong>query string</strong>, so <span class="ic">/search?q=a</span> and <span class="ic">/search?q=b</span> share one entry.</span> <span class="s">Add the query to the key, and keep the TTL short while you test.</span></p>
+            <pre><span class="lang">python</span><span class="k">def</span> <span class="f">cache_key</span>(request):
+    <span class="cm"># Include the query string, sorted so ?a=1&amp;b=2 matches ?b=2&amp;a=1</span>
+    query = <span class="str">"&amp;"</span>.join(<span class="b">sorted</span>(request.query.split(<span class="str">"&amp;"</span>)))
+    <span class="k">return</span> <span class="str">f"{request.path}?{query}"</span></pre>
+            <table>
+              <thead><tr><th><span class="s" data-say="Request, Before, After">Request</span></th><th>Before</th><th>After</th></tr></thead>
+              <tbody>
+                <tr><td><span class="s" data-say="search q equals a, hit, miss"><span class="ic">/search?q=a</span></span></td><td>hit</td><td>miss</td></tr>
+                <tr><td><span class="s" data-say="search q equals b, hit, wrong, miss"><span class="ic">/search?q=b</span></span></td><td>hit (wrong)</td><td>miss</td></tr>
+              </tbody>
+            </table>
+            <ul>
+              <li><span class="chk">☑</span><span class="s">Reproduce it with two queries</span></li>
+              <li><span class="chk">☐</span><span class="s">Ship the fix behind a flag</span></li>
+            </ul>
+          </div>
+          <div class="status"><span id="demo-state">▶ reading</span><span id="demo-pos">1/8 · 1× · Charon</span></div>
+          <div class="keys">space pause · ←→ sentence · ↑↓ paragraph · [ ] section · +- speed · v voice · q quit</div>
+        </div>
+      </div>
+      <div class="controls">
+        <button class="primary" id="hear" type="button">🔊 Hear it in your browser</button>
+        <button id="toggle" type="button">Pause</button>
+        <p class="note" id="hear-note">The real thing uses Google's Chirp 3 HD voices or your Mac's own. This uses your browser's voice.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="band alt" id="features">
+    <div class="wrap">
+      <p class="kicker">What it does</p>
+      <h2>Reads what a person would read.</h2>
+      <p class="intro">Markdown is written for the eye. voce shows it the way it should look and reads only the prose,
+        so you can listen with your eyes closed or follow every word.</p>
+      <div class="grid">
+        <div class="card"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h10M4 17h7"/><rect x="13" y="10" width="8" height="4" rx="2" fill="currentColor" stroke="none"/></svg></div>
+          <h3>Follows along</h3><p>The sentence being read sits on a pale band, the word being spoken on a darker one, timed from the audio itself.</p></div>
+        <div class="card"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/></svg></div>
+          <h3>Shows code, reads prose</h3><p>Code blocks are syntax highlighted in every language Pygments knows, and skipped by the voice.</p></div>
+        <div class="card"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 10h18M10 4v16"/></svg></div>
+          <h3>Tables that line up</h3><p>Columns are aligned on screen and read one row at a time, cell by cell.</p></div>
+        <div class="card"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-6-4-6 4z"/></svg></div>
+          <h3>Keeps your place</h3><p>Quit at any point and carry on from the same sentence, even after the file has been edited.</p></div>
+        <div class="card"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></div>
+          <h3>Free to listen again</h3><p>Every sentence is fetched once and cached, so going back or listening again costs nothing and works offline.</p></div>
+        <div class="card"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
+          <h3>Take it with you</h3><p><code>--export</code> stitches files into one MP3, with the same voice and pauses, for a walk or a drive.</p></div>
+        <div class="card"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h9"/><path d="M17 16l2 2 3-4"/></svg></div>
+          <h3>Playlists and quizzes</h3><p>Point it at a folder's README and listen through in order. Quizzes pause for your answer.</p></div>
+        <div class="card"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 15l6 6M10 17a7 7 0 1 1 0-14 7 7 0 0 1 0 14z"/></svg></div>
+          <h3>Click to jump</h3><p>Click any sentence to hear it, or use the arrows to move by sentence, paragraph or section.</p></div>
+        <div class="card"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M5 8v8M19 8v8M8.5 5.5v13M15.5 5.5v13"/></svg></div>
+          <h3>Gapless and in time</h3><p>A tiny native player keeps sentences flowing, pauses mid-word and changes speed without changing pitch.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="claude-code">
+    <div class="wrap split">
+      <div>
+        <p class="kicker">Made for Claude Code</p>
+        <h2>Listen to the reply while you think about it.</h2>
+        <p class="intro">Long replies are easier to take in by ear, away from the wall of text. voce reads Claude's
+          latest reply straight from the session, with no copying and pasting.</p>
+        <ol class="steps">
+          <li><h3>Ask Claude</h3><p>Work in Claude Code as usual, in one terminal.</p></li>
+          <li><h3>Run <code>voce -r</code></h3><p>In a second terminal, in the same folder, when the reply lands.</p></li>
+          <li><h3>Listen</h3><p>You hear the final message, the same text <code>/copy</code> takes, without the tool calls or thinking.</p></li>
+        </ol>
+      </div>
+      <div>
+        <div class="mini" aria-label="Claude Code in one terminal"><span class="d">~/project</span> <span class="p">❯</span> claude<br><span class="d">&gt; Why does the cache miss?</span><br><span class="d">⏺</span> The cache key ignores the query string, so…</div>
+        <div class="mini" aria-label="voce in a second terminal"><span class="d">~/project</span> <span class="p">❯</span> voce -r<br><span class="hl">The cache key ignores the <span class="hw">query</span> string, so…</span><br><span class="d">▶ reading · 2/8 · 1.1× · Charon</span></div>
+        <p class="small">Prefer copying? <code>/copy</code> then <code>voce -c</code> works too.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="band alt">
+    <div class="wrap">
+      <p class="kicker">Written for the eye, read for the ear</p>
+      <h2>What you see, and what you hear.</h2>
+      <p class="intro">The voice never hears markup. Symbols and abbreviations are read as words, and things meant for
+        the eye stay on the screen.</p>
+      <div class="pair">
+        <div class="card"><h4>On screen</h4>
+          <ul class="said-list">
+            <li><strong>Bold</strong>, <em>italic</em>, <code>code</code> and <a href="#">links</a></li>
+            <li>A fenced <code>python</code> code block</li>
+            <li><code>| Request | Before | After |</code></li>
+            <li>e.g. a → b, ~3 × faster</li>
+            <li><code>&lt;details&gt;</code> hints and "Next:" links</li>
+          </ul></div>
+        <div class="card"><h4>Spoken</h4>
+          <ul class="said-list">
+            <li>"Bold, italic, code and links"</li>
+            <li class="skip-it">Shown, highlighted, not read</li>
+            <li>"Request, Before, After", then each row</li>
+            <li>"for example, a to b, about 3 times faster"</li>
+            <li class="skip-it">Shown, not read</li>
+          </ul></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="voices">
+    <div class="wrap">
+      <p class="kicker">Voices</p>
+      <h2>Good out of the box. Beautiful with Google.</h2>
+      <p class="intro">Start with your Mac's own voices, with nothing to set up. Add an API key for Google's Chirp 3 HD
+        voices, which sound close to a person reading.</p>
+      <div class="voices">
+        <div class="card"><span class="pill">built in</span><h3>Mac voices</h3>
+          <p>Works the moment you install it, and offline. Pick any voice installed on your Mac with <code>--voice</code>.</p></div>
+        <div class="card"><span class="pill">recommended</span><h3>Google Chirp 3 HD</h3>
+          <p>Eight voices to cycle through with <kbd>v</kbd>, in any language Google offers. Set
+            <code>VOCE_GOOGLE_API_KEY</code>, or sign in with gcloud.</p>
+          <p>Google's free tier covered a million characters a month when this was written, about 18 hours of listening.
+            voce counts what you use. <a href="https://github.com/jaystewartuk/voce/blob/main/docs/google-voices.md">Setup guide</a></p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band alt" aria-labelledby="keys-h">
+    <div class="wrap">
+      <p class="kicker">Keys</p>
+      <h2 id="keys-h">Everything is one key away.</h2>
+      <p class="intro">Your hands stay where they are. The mouse works too: click a sentence to jump, scroll to look around.</p>
+      <div class="keys-grid">
+        <div class="key"><span><kbd>space</kbd></span><span>pause or carry on</span></div>
+        <div class="key"><span><kbd>←</kbd><kbd>→</kbd></span><span>sentence</span></div>
+        <div class="key"><span><kbd>↑</kbd><kbd>↓</kbd></span><span>paragraph</span></div>
+        <div class="key"><span><kbd>[</kbd><kbd>]</kbd></span><span>section</span></div>
+        <div class="key"><span><kbd>+</kbd><kbd>-</kbd></span><span>speed, 0.8× to 2×</span></div>
+        <div class="key"><span><kbd>n</kbd><kbd>p</kbd></span><span>next or previous file</span></div>
+        <div class="key"><span><kbd>v</kbd></span><span>next voice</span></div>
+        <div class="key"><span><kbd>m</kbd></span><span>playlist menu</span></div>
+        <div class="key"><span><kbd>r</kbd></span><span>hear it again</span></div>
+        <div class="key"><span><kbd>q</kbd></span><span>quit, keeping your place</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="install">
+    <div class="wrap">
+      <p class="kicker">Install</p>
+      <h2>Ready in a minute.</h2>
+      <p class="intro">You need macOS and Python 3.9 or newer. The Xcode command line tools give you the gapless player,
+        and ffmpeg is only needed for MP3 export.</p>
+      <div class="install-steps">
+        <div class="mini"><span class="d"># with uv</span><br><span class="p">❯</span> uv tool install git+https://github.com/jaystewartuk/voce<br><span class="d"># or with pipx</span><br><span class="p">❯</span> pipx install git+https://github.com/jaystewartuk/voce</div>
+        <div class="mini"><span class="p">❯</span> voce README.md <span class="d">          # any Markdown file</span><br><span class="p">❯</span> voce -r <span class="d">                 # Claude Code's latest reply</span><br><span class="p">❯</span> voce -c <span class="d">                 # the clipboard</span><br><span class="p">❯</span> voce notes.md --export notes.mp3</div>
+      </div>
+      <p class="small">Full documentation is in the <a href="https://github.com/jaystewartuk/voce#readme">README</a>.</p>
+    </div>
+  </section>
+
+  <section class="band alt" aria-labelledby="privacy-h">
+    <div class="wrap">
+      <p class="kicker">Privacy</p>
+      <h2 id="privacy-h">Your notes stay yours.</h2>
+      <div class="privacy">
+        <div class="card"><h3>No telemetry</h3><p>voce makes no network calls of its own. There is nothing to opt out of.</p></div>
+        <div class="card"><h3>Google only if you ask</h3><p>Text goes to Google's Text-to-Speech API only when you set up Google voices.</p></div>
+        <div class="card"><h3>Plain files</h3><p>Your place and settings live in one JSON file, and the audio cache is safe to delete at any time.</p></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <a class="brand" href="#"><img src="assets/logo.svg" alt="">voce</a>
+    <span>MIT licensed · open source</span>
+    <nav aria-label="Footer">
+      <a href="https://github.com/jaystewartuk/voce">GitHub</a>
+      <a href="https://github.com/jaystewartuk/voce/blob/main/CHANGELOG.md">Changelog</a>
+      <a href="https://github.com/jaystewartuk/voce/issues">Issues</a>
+      <button class="theme-toggle" id="theme" type="button">Theme</button>
+    </nav>
+  </div>
+</footer>
+
+<script>
+(() => {
+  // ---- copy buttons
+  document.querySelectorAll("[data-copy]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const text = document.getElementById(btn.dataset.copy).textContent;
+      try { await navigator.clipboard.writeText(text); btn.textContent = "Copied"; }
+      catch { btn.textContent = "Select and copy"; }
+      setTimeout(() => (btn.textContent = "Copy"), 1600);
+    });
+  });
+
+  // ---- theme toggle: system, then light, then dark
+  const root = document.documentElement;
+  const themes = ["system", "light", "dark"];
+  let theme = "system";
+  try { theme = localStorage.getItem("voce-theme") || "system"; } catch {}
+  const applyTheme = () => {
+    if (theme === "system") root.removeAttribute("data-theme"); else root.setAttribute("data-theme", theme);
+    document.getElementById("theme").textContent = "Theme: " + theme;
+  };
+  applyTheme();
+  document.getElementById("theme").addEventListener("click", () => {
+    theme = themes[(themes.indexOf(theme) + 1) % themes.length];
+    try { localStorage.setItem("voce-theme", theme); } catch {}
+    applyTheme();
+  });
+
+  // ---- the demo: wrap each sentence's words, then move the highlight through them
+  const sentences = [...document.querySelectorAll("#demo .s")];
+  const wordsOf = [];
+  const wrapWords = node => {
+    const out = [];
+    const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+    const texts = [];
+    while (walker.nextNode()) texts.push(walker.currentNode);
+    for (const t of texts) {
+      const parts = t.textContent.split(/(\s+)/);
+      const frag = document.createDocumentFragment();
+      for (const p of parts) {
+        if (!p) continue;
+        if (/^\s+$/.test(p)) { frag.appendChild(document.createTextNode(p)); continue; }
+        const w = document.createElement("span");
+        w.className = "w";
+        w.textContent = p;
+        frag.appendChild(w);
+        out.push(w);
+      }
+      t.replaceWith(frag);
+    }
+    return out;
+  };
+  sentences.forEach(s => wordsOf.push(wrapWords(s)));
+  const spoken = s => s.dataset.say || s.textContent;
+
+  const state = document.getElementById("demo-state");
+  const posEl = document.getElementById("demo-pos");
+  const toggle = document.getElementById("toggle");
+  const hear = document.getElementById("hear");
+  const note = document.getElementById("hear-note");
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const synth = "speechSynthesis" in window ? window.speechSynthesis : null;
+
+  let i = 0, w = 0, playing = !reduced, voiced = false, timer = null;
+
+  const mark = () => {
+    sentences.forEach((s, k) => s.classList.toggle("on", k === i));
+    document.querySelectorAll("#demo .w.on").forEach(el => el.classList.remove("on"));
+    const words = wordsOf[i];
+    if (words[w] && playing) words[w].classList.add("on");
+    posEl.textContent = `${i + 1}/${sentences.length} · 1× · ${voiced ? "browser voice" : "Charon"}`;
+    state.textContent = playing ? "▶ reading" : "⏸ paused (space to carry on)";
+    toggle.textContent = playing ? "Pause" : "Play";
+  };
+
+  const next = () => { i = (i + 1) % sentences.length; w = 0; };
+  const weight = el => el.textContent.length + 2 + (/[.!?:;]$/.test(el.textContent) ? 4 : /,$/.test(el.textContent) ? 2 : 0);
+
+  // Silent mode: step through words by their weight, about 150 words a minute
+  const tickSilent = () => {
+    clearTimeout(timer);
+    if (!playing || voiced) return;
+    const words = wordsOf[i];
+    const delay = words[w] ? weight(words[w]) * 34 : 600;
+    timer = setTimeout(() => {
+      w += 1;
+      if (w >= words.length) { mark(); timer = setTimeout(() => { next(); mark(); tickSilent(); }, 500); return; }
+      mark(); tickSilent();
+    }, delay);
+  };
+
+  // Voiced mode: the browser speaks each sentence and reports word boundaries
+  const speak = () => {
+    if (!synth || !playing) return;
+    synth.cancel();
+    const sentence = sentences[i];
+    const text = spoken(sentence);
+    const u = new SpeechSynthesisUtterance(text);
+    const english = synth.getVoices().filter(v => /^en(-|_)/i.test(v.lang));
+    const pick = english.find(v => /Daniel|Samantha|Google UK English|Serena|Karen/i.test(v.name)) || english[0];
+    if (pick) u.voice = pick;
+    u.rate = 1;
+    const words = wordsOf[i];
+    const own = !sentence.dataset.say;
+    u.onboundary = e => {
+      if (e.name && e.name !== "word") return;
+      if (own) {
+        let at = 0, k = 0;
+        for (; k < words.length; k++) { const len = words[k].textContent.length; if (e.charIndex < at + len) break; at += len + 1; }
+        w = Math.min(k, words.length - 1);
+      } else {
+        w = Math.min(w + 1, words.length - 1);
+      }
+      mark();
+    };
+    u.onend = () => { if (!playing || !voiced) return; next(); w = 0; mark(); setTimeout(speak, 350); };
+    w = 0; mark();
+    synth.speak(u);
+  };
+
+  const play = () => { playing = true; mark(); voiced ? speak() : tickSilent(); };
+  const pause = () => { playing = false; clearTimeout(timer); if (synth) synth.cancel(); mark(); };
+
+  toggle.addEventListener("click", () => (playing ? pause() : play()));
+  hear.addEventListener("click", () => {
+    if (!synth) { note.textContent = "Your browser can't speak, so the demo stays silent."; return; }
+    voiced = !voiced;
+    hear.textContent = voiced ? "🔇 Stop the voice" : "🔊 Hear it in your browser";
+    clearTimeout(timer);
+    if (synth) synth.cancel();
+    if (voiced) { playing = true; speak(); } else { mark(); tickSilent(); }
+  });
+  sentences.forEach((s, k) => {
+    s.style.cursor = "pointer";
+    s.addEventListener("click", () => { i = k; w = 0; clearTimeout(timer); if (synth) synth.cancel(); playing = true; mark(); voiced ? speak() : tickSilent(); });
+  });
+  document.addEventListener("visibilitychange", () => { if (document.hidden && playing && !voiced) pause(); });
+
+  i = 1;
+  mark();
+  if (playing) tickSilent();
+})();
+</script>
+</body>
+</html>

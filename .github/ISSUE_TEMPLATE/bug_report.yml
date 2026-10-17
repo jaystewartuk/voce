@@ -1,0 +1,27 @@
+name: Bug report
+description: Something doesn't work as it should
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: markdown
+    attributes:
+      label: A small piece of Markdown that shows it, if it's about reading or display
+      render: markdown
+  - type: input
+    id: version
+    attributes:
+      label: voce --version, macOS version and terminal app
+      placeholder: voce 0.1.0, macOS 26, Ghostty
+    validations:
+      required: true
+  - type: dropdown
+    id: voice
+    attributes:
+      label: Voice
+      options: [Mac voice, Google with an API key, Google with gcloud]
