@@ -122,7 +122,7 @@ as it is read, with the word being spoken marked, just like a sentence of prose.
 | --- | --- |
 | `$totals[$channel] ??= 0;` | totals channel null coalescing assignment zero |
 | `usort($rows, fn ($a, $b) => $a['nights'] <=> $b['nights']);` | U sort rows, F N a, b double arrow a nights spaceship b nights |
-| `foreach ($rows as &$row) {` | for each rows as ampersand row |
+| `foreach ($rows as &$row) {` | for each rows as by reference row |
 | `'1' === 1;   // false: a string is not an integer` | the string 1 is identical to 1, false: a string is not an integer |
 | `if (strpos($s, 'Hi') !== false) { ... }` | if string position s, Hi is not identical to false and so on |
 | `(int) (19.99 * 100);   // 1998, a cent short` | cast to int 19.99 times 100, 1998, a cent short |
@@ -133,7 +133,8 @@ values", `strlen` is "string length", `mb_strlen` is "M B string length", `usort
 set", `checkIn` is "check In". A variable's dollar sign is silent, and so are brackets and semicolons. Operators
 get their real names: `->` is "arrow", `=>` is "double arrow", `::` is "double colon", `===` is "is identical to"
 and `==` is "is equal to", the PHP manual's own names rather than the "triple equals" nickname, `??` is "null coalescing", `?:` is "short ternary", `<=>` is "spaceship", `?string` is
-"nullable string", `(int)` is "cast to int", `...` is "spread" in a call and "variadic" in a signature. A string
+"nullable string", `(int)` is "cast to int", `++` is "increment", `&` on a parameter is "by reference", and `...` is
+"unpack" in a call and "variadic" in a signature. The names are the PHP manual's own. A string
 is read by its contents, so `''` is "the empty string" and `','` is "a comma". A trailing comment is read as
 prose. Inline code in a sentence is read the same way.
 

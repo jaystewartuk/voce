@@ -26,6 +26,6 @@ Compare with `===`, never `==`. => identical, never equal
 
 # Code blocks, read line by line (speech.spoken_line).
 ```php\n'1' == 1;   // true: the string is converted\n``` => the string 1 is equal to 1, true: the string is converted
-```php\nforeach ($list as &$item) {\n``` => for each list as ampersand item
-```php\n$all = [...$airbnb, ...$booking];\n``` => all equals array of spread airbnb, spread booking
+```php\nforeach ($list as &$item) {\n``` => for each list as by reference item
+```php\n$all = [...$airbnb, ...$booking];\n``` => all equals array of unpack airbnb, unpack booking
 ```php\n$label = ['airbnb' => 'Airbnb'];   // the channel's display name\n``` => double arrow

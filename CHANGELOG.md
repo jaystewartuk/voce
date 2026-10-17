@@ -8,8 +8,8 @@ and versions follow [Semantic Versioning](https://semver.org).
 ### Changed
 
 - Code blocks are read, line by line, the way a pairing partner says code aloud: names as words (`array_values`
-  is "array values", `usort` is "U sort"), operators by their real names (`===` is "is identical to", `==` is
-  "is equal to", `=>` is "double arrow", `??` is "null coalescing", `<=>` is "spaceship"), brackets silent,
+  is "array values", `usort` is "U sort"), operators by the PHP manual's names (`===` is "is identical to", `==` is
+  "is equal to", `=>` is "double arrow", `??` is "null coalescing", `<=>` is "spaceship", `++` is "increment"), brackets silent,
   strings by their contents, and a trailing comment as prose after a short pause. The line being read sits on the band and the word being
   spoken is marked, as in prose. `--skip-code` keeps the old behaviour, showing code without reading it.
 

@@ -45,10 +45,10 @@ _CODE_OPERATORS = {
     ">=": "greater than or equal to", "<=": "less than or equal to", "<=>": "spaceship",
     "??=": "null coalescing assignment", "??": "null coalescing", "?:": "short ternary", "?->": "nullsafe arrow",
     "->": "arrow", "=>": "double arrow",
-    "::": "double colon", "...": "three dots", "&": "ampersand", "&&": "and", "||": "or", "!": "not",
+    "::": "double colon", "...": "ellipsis", "&": "ampersand", "&&": "and", "||": "or", "!": "not",
     "[]": "empty square brackets", "()": "empty brackets", "{}": "empty braces", "=": "equals", "+": "plus",
     "-": "minus", "*": "times", "/": "divided by", "%": "modulo", ".": "dot", ".=": "dot equals",
-    "+=": "plus equals", "++": "plus plus", "--": "minus minus", "$": "dollar", "_": "underscore",
+    "+=": "plus equals", "++": "increment", "--": "decrement", "$": "dollar", "_": "underscore",
     "#": "hash", "@": "at", "|": "pipe", "<": "less than", ">": "greater than", "?": "question mark",
     ":": "colon", ";": "semicolon", "\\": "backslash",
 }
@@ -97,12 +97,12 @@ def spoken_code(code: str) -> str:
 # a second).
 _LINE_OPERATORS = {
     "<=>": "spaceship", "===": "is identical to", "!==": "is not identical to", "??=": "null coalescing assignment",
-    "**=": "power equals", "<<<": "heredoc", "?->": "nullsafe arrow", "->": "arrow", "=>": "double arrow",
+    "**=": "exponentiation equals", "<<<": "heredoc", "?->": "nullsafe arrow", "->": "arrow", "=>": "double arrow",
     "::": "double colon", "==": "is equal to", "!=": "is not equal to", ">=": "is greater than or equal to",
     "<=": "is less than or equal to",
-    "??": "null coalescing", "?:": "short ternary", "&&": "and", "||": "or", "++": "plus plus",
-    "--": "minus minus", "+=": "plus equals", "-=": "minus equals", "*=": "times equals",
-    "/=": "divided equals", ".=": "dot equals", "**": "to the power", "=": "equals", "+": "plus", "-": "minus",
+    "??": "null coalescing", "?:": "short ternary", "&&": "and", "||": "or", "++": "increment",
+    "--": "decrement", "+=": "plus equals", "-=": "minus equals", "*=": "times equals",
+    "/=": "divided equals", ".=": "dot equals", "**": "to the power of", "=": "equals", "+": "plus", "-": "minus",
     "*": "times", "/": "divided by", "%": "modulo", ".": "dot", "<": "less than", ">": "greater than",
     "!": "not", ":": "colon", "|": "pipe", "@": "at", "&": "ampersand", "^": "caret", "~": "tilde", "\\": "",
     "(": "", ")": "", "{": "", "}": "", "]": "", ";": ",", ",": ",",
@@ -187,11 +187,13 @@ def spoken_line(line: str) -> str:
                     words.append("array of")
             elif tok == "...":
                 nxt = line[m.end():m.end() + 1]
-                if nxt == "$" or nxt.isalpha():
+                if nxt == "$" or nxt.isalpha():  # the manual: a variable-length argument list, or unpacking
                     words.append("variadic" if re.match(r"\s*(public |protected |private |static )*function\b", line)
-                                 else "spread")
+                                 else "unpack")
                 else:
                     words.append("and so on")
+            elif tok == "&" and line[m.end():m.end() + 1] == "$":
+                words.append("by reference")
             elif tok == "$":
                 words.append("dollar")
             elif tok == "?":
