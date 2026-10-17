@@ -8,9 +8,9 @@ and versions follow [Semantic Versioning](https://semver.org).
 ### Changed
 
 - Code blocks are read, line by line, the way a pairing partner says code aloud: names as words (`array_values`
-  is "array values", `usort` is "U sort"), operators by their real names (`===` is "triple equals", `=>` is
-  "double arrow", `??` is "null coalescing", `<=>` is "spaceship"), brackets and semicolons silent, strings by
-  their contents, and a trailing comment as prose. The line being read sits on the band and the word being
+  is "array values", `usort` is "U sort"), operators by their real names (`===` is "is identical to", `==` is
+  "is equal to", `=>` is "double arrow", `??` is "null coalescing", `<=>` is "spaceship"), brackets silent,
+  strings by their contents, and a trailing comment as prose after a short pause. The line being read sits on the band and the word being
   spoken is marked, as in prose. `--skip-code` keeps the old behaviour, showing code without reading it.
 
 ### Fixed
@@ -27,7 +27,7 @@ and versions follow [Semantic Versioning](https://semver.org).
 - `c` copies the sentence being read and `C` its paragraph; a click on a code block copies the code. Shift-drag
   still selects text the terminal's own way.
 - Inline code is read the same way: `array_values` in a sentence is "array values", and `===` on its own is
-  "triple equals". Before, the voice got the raw text, so study notes had to spell names out in prose.
+  "identical". Before, the voice got the raw text, so study notes had to spell names out in prose.
 - `docs/hearing/check.py` fetches tricky phrases from the real voice, transcribes them with whisper.cpp and
   checks what was heard. It is how rewrites for the voice are verified and new ones found.
 

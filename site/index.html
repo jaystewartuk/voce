@@ -301,7 +301,7 @@ footer a:hover { color: var(--text); }
         <div class="card"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h10M4 17h7"/><rect x="13" y="10" width="8" height="4" rx="2" fill="currentColor" stroke="none"/></svg></div>
           <h3>Follows along</h3><p>The sentence being read sits on a pale band, the word being spoken on a darker one, timed from the audio itself.</p></div>
         <div class="card"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/></svg></div>
-          <h3>Reads code like a pairing partner</h3><p>Highlighted in every language Pygments knows, and read line by line with the real names: "double arrow", "null coalescing", "spaceship".</p></div>
+          <h3>Reads code like a pairing partner</h3><p>Highlighted in every language Pygments knows, and read line by line with the real names: "is identical to", "double arrow", "null coalescing", "spaceship".</p></div>
         <div class="card"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 10h18M10 4v16"/></svg></div>
           <h3>Tables that line up</h3><p>Columns are aligned on screen and read one row at a time, cell by cell.</p></div>
         <div class="card"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-6-4-6 4z"/></svg></div>
@@ -334,7 +334,7 @@ footer a:hover { color: var(--text); }
             <li><code>$totals[$channel] ??= 0;</code></li>
             <li><code>fn ($a, $b) =&gt; $a['nights'] &lt;=&gt; $b['nights']</code></li>
             <li><code>foreach ($rows as &amp;$row) {</code></li>
-            <li><code>if (strpos($s, 'Hi') !== false) { ... }</code></li>
+            <li><code>'1' === 1;   // false: a string is not an integer</code></li>
             <li><code>(int) (19.99 * 100);   // 1998, a cent short</code></li>
             <li><code>Str::slug('Sea View');</code></li>
           </ul></div>
@@ -343,13 +343,13 @@ footer a:hover { color: var(--text); }
             <li>"totals channel null coalescing assignment zero"</li>
             <li>"F N a, b double arrow a nights spaceship b nights"</li>
             <li>"for each rows as ampersand row"</li>
-            <li>"if string position s, Hi not identical false and so on"</li>
-            <li>"cast to int 19.99 times 100. 1998, a cent short"</li>
+            <li>"the string 1 is identical to 1, false: a string is not an integer"</li>
+            <li>"cast to int 19.99 times 100, 1998, a cent short"</li>
             <li>"string double colon slug Sea View"</li>
           </ul></div>
       </div>
       <div class="grid" style="margin-top: 18px">
-        <div class="card"><h3>Real names, so you learn them</h3><p>Operators are called what they are called: arrow, double arrow, double colon, triple equals, null coalescing, spaceship, nullable, cast, spread, variadic. After a few sessions you say them without thinking, which is what a pair-programming interview or a code review asks of you.</p></div>
+        <div class="card"><h3>Real names, so you learn them</h3><p>Operators are called what they are called: arrow, double arrow, double colon, identical, equal, null coalescing, spaceship, nullable, cast, spread, variadic. After a few sessions you say them without thinking, which is what a pair-programming interview or a code review asks of you.</p></div>
         <div class="card"><h3>Names as words</h3><p><code>array_values</code> is "array values", <code>strlen</code> is "string length", <code>usort</code> is "U sort", <code>isset</code> is "is set". A variable's dollar sign, the brackets and the semicolon are silent. A string is read by its contents, and a trailing comment as prose.</p></div>
         <div class="card"><h3>Checked by ear</h3><p>Every rule is fetched from the real voice, transcribed with whisper and compared with what should be heard. Written for PHP and Laravel first; most rules carry to any language with the same symbols, and the rest are a line each. Prefer the prose alone? <code>--skip-code</code>.</p></div>
       </div>
@@ -395,7 +395,7 @@ footer a:hover { color: var(--text); }
         <div class="card"><h4>Spoken</h4>
           <ul class="said-list">
             <li>"Bold, italic, code and links"</li>
-            <li>"array values", "triple equals", "arrow"</li>
+            <li>"array values", "identical", "arrow"</li>
             <li>"Request, Before, After", then each row</li>
             <li>"for example, a to b, about 3 times faster"</li>
             <li class="skip-it">Shown, not read</li>

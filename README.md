@@ -37,8 +37,8 @@ jump around with the keyboard or the mouse.
 
 It was built to listen to long Claude Code replies and study notes, but it reads any Markdown.
 
-- **Reads code like a pairing partner.** `$totals[$channel] ??= 0;` is heard as "totals channel null coalescing
-  assignment zero". Operators get their real names, so you learn to say them. See [Code, read aloud](#code-read-aloud).
+- **Reads code like a pairing partner.** `'1' === 1` is heard as "the string 1 is identical to 1", and
+  `$totals[$channel] ??= 0;` as "totals channel null coalescing assignment zero". Operators get their real names, so you learn to say them. See [Code, read aloud](#code-read-aloud).
 - **Reads what a person would read.** Markup is never spoken. Tables are read row by row, and links by their
   text. Things meant for the eye stay on the screen.
 - **Follows along.** The sentence being read sits on a pale band, and the word being spoken on a darker one. The
@@ -123,21 +123,22 @@ as it is read, with the word being spoken marked, just like a sentence of prose.
 | `$totals[$channel] ??= 0;` | totals channel null coalescing assignment zero |
 | `usort($rows, fn ($a, $b) => $a['nights'] <=> $b['nights']);` | U sort rows, F N a, b double arrow a nights spaceship b nights |
 | `foreach ($rows as &$row) {` | for each rows as ampersand row |
-| `if (strpos($s, 'Hi') !== false) { ... }` | if string position s, Hi not identical false and so on |
-| `(int) (19.99 * 100);   // 1998, a cent short` | cast to int 19.99 times 100. 1998, a cent short |
+| `'1' === 1;   // false: a string is not an integer` | the string 1 is identical to 1, false: a string is not an integer |
+| `if (strpos($s, 'Hi') !== false) { ... }` | if string position s, Hi is not identical to false and so on |
+| `(int) (19.99 * 100);   // 1998, a cent short` | cast to int 19.99 times 100, 1998, a cent short |
 | `Str::slug('Sea View');` | string double colon slug Sea View |
 
 The rules are the ones a person uses without thinking. Names are said as words: `array_values` is "array
 values", `strlen` is "string length", `mb_strlen` is "M B string length", `usort` is "U sort", `isset` is "is
 set", `checkIn` is "check In". A variable's dollar sign is silent, and so are brackets and semicolons. Operators
-get their real names: `->` is "arrow", `=>` is "double arrow", `::` is "double colon", `===` is "triple equals",
-`!==` is "not identical", `??` is "null coalescing", `?:` is "short ternary", `<=>` is "spaceship", `?string` is
+get their real names: `->` is "arrow", `=>` is "double arrow", `::` is "double colon", `===` is "is identical to"
+and `==` is "is equal to", the PHP manual's own names rather than the "triple equals" nickname, `??` is "null coalescing", `?:` is "short ternary", `<=>` is "spaceship", `?string` is
 "nullable string", `(int)` is "cast to int", `...` is "spread" in a call and "variadic" in a signature. A string
 is read by its contents, so `''` is "the empty string" and `','` is "a comma". A trailing comment is read as
 prose. Inline code in a sentence is read the same way.
 
-Because the names are the real ones, you learn them as you listen. After a few sessions, "null coalescing
-assignment" and "spaceship" come out of your mouth as easily as "equals", which is exactly what you want in a
+Because the names are the real ones, you learn them as you listen. After a few sessions, "identical",
+"null coalescing assignment" and "spaceship" come out of your mouth as easily as "equals", which is exactly what you want in a
 pair-programming interview or a code review.
 
 The rules were written for PHP and Laravel first, checked by ear against the real voice with

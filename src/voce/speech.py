@@ -41,9 +41,10 @@ _VERSIONED_CODES = re.compile(r"\b(PHP|BSD|CRC|CVE)(?=\s+\d{1,2}(?:\.\d+)*(?!\d|
 # variable's dollar sign is not said, -> is "arrow", and an operator on its own is called by its name. Checked
 # by ear with docs/hearing/check.py.
 _CODE_OPERATORS = {
-    "===": "triple equals", "!==": "not identical", "==": "double equals", "!=": "not equal",
-    ">=": "greater or equal", "<=": "less or equal", "<=>": "spaceship", "??=": "null coalescing assignment",
-    "??": "null coalescing", "?:": "short ternary", "?->": "nullsafe arrow", "->": "arrow", "=>": "double arrow",
+    "===": "identical", "!==": "not identical", "==": "equal", "!=": "not equal",
+    ">=": "greater than or equal to", "<=": "less than or equal to", "<=>": "spaceship",
+    "??=": "null coalescing assignment", "??": "null coalescing", "?:": "short ternary", "?->": "nullsafe arrow",
+    "->": "arrow", "=>": "double arrow",
     "::": "double colon", "...": "three dots", "&": "ampersand", "&&": "and", "||": "or", "!": "not",
     "[]": "empty square brackets", "()": "empty brackets", "{}": "empty braces", "=": "equals", "+": "plus",
     "-": "minus", "*": "times", "/": "divided by", "%": "modulo", ".": "dot", ".=": "dot equals",
@@ -91,18 +92,20 @@ def spoken_code(code: str) -> str:
 
 
 # A line of code, the way a person reads it aloud in a pair-programming session: names as above, operators by
-# their real names (so the listener learns them), brackets and semicolons silent, a string by its contents, and a
-# trailing comment as prose.
+# their real names from the PHP manual (so the listener learns them), brackets silent, a semicolon a comma, a
+# string by its contents, and a trailing comment as prose after a comma (a full stop makes Google pause for over
+# a second).
 _LINE_OPERATORS = {
-    "<=>": "spaceship", "===": "triple equals", "!==": "not identical", "??=": "null coalescing assignment",
+    "<=>": "spaceship", "===": "is identical to", "!==": "is not identical to", "??=": "null coalescing assignment",
     "**=": "power equals", "<<<": "heredoc", "?->": "nullsafe arrow", "->": "arrow", "=>": "double arrow",
-    "::": "double colon", "==": "double equals", "!=": "not equal", ">=": "greater or equal", "<=": "less or equal",
+    "::": "double colon", "==": "is equal to", "!=": "is not equal to", ">=": "is greater than or equal to",
+    "<=": "is less than or equal to",
     "??": "null coalescing", "?:": "short ternary", "&&": "and", "||": "or", "++": "plus plus",
     "--": "minus minus", "+=": "plus equals", "-=": "minus equals", "*=": "times equals",
     "/=": "divided equals", ".=": "dot equals", "**": "to the power", "=": "equals", "+": "plus", "-": "minus",
     "*": "times", "/": "divided by", "%": "modulo", ".": "dot", "<": "less than", ">": "greater than",
     "!": "not", ":": "colon", "|": "pipe", "@": "at", "&": "ampersand", "^": "caret", "~": "tilde", "\\": "",
-    "(": "", ")": "", "{": "", "}": "", "]": "", ";": ".", ",": ",",
+    "(": "", ")": "", "{": "", "}": "", "]": "", ";": ",", ",": ",",
 }
 _LINE_TOKEN = re.compile(
     r"""(?P<space>\s+)
@@ -161,7 +164,7 @@ def spoken_line(line: str) -> str:
             if text:
                 text = "and so on" if text in ("...", "…") else _spoken_comment(text)
                 if words and not words[-1].endswith((".", ",")):
-                    words.append(".")
+                    words.append(",")  # a comma: the voice pauses for over a second at a full stop
                 words.append(text + ".")
             break
         if kind == "string":

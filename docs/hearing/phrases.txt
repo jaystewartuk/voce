@@ -22,10 +22,10 @@ Use `str_contains` and `mb_strlen` on names. => string contains and MB string le
 Read `$guest->email` from the model. => guest arrow email
 Sort with `usort` and the `<=>` operator. => U sort and the spaceship operator | you sort and the spaceship operator
 Call `Str::slug` on the name. => string double colon slug
-Compare with `===`, never `==`. => triple equals, never double equals
+Compare with `===`, never `==`. => identical, never equal
 
 # Code blocks, read line by line (speech.spoken_line).
-```php\n'1' == 1;   // true: the string is converted\n``` => the string 1 double equals 1. true: the string is converted
+```php\n'1' == 1;   // true: the string is converted\n``` => the string 1 is equal to 1, true: the string is converted
 ```php\nforeach ($list as &$item) {\n``` => for each list as ampersand item
 ```php\n$all = [...$airbnb, ...$booking];\n``` => all equals array of spread airbnb, spread booking
 ```php\n$label = ['airbnb' => 'Airbnb'];   // the channel's display name\n``` => double arrow
