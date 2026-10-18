@@ -6,8 +6,8 @@ import time
 import pytest
 
 from voce import cli
-from voce.claude import last_reply
 from voce.markdown import parse, plain
+from voce.sources.claude import last_reply
 from voce.state import State
 from voce.voices import Google, GoogleRefused, Voice
 
