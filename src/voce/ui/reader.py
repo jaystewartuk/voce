@@ -443,7 +443,8 @@ class Reader:
                 runs[-1][2] = z
             else:
                 runs.append([line.block, a, z])
-        pieces = ["" if b < 0 else self.doc.blocks[b].text[a:z].rstrip() for b, *rest in runs for a, z in [rest or (0, 0)]]
+        pieces = ["" if b < 0 else self.doc.blocks[b].text[a:z].rstrip()
+                  for b, *rest in runs for a, z in [rest or (0, 0)]]
         return "\n".join(pieces).strip("\n")
 
     def jump(self, n: int, at: int) -> None:

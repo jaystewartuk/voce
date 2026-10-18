@@ -261,7 +261,8 @@ def test_carrying_on_after_a_wheel_scroll_brings_the_text_back(tmp_path):
     r = reader(tmp_path, {"a.md": md})
     r.go(10)
     r.draw()
-    r.tick(); r.tick()
+    r.tick()
+    r.tick()
     assert r.mode == "playing"
     r.toggle()
     assert r.mode == "held"
@@ -275,7 +276,8 @@ def test_carrying_on_after_a_wheel_scroll_brings_the_text_back(tmp_path):
 def test_a_drag_copies_the_text_it_crosses_without_moving_the_voice(tmp_path, monkeypatch):
     copied = []
     monkeypatch.setattr("voce.ui.reader.write_clipboard", copied.append)
-    r = reader(tmp_path, {"a.md": "First one. Second one.\n\nAnother paragraph here.\n\n```php\n$x = 1;\n$y = 2;\n```\n"})
+    md = "First one. Second one.\n\nAnother paragraph here.\n\n```php\n$x = 1;\n$y = 2;\n```\n"
+    r = reader(tmp_path, {"a.md": md})
     r.go(1)
     r.draw()
     m = r.margin
@@ -296,7 +298,8 @@ def test_a_drag_copies_the_text_it_crosses_without_moving_the_voice(tmp_path, mo
     click(r, m + 2, 1)
     assert r.pos == 0 and r.selection is None
     # the next sentence clears the highlight
-    r.mouse((PRESS, m, 1)); r.mouse((RELEASE, m + 5, 1))
+    r.mouse((PRESS, m, 1))
+    r.mouse((RELEASE, m + 5, 1))
     assert r.selection
     r.go(1)
     assert r.selection is None

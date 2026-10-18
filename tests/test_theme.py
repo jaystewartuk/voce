@@ -3,7 +3,7 @@
 import curses
 
 from voce.markdown import Block
-from voce.ui.theme import Theme
+from voce.ui.theme import ITALIC, Theme
 
 
 def theme():
@@ -16,13 +16,13 @@ def theme():
 def test_code_keeps_syntax_colour_until_it_is_read():
     t, code = theme(), Block("code", "x = 'a'  # note", lang="python")
     assert t.text(code, 0, frozenset({"string"}), None) == t.pair("string")
-    assert t.text(code, 0, frozenset({"comment"}), None) == t.pair("comment") | curses.A_ITALIC
+    assert t.text(code, 0, frozenset({"comment"}), None) == t.pair("comment") | ITALIC
 
 
 def test_code_line_being_read_sits_on_the_band():
     t, code = theme(), Block("code", "x = 'a'  # note", lang="python")
     assert t.text(code, 0, frozenset({"string"}), "sentence") == t.pair("sentence")
-    assert t.text(code, 0, frozenset({"comment"}), "sentence") == t.pair("sentence") | curses.A_ITALIC
+    assert t.text(code, 0, frozenset({"comment"}), "sentence") == t.pair("sentence") | ITALIC
     assert t.text(code, 0, frozenset({"keyword"}), "word") == t.pair("word") | curses.A_BOLD
 
 
