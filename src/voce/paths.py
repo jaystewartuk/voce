@@ -27,3 +27,8 @@ def state_file() -> Path:
 
 def clips_dir() -> Path:
     return state_dir() / "clips"
+
+
+def pulls_dir() -> Path:
+    """Pull requests written as Markdown, one file per pull request, so your place in one is kept."""
+    return state_dir() / "pulls"

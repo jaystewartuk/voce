@@ -17,11 +17,15 @@ from voce.document import load
 from voce.export import ExportError
 from voce.player import make_player
 from voce.playlist import Entry, PlaylistError, find_playlist, part_matches, read_playlist
+from voce.sources.github import looks_like_pull_request
 from voce.state import State
 from voce.voices import DEFAULT_GOOGLE_VOICE, FREE_CHARS, Google, Voice, next_google_voice
 
 USAGE = """\
 examples:
+  voce --pr https://github.com/owner/repo/pull/12   review a pull request by ear: its description, each
+                                                      file's diff and the conversation, read and highlighted
+  voce --pr 12             the same, for pull request 12 of the repository this folder is a clone of
   voce notes.md            read a Markdown file, from where you left off
   voce -r                  read Claude Code's latest reply in this folder (run it in another terminal)
   voce -c                  read what's on the clipboard
@@ -40,6 +44,10 @@ voices:
   The Mac's own voice works out of the box. For Google's Chirp 3 HD voices, set VOCE_GOOGLE_API_KEY, or sign
   in with gcloud and pass --google-project once. Every sentence is fetched once and kept.
 
+pull requests:
+  Private repositories work when gh is signed in (gh auth login) or GITHUB_TOKEN is set. Running the same
+  --pr again fetches the latest version and keeps your place in it.
+
 https://github.com/jaystewartuk/voce
 """
 
@@ -56,9 +64,13 @@ def speed(value: str) -> float:
 
 def parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(
-        prog="voce", description="Read Markdown aloud in your terminal, highlighting each sentence and word.",
+        prog="voce", description="Read Markdown and pull requests aloud in your terminal, highlighting each "
+                                 "sentence and word.",
         formatter_class=argparse.RawDescriptionHelpFormatter, epilog=USAGE)
-    ap.add_argument("files", nargs="*", metavar="FILE", help="Markdown files to read, or - for standard input")
+    ap.add_argument("files", nargs="*", metavar="FILE",
+                    help="Markdown files to read, a pull request URL, or - for standard input")
+    ap.add_argument("--pr", metavar="PR",
+                    help="a GitHub pull request: a URL, owner/repo#12, or 12 for this folder's repository")
     ap.add_argument("-r", "--reply", action="store_true",
                     help="read Claude Code's latest reply in this folder (the text /copy would take)")
     ap.add_argument("-c", "--clip", action="store_true", help="read what is on the clipboard")
@@ -85,7 +97,7 @@ def parser() -> argparse.ArgumentParser:
 
     tools = ap.add_argument_group("other")
     tools.add_argument("--export", metavar="OUT.mp3",
-                       help="write the files (or reply, clipboard or playlist) as one MP3 instead of playing")
+                       help="write the files (or reply, clipboard, pull request or playlist) as one MP3")
     tools.add_argument("--check", nargs="*", metavar="FILE",
                        help="report how files will read, without audio (default: the playlist)")
     tools.add_argument("--afplay", action="store_true", help="play with afplay instead of the built-in player")
@@ -120,8 +132,8 @@ def choose(args, state: State, entries: list[Entry]) -> tuple[list[Entry], int]:
     if not entries:
         if last and Path(last).exists():
             return [Entry(Path(last), load(last).title)], 0
-        sys.exit("Nothing to read yet. Give a Markdown file, use -r for Claude Code's latest reply or -c for the "
-                 "clipboard, or set a playlist with --playlist DIR. See voce --help.")
+        sys.exit("Nothing to read yet. Give a Markdown file, a pull request with --pr, use -r for Claude Code's "
+                 "latest reply or -c for the clipboard, or set a playlist with --playlist DIR. See voce --help.")
     for i, e in enumerate(entries):
         if str(e.path) == last and not state.is_done(e.path):
             return entries, i
@@ -182,6 +194,9 @@ def main(argv: list[str] | None = None) -> None:
         state.save(force=True)
         print(f"Google project: {args.google_project}")
 
+    for words in (args.files, args.check or []):
+        if len(words) == 1 and not args.pr and looks_like_pull_request(words[0]):
+            args.pr = words.pop()  # voce https://github.com/o/r/pull/12 needs no --pr
     try:
         readme = playlist_path(args, state)
         source = sources.resolve(args)
@@ -211,7 +226,7 @@ def main(argv: list[str] | None = None) -> None:
     if args.export:
         paths = existing(args.files) if args.files else [e.path for e in entries]
         if not paths:
-            sys.exit("Nothing to export: give files, use -r or -c, or set a playlist with --playlist DIR.")
+            sys.exit("Nothing to export: give files, use -r, -c or --pr, or set a playlist with --playlist DIR.")
         try:
             commands.export(paths, Path(args.export), voice, state, args.skip_code)
         except ExportError as e:
@@ -224,7 +239,7 @@ def main(argv: list[str] | None = None) -> None:
             wanted = args.prepare
             paths = [e.path for e in entries if not wanted or any(part_matches(e.part, p) for p in wanted)]
         if not paths:
-            sys.exit("Nothing to prepare: give files, use -r or -c, or set a playlist with --playlist DIR.")
+            sys.exit("Nothing to prepare: give files, use -r, -c or --pr, or set a playlist with --playlist DIR.")
         commands.prepare(paths, voice, state)
         return
 
