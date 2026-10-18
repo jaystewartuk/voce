@@ -30,6 +30,8 @@ from voce.speech.words import (
 )
 
 _CAMEL = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
+# Inline code with an operator between spaces (`$a === $b`) is read as a line of code would be.
+_EXPRESSION = re.compile(r"\s(===|!==|==|!=|<=>|<=|>=|=>|->|\?\?|&&|\|\||[-+*/<>=])\s")
 # A path has a slash in it, or is a file name: a word, a dot, and an extension of letters.
 _PATH = re.compile(r"~?/?(?:[\w.-]+/)+[\w.-]*|\.?[A-Za-z_][\w-]*(?:\.[A-Za-z]\w*)+")
 
@@ -79,6 +81,8 @@ def spoken_code(code: str, lang: str | Language = GENERIC) -> str:
         return spoken_path(s)
     if lang.dunder and re.fullmatch(r"__\w+__", s):
         return spoken_name(s, lang)
+    if _EXPRESSION.search(s):
+        return spoken_line(s, lang)
     s = re.sub(r"\(\s*\)", " ", s)                       # a call's empty brackets are not said
     s = re.sub(r"\$(?=[A-Za-z_])", "", s)                 # $reservation is "reservation"
     s = s.replace("?->", " nullsafe arrow ").replace("->", " arrow ").replace("=>", " double arrow ")
@@ -111,6 +115,9 @@ def _tokens(comments: tuple) -> re.Pattern:
     return re.compile(_TOKENS.replace("COMMENTS", starts), re.X)
 _CAST = re.compile(r"\((" + "|".join(CAST_TYPES) + r")\)")
 _SIGNATURE = re.compile(r"\s*(public |protected |private |static )*function\b")
+# A line of words with a sentence's punctuation and none of code's: prose inside a string, a doc comment or a
+# heredoc, read as prose.
+_PROSE_LINE = re.compile(r"^[\w\s,.;:!?'\"-]+$")
 
 
 def _spoken_string(raw: str, lang: Language = GENERIC) -> str:
@@ -161,9 +168,16 @@ def _spoken_operator(tok: str, line: str, end: int, after_value: bool, lang: Lan
     return LINE_OPERATORS.get(tok, tok)
 
 
+def is_prose_line(line: str) -> bool:
+    """Four or more words, a sentence's punctuation and nothing that only code has."""
+    return bool(_PROSE_LINE.match(line) and len(line.split()) >= 4 and re.search(r"[.,;:!?](\s|$)", line.strip()))
+
+
 def spoken_line(line: str, lang: str | Language = GENERIC) -> str:
     """One line of code, the way a person reads it aloud, in the language's own words if it is given."""
     lang = language(lang) if isinstance(lang, str) else lang
+    if is_prose_line(line):
+        return line.strip().rstrip(".")
     words: list[str] = []
     previous = ""  # the kind of the last token that was not space, for [ and ...
     if lang is GENERIC or lang.name == "php":
@@ -171,8 +185,8 @@ def spoken_line(line: str, lang: str | Language = GENERIC) -> str:
     for m in _tokens(lang.comments).finditer(line):
         kind = m.lastgroup
         tok = m.group()
-        if kind == "space":
-            continue
+        if kind == "space" or (tok == "." and m.end() == len(line.rstrip())):
+            continue  # a full stop ending the line is prose's, not code's
         if kind == "comment":
             text = re.sub(r"^(//|#|/\*|--|;)\s*|\s*\*/$", "", tok).strip()
             if text:

@@ -38,7 +38,8 @@ jump around with the keyboard or the mouse.
 It was built to listen to long Claude Code replies and study notes, but it reads any Markdown.
 
 - **Reads code like a pairing partner.** `'1' === 1` is heard as "the string 1 is identical to 1", and
-  `$totals[$channel] ??= 0;` as "totals channel null coalescing assignment zero". Operators get their real names, so you learn to say them. See [Code, read aloud](#code-read-aloud).
+  `$totals[$channel] ??= 0;` as "totals channel null coalescing assignment zero". Operators get their manual's
+  real names, in each language's own words, so you learn to say them. See [Code, read aloud](#code-read-aloud).
 - **Reads what a person would read.** Markup is never spoken. Tables are read row by row, and links by their
   text. Things meant for the eye stay on the screen.
 - **Follows along.** The sentence being read sits on a pale band, and the word being spoken on a darker one. The
@@ -144,9 +145,13 @@ Because the names are the real ones, you learn them as you listen. After a few s
 pair-programming interview or a code review.
 
 The rules were written for PHP and Laravel first, checked by ear against the real voice with
-[docs/hearing/check.py](docs/hearing/check.py), and most of them carry to any language with the same symbols.
-Python, JavaScript and SQL get their names as words and their operators by name; what they lack is the odd
-language-specific abbreviation. Those are a one-line addition each, and welcome.
+[docs/hearing/check.py](docs/hearing/check.py). Each language then has its own words on top of what is common
+to all of them, in [`speech/words.py`](src/voce/speech/words.py): a Python line says "returns" for `->`, "floor
+divided by" for `//` and "dunder init" for `__init__`; a JavaScript line says "is strictly equal to" for `===`
+and "optional chaining" for `?.`, which are MDN's names; shell says "pipe" and "and then"; SQL says "is not
+equal to" for `<>`. A fenced block is read in the language on its fence, a diff in the language of its file,
+and inline code in a sentence in the language most of the document's code is in. Prose inside code, such as a
+doc comment or a heredoc, is read as prose. Adding a language is a few lines of data, and welcome.
 
 If you would rather hear only the prose, `--skip-code` shows code without reading it.
 
@@ -223,7 +228,10 @@ are only links, such as breadcrumbs or "Next:" links, are shown but not read. Sy
 abbreviations such as "e.g." and "i.e.", are read as words.
 
 Code, in fenced blocks and in sentences, is read the way a pairing partner says it: see [Code, read
-aloud](#code-read-aloud).
+aloud](#code-read-aloud). A fenced `diff` block is highlighted with added lines in the file's syntax and removed
+lines in red, and read hunk by hunk: "Line 40", then the changed lines, with "Added" and "Removed" said once at
+the start of each run and the unchanged context shown but not read. Write the file's language after the word
+diff, as in ```` ```diff python ````, to have the added lines highlighted and read in that language.
 
 ## Privacy
 

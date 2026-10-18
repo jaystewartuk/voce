@@ -46,7 +46,7 @@ def wrap(text: str, width: int) -> list[tuple[int, int]]:
 
 
 def layout(doc: Doc, width: int) -> tuple[list[Line], dict[int, int]]:
-    """Screen lines for the document at this width, and the first line of each text block."""
+    """Screen lines for the document at this width, and the first line of each block that can be read."""
     lines: list[Line] = []
     where: dict[int, int] = {}
     previous = None
@@ -63,6 +63,7 @@ def layout(doc: Doc, width: int) -> tuple[list[Line], dict[int, int]]:
             lines.append(Line(-1, 0, 0, "", 0))
         previous = block
         if block.kind == "code":
+            where[b] = len(lines)
             lines += _code_lines(b, block.text, block.lang, width)
             continue
         indent = 2 * block.indent + (2 if block.kind == "quote" else 0)

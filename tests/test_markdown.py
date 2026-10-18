@@ -97,3 +97,12 @@ def test_comments_are_dropped():
 
 def test_horizontal_rule_is_not_a_list():
     assert kinds("* * *") == [("hr", "")]
+
+
+def test_a_diff_fence_can_name_the_files_language():
+    blocks = parse("```diff python\n+x = 1\n```\n\n```python title=x.py\ny\n```")
+    assert blocks[0].lang == "diff python" and blocks[1].lang == "python"
+
+
+def test_link_definitions_are_neither_shown_nor_read():
+    assert kinds("[//]: # (dependabot-start)\nText.\n\n[voce]: https://example.com\n") == [("p", "Text.")]
