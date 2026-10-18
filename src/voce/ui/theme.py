@@ -31,8 +31,9 @@ _PAIRS = {"sentence":          (16, 153, curses.COLOR_BLACK, curses.COLOR_CYAN),
 # Syntax roles (from voce.highlight) to (pair, extra attributes).
 _CODE = {"keyword": ("keyword", 0), "string": ("string", 0), "comment": ("comment", ITALIC),
          "number": ("number", 0), "function": ("function", 0), "type": ("type", 0), "builtin": ("type", 0),
-         "decorator": ("number", 0), "variable": ("function", 0), "inserted": ("string", 0),
-         "deleted": ("deleted", 0), "heading": ("brand", curses.A_BOLD), "prompt": ("dim", curses.A_BOLD)}
+         "decorator": ("number", 0), "variable": ("function", 0), "inserted": ("string", curses.A_BOLD),
+         "deleted": ("deleted", 0), "heading": ("brand", curses.A_BOLD), "prompt": ("dim", curses.A_BOLD),
+         "context": ("dim", 0)}
 
 _DIM_KINDS = {"meta", "html", "rule", "hr"}
 
