@@ -211,7 +211,7 @@ def test_copy_keys_and_a_click_on_code(tmp_path, monkeypatch):
     r.key(ord("C"))
     assert copied[-1] == "First one. Second one." and r.message == "Copied the paragraph"
     r.draw()
-    code = next(n for n, ln in enumerate(r.lines) if ln.block >= 0 and r.doc.blocks[ln.block].kind == "code")
+    code = next(n for n, ln in enumerate(r.view.lines) if ln.block >= 0 and r.doc.blocks[ln.block].kind == "code")
     click(r, 10, code + 3)  # the second line of code, under the language header
     assert r.doc.blocks[r.units[r.pos].block].text[r.units[r.pos].start:r.units[r.pos].end] == "$y = 2;"
     click(r, 10, code + 1)  # the language header counts as the first line
@@ -226,7 +226,7 @@ def test_a_click_on_unread_code_copies_it(tmp_path, monkeypatch):
     monkeypatch.setattr("voce.ui.reader.write_clipboard", copied.append)
     r = reader(tmp_path, {"a.md": "First one.\n\n```php\n$x = 1;\n$y = 2;\n```\n\nAfter."}, skip_code=True)
     r.draw()
-    code = next(n for n, ln in enumerate(r.lines) if ln.block >= 0 and r.doc.blocks[ln.block].kind == "code")
+    code = next(n for n, ln in enumerate(r.view.lines) if ln.block >= 0 and r.doc.blocks[ln.block].kind == "code")
     click(r, 10, code + 2)
     assert copied == ["$x = 1;\n$y = 2;\n"] and r.message == "Copied the code, 2 lines"
     assert r.pos == 0
@@ -235,25 +235,25 @@ def test_a_click_on_unread_code_copies_it(tmp_path, monkeypatch):
 def test_the_sentence_being_read_glides_to_the_anchor_row(tmp_path):
     md = "\n\n".join(f"Sentence number {i} is here." for i in range(60))
     r = reader(tmp_path, {"a.md": md})
-    body = 24 - 3
-    anchor = r.anchor(body)
+    anchor = r.view.anchor()
     r.draw()
-    assert r.top == 0  # the first sentence stays at the top: nothing above it to show
+    assert r.view.top == 0  # the first sentence stays at the top: nothing above it to show
     r.go(30)
     r.draw()
-    first = r.where[r.units[30].block]
-    assert r.top == first - anchor  # a jump to somewhere off screen snaps there at once
+    first = r.view.where[r.units[30].block]
+    assert r.view.top == first - anchor  # a jump to somewhere off screen snaps there at once
     r.go(32)  # two blank-separated sentences on: four lines further down
     tops = []
     for _ in range(6):
         r.draw()
-        tops.append(r.top)
-    goal = r.where[r.units[32].block] - anchor
+        tops.append(r.view.top)
+    goal = r.view.where[r.units[32].block] - anchor
     assert tops[0] < goal and tops[-1] == goal  # a nearby move glides a line or so a frame
     assert all(b - a in (0, 1, 2) for a, b in zip(tops, tops[1:]))
     r.go(len(r.units) - 1)
     r.draw()
-    assert r.top == r.where[r.units[-1].block] - anchor  # the last line rises to the anchor rather than stopping
+    # the last line rises to the anchor rather than stopping
+    assert r.view.top == r.view.where[r.units[-1].block] - anchor
 
 
 def test_carrying_on_after_a_wheel_scroll_brings_the_text_back(tmp_path):
@@ -268,9 +268,9 @@ def test_carrying_on_after_a_wheel_scroll_brings_the_text_back(tmp_path):
     assert r.mode == "held"
     for _ in range(5):
         r.mouse((WHEEL_DOWN, 0, 0))
-    assert r.scrolled
+    assert r.view.scrolled
     r.toggle()
-    assert r.mode == "playing" and not r.scrolled
+    assert r.mode == "playing" and not r.view.scrolled
 
 
 def test_a_drag_copies_the_text_it_crosses_without_moving_the_voice(tmp_path, monkeypatch):
@@ -280,29 +280,29 @@ def test_a_drag_copies_the_text_it_crosses_without_moving_the_voice(tmp_path, mo
     r = reader(tmp_path, {"a.md": md})
     r.go(1)
     r.draw()
-    m = r.margin
+    m = r.view.margin
     # within one line: from "Second" to the end of the line, the far cell included
     r.mouse((PRESS, m + 11, 1))
     r.mouse((DRAG, m + 16, 1))
-    assert r.selection and r.selected_on(0) == (11, 17)
+    assert r.view.selection and r.view.selected_on(0) == (11, 17)
     r.mouse((RELEASE, m + 21, 1))
     assert copied == ["Second one."] and r.message == "Copied the selection"
-    assert r.pos == 1 and r.selection  # the voice stayed where it was; the selection shows until the next sentence
+    assert r.pos == 1 and r.view.selection  # the voice stayed where it was; the selection shows until the next sentence
     # across lines, backwards, through a blank line and into the code: blocks come out whole with real line breaks
-    code = next(n for n, ln in enumerate(r.lines) if ln.block >= 0 and r.doc.blocks[ln.block].kind == "code")
+    code = next(n for n, ln in enumerate(r.view.lines) if ln.block >= 0 and r.doc.blocks[ln.block].kind == "code")
     r.mouse((PRESS, m + 8, code + 3))
     r.mouse((RELEASE, m + 8, 3))
     assert copied[-1] == "paragraph here.\n\n$x = 1;\n$y = 2;" and r.message == "Copied 4 lines"
     assert r.pos == 1
     # a press and release in the same cell is still a click
     click(r, m + 2, 1)
-    assert r.pos == 0 and r.selection is None
+    assert r.pos == 0 and r.view.selection is None
     # the next sentence clears the highlight
     r.mouse((PRESS, m, 1))
     r.mouse((RELEASE, m + 5, 1))
-    assert r.selection
+    assert r.view.selection
     r.go(1)
-    assert r.selection is None
+    assert r.view.selection is None
 
 
 def test_the_text_holds_still_while_the_button_is_down(tmp_path):
@@ -310,18 +310,18 @@ def test_the_text_holds_still_while_the_button_is_down(tmp_path):
     r = reader(tmp_path, {"a.md": md})
     r.go(30)
     r.draw()
-    top = r.top
-    r.mouse((PRESS, r.margin, 5))
-    r.mouse((DRAG, r.margin + 4, 6))
+    top = r.view.top
+    r.mouse((PRESS, r.view.margin, 5))
+    r.mouse((DRAG, r.view.margin + 4, 6))
     r.go(40)  # the voice moves on under a held button: the view stays and so does the selection
     r.draw()
-    assert r.top == top and r.selection
-    r.mouse((RELEASE, r.margin + 4, 6))
+    assert r.view.top == top and r.view.selection
+    r.mouse((RELEASE, r.view.margin + 4, 6))
     r.draw()
-    assert r.top == top  # still, until the next sentence
+    assert r.view.top == top  # still, until the next sentence
     r.go(41)
     r.draw()
-    assert r.top != top and r.selection is None
+    assert r.view.top != top and r.view.selection is None
 
 
 def test_sgr_mouse_reports_decode_to_press_drag_release_and_wheel():
