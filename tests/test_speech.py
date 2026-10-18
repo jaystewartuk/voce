@@ -81,6 +81,8 @@ def test_spoken_line_reads_code_as_a_person_would():
     assert spoken_line("(int) (19.99 * 100);") == "cast to int 19.99 times 100"
     assert spoken_line("$count++; }") == "count increment"
     assert spoken_line('query = "&".join(parts)') == "query equals an ampersand dot join parts"
+    assert spoken_code("[") == "open square bracket"  # a lone bracket is said, not stripped as a subscript
+    assert spoken_code("]") == "close square bracket"
     assert spoken_line('return f"{request.path}?{query}"') == "return f string request.path question mark query"
     assert spoken_line("function block(string ...$dates): void") == "function block string variadic dates colon void"
 
