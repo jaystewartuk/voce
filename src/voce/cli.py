@@ -13,12 +13,12 @@ import sys
 from pathlib import Path
 
 from voce import __version__
-from voce.claude import TranscriptError, last_reply, latest_transcript
-from voce.clips import ClipError, read_clipboard, read_stdin, save_clip
 from voce.document import load, minutes, quiz_pairs, word_count
 from voce.export import ExportError, export_mp3
 from voce.player import make_player
 from voce.playlist import Entry, PlaylistError, find_playlist, part_matches, read_playlist, update_minutes
+from voce.sources.claude import TranscriptError, last_reply, latest_transcript
+from voce.sources.clips import ClipError, read_clipboard, read_stdin, save_clip
 from voce.state import State
 from voce.voices import DEFAULT_GOOGLE_VOICE, FREE_CHARS, Google, Voice, next_google_voice
 

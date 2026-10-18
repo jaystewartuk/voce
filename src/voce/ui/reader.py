@@ -7,9 +7,9 @@ import time
 from dataclasses import dataclass
 from typing import Callable
 
-from voce.clips import ClipError, write_clipboard
 from voce.document import Doc, load, minutes
 from voce.playlist import Entry
+from voce.sources.clips import ClipError, write_clipboard
 from voce.state import State
 from voce.ui.layout import Line, layout, word_at
 from voce.ui.menu import menu

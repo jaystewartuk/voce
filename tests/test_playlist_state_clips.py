@@ -1,8 +1,8 @@
 import pytest
 
-from voce.clips import ClipError, save_clip
 from voce.document import load
 from voce.playlist import PlaylistError, find_playlist, part_matches, read_playlist, update_minutes
+from voce.sources.clips import ClipError, save_clip
 from voce.state import State
 
 

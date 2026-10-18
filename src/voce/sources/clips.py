@@ -11,11 +11,12 @@ import sys
 from pathlib import Path
 
 from voce import paths
+from voce.sources import SourceError
 
 KEEP = 50  # clips kept; older ones are deleted
 
 
-class ClipError(Exception):
+class ClipError(SourceError):
     pass
 
 

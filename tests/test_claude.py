@@ -3,7 +3,7 @@ import os
 
 import pytest
 
-from voce.claude import TranscriptError, last_reply, latest_transcript, project_folder
+from voce.sources.claude import TranscriptError, last_reply, latest_transcript, project_folder
 
 
 def entry(kind, content, **extra):
