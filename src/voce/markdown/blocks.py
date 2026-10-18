@@ -36,7 +36,7 @@ _CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
 _HEADING = re.compile(r"^ {0,3}(#{1,6})\s+(.*?)(?:\s+#+)?\s*$")
 _ITEM = re.compile(r"^(\s*)([-*+]|\d+[.)])\s+(.*)$")
 _TASK = re.compile(r"^\[([ xX])\]\s+(.*)$")
-_FENCE = re.compile(r"^(\s*)(`{3,}|~{3,})\s*\{?\.?([\w+#.-]*)")
+_FENCE = re.compile(r"^(\s*)(`{3,}|~{3,})\s*\{?\.?([\w+#.-]*)(?:\s+([\w+#.-]+))?")
 _RULE = re.compile(r"^ {0,3}([-*_])(\s*\1){2,}\s*$")
 _BLOCK_HTML = re.compile(r"^</?(details|summary|div|p|br|hr|img|table|thead|tbody|tr|td|th|picture|source|"
                          r"center|section|figure|figcaption|video|audio|iframe)\b", re.I)
@@ -83,6 +83,8 @@ def parse(md: str) -> list[Block]:
         if fence:
             flush()
             indent, marker, lang = len(fence.group(1)), fence.group(2), fence.group(3).lower()
+            if fence.group(4) and highlight.is_diff(lang):
+                lang += " " + fence.group(4).lower()  # ```diff python: a diff of Python
             closing = re.compile(rf"^\s*{re.escape(marker[0])}{{{len(marker)},}}\s*$")
             j = i + 1
             while j < len(lines) and not closing.match(lines[j]):

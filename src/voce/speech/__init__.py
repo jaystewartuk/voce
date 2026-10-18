@@ -3,5 +3,7 @@
 from voce.speech.code import spoken_code, spoken_line, spoken_name, spoken_path
 from voce.speech.prose import speakable
 from voce.speech.sentences import ABBREVIATIONS, sentences
+from voce.speech.words import LANGUAGES, Language, language
 
-__all__ = ["ABBREVIATIONS", "sentences", "speakable", "spoken_code", "spoken_line", "spoken_name", "spoken_path"]
+__all__ = ["ABBREVIATIONS", "LANGUAGES", "Language", "language", "sentences", "speakable", "spoken_code",
+           "spoken_line", "spoken_name", "spoken_path"]
