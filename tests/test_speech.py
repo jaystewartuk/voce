@@ -83,3 +83,44 @@ def test_spoken_line_reads_code_as_a_person_would():
     assert spoken_line('query = "&".join(parts)') == "query equals an ampersand dot join parts"
     assert spoken_line('return f"{request.path}?{query}"') == "return f string request.path question mark query"
     assert spoken_line("function block(string ...$dates): void") == "function block string variadic dates colon void"
+
+
+def test_each_language_has_its_own_words():
+    assert spoken_line("def f(x: int, *args, **kwargs) -> str:  # note", "python") == \
+        "def f x colon int, star args, double star keyword args returns string colon, note"
+    assert spoken_line("total = a // b if a != b else self.__init__", "py") == \
+        "total equals a floor divided by b if a is not equal to b else self dot dunder init"
+    assert spoken_line("const go = (a, b) => a?.x ?? [...b];  // js", "js") == \
+        "const go equals a, b arrow a optional chaining x nullish coalescing array of spread b, js"
+    assert spoken_line("if (a === b) {}", "typescript") == "if a is strictly equal to b"
+    assert spoken_line("SELECT id FROM t WHERE a <> b -- why", "sql") == \
+        "SELECT I D FROM t WHERE a is not equal to b, why"
+    assert spoken_line("cat a.txt | grep x && echo ok  # shell", "bash") == \
+        "cat a dot txt pipe grep x and then echo ok, shell"
+    assert spoken_line("$x = 1; // php", "php") == "x equals 1, php"
+    assert spoken_line("$x = 1; // unknown language reads like PHP", "cobol") == \
+        "x equals 1, unknown language reads like PHP"
+
+
+def test_paths_and_file_names_are_said_with_their_slashes_and_letters():
+    assert spoken_code("src/voce/cli.py") == "source slash voce slash C L I dot P Y"
+    assert spoken_code("test_reader.py") == "test reader dot P Y"
+    assert spoken_code(".github/workflows/ci.yml") == "dot github slash workflows slash C I dot yaml"
+    assert spoken_code("$a === $b") == "a is identical to b"
+    assert spoken_code("a/b") == "a slash b"
+    assert spoken_code("array.length") == "array dot length"
+    assert spoken_code("docs/") == "docs slash"
+
+
+def test_prose_inside_code_is_read_as_prose():
+    assert spoken_line("    Immutability is enforced only after a release is published.") == \
+        "Immutability is enforced only after a release is published"
+    assert spoken_line("return x;  // done.") == "return x, done"
+    assert spoken_line("import os, sys") == "import O S, sys"  # too short and too code-like to be prose
+
+
+def test_speakable_diff_stats_and_middle_dots():
+    assert speakable("`cli.py` (+12 −3)") == "`cli.py`, 12 added, 3 removed"
+    assert speakable("x (+4) and y (−2)") == "x, 4 added and y, 2 removed"
+    assert speakable("Part 1 · 12 min") == "Part 1, 12 min"
+    assert speakable("(x)") == "(x)"

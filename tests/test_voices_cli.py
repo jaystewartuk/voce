@@ -43,3 +43,19 @@ def test_help_and_version(capsys):
     with pytest.raises(SystemExit):
         cli.main(["--version"])
     assert "voce " in capsys.readouterr().out
+
+
+def test_a_pull_request_on_the_command_line_needs_no_flag(tmp_path, monkeypatch, capsys):
+    seen = []
+
+    def fake(text, cwd=None, client=None, folder=None):
+        seen.append(text)
+        path = tmp_path / "pr.md"
+        path.write_text("# PR\n\nOne sentence.\n")
+        return path
+
+    monkeypatch.setattr("voce.sources.pullrequest.read_pull_request", fake)
+    cli.main(["--check", "owner/repo#12"])
+    assert seen == ["owner/repo#12"] and "2 sentences" in capsys.readouterr().out
+    cli.main(["--check", "--pr", "https://github.com/owner/repo/pull/3"])
+    assert seen[-1] == "https://github.com/owner/repo/pull/3"

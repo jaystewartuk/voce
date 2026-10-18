@@ -40,6 +40,7 @@ _FENCE = re.compile(r"^(\s*)(`{3,}|~{3,})\s*\{?\.?([\w+#.-]*)(?:\s+([\w+#.-]+))?
 _RULE = re.compile(r"^ {0,3}([-*_])(\s*\1){2,}\s*$")
 _BLOCK_HTML = re.compile(r"^</?(details|summary|div|p|br|hr|img|table|thead|tbody|tr|td|th|picture|source|"
                          r"center|section|figure|figcaption|video|audio|iframe)\b", re.I)
+_LINK_DEFINITION = re.compile(r"^ {0,3}\[[^\]]+\]:\s*\S")   # [name]: url, and the [//]: # (comment) idiom
 _NAVIGATION = re.compile(r"(\[[^\]]+\]\([^)]+\)\s*(·\s*|\|\s*)?)+")
 
 
@@ -99,6 +100,11 @@ def parse(md: str) -> list[Block]:
             continue
 
         if not s:
+            flush()
+            i += 1
+            continue
+
+        if _LINK_DEFINITION.match(line):  # a link's address, used elsewhere: nothing to show or say
             flush()
             i += 1
             continue

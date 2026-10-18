@@ -72,3 +72,29 @@ def test_skip_code_shows_code_without_reading_it(tmp_path):
     doc = load(write(tmp_path, CODE), skip_code=True)
     assert [u.say for u in doc.units] == ["Intro.", "After."]
     assert doc.title == "Intro."
+
+
+DIFF = ("Before.\n\n````diff python\n@@ -10,3 +10,4 @@ def f(self):\n     x = 1\n-    return x\n+    y = x ** 2\n"
+        "+\n+    return y  # squared\n````\n\n```diff markdown\n@@ -1,2 +1,2 @@\n-- Old **bullet** here.\n"
+        "+- New bullet, with `code`.\n```\n")
+
+
+def test_a_diff_is_read_as_a_reviewer_reads_it(tmp_path):
+    doc = load(write(tmp_path, DIFF))
+    assert doc.language == "python"
+    says = [(u.say, u.pause) for u in doc.units]
+    assert says == [("Before.", 0.4), ("Line 10.", 0.35), ("Removed, return x", 0.25),
+                    ("Added, y equals x to the power of 2", 0.45), ("return y, squared", 0.5),
+                    ("Line 1.", 0.35), ("Removed, Old bullet here.", 0.25), ("Added, New bullet, with code.", 0.5)]
+    block = doc.blocks[1]
+    assert block.text[doc.units[2].start:doc.units[2].end] == "-    return x"  # the band covers the marker too
+
+
+def test_a_new_files_hunk_header_and_context_lines_are_not_read(tmp_path):
+    doc = load(write(tmp_path, "```diff\n@@ -0,0 +1,2 @@\n+a = 1\n+b = 2\n```\n\n```diff\n ctx only\n another\n```"))
+    assert [u.say for u in doc.units] == ["Added, a equals 1", "b equals 2", "context only", "another"]
+
+
+def test_inline_code_follows_the_documents_main_language(tmp_path):
+    doc = load(write(tmp_path, "Use `a === b` and `fn`.\n\n```js\nx\n```\n\n```js\ny\n```\n\n```php\nz\n```"))
+    assert doc.units[0].say == "Use a is strictly equal to b and function."
