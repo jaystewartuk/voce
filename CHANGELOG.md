@@ -5,13 +5,26 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+### Added
+
+- Drag across any text to copy it, without moving the voice. The text holds still while the button is down,
+  the selection shows as you drag, and it is on the clipboard when you let go. Whole blocks come out as they
+  are in the document, so a drag down a code block copies real lines.
+
+- The title bar fills from the left as the file is read, and the status bar says how far through you are as a
+  percentage, in place of the sentence count.
+
 ### Changed
 
+- The sentence being read stays on one row, two fifths of the way down, and the text glides up to meet it a
+  line or so a frame instead of jumping when it drifted too far. Clicking a sentence or carrying on after a
+  pause brings it to the same row, and the end of a file rises to it too, so the eye never has to drop.
 - Code blocks are read, line by line, the way a pairing partner says code aloud: names as words (`array_values`
   is "array values", `usort` is "U sort"), operators by the PHP manual's names (`===` is "is identical to", `==` is
   "is equal to", `=>` is "double arrow", `??` is "null coalescing", `<=>` is "spaceship", `++` is "increment"), brackets silent,
   strings by their contents, and a trailing comment as prose after a short pause. The line being read sits on the band and the word being
-  spoken is marked, as in prose. `--skip-code` keeps the old behaviour, showing code without reading it.
+  spoken is marked, as in prose, and a click on a line of code starts reading there. `--skip-code` keeps the
+  old behaviour, showing code without reading it, where a click still copies the block.
 
 ### Fixed
 
@@ -21,6 +34,8 @@ and versions follow [Semantic Versioning](https://semver.org).
   version-like number. Sums of money such as "PHP 500" are still money.
 - The mouse wheel scrolls down as well as up on macOS, whose own ncurses has no fifth button and reports
   wheel-down differently.
+- Pausing just as a sentence ends, in the short silence after it, no longer plays that sentence again when you
+  carry on: the reader moves to the next one.
 
 ### Added
 

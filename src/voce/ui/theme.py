@@ -84,6 +84,11 @@ class Theme:
     def selected(self) -> int:
         return curses.A_REVERSE
 
+    @property
+    def progress(self) -> int:
+        """The part of the title bar behind you: the deep blue of the word being spoken."""
+        return self.pair("word") | curses.A_BOLD if self.colour else curses.A_REVERSE | curses.A_BOLD
+
     def base(self, block: Block) -> int:
         """The attribute a block's text starts from."""
         if block.kind in ("h1", "h2"):
@@ -100,6 +105,8 @@ class Theme:
 
     def text(self, block: Block, base: int, roles: frozenset, mark: str | None) -> int:
         """The attribute for a run of text with these roles, under the sentence or word highlight if marked."""
+        if mark == "selected":  # text being dragged over to copy, shown the way the terminal would
+            return curses.A_REVERSE
         if block.kind == "code":
             if mark == "word":
                 return self.pair("word") | curses.A_BOLD if self.colour else curses.A_REVERSE | curses.A_BOLD

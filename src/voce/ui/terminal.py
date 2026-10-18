@@ -11,21 +11,23 @@ ESCAPES = {"[A": curses.KEY_UP, "[B": curses.KEY_DOWN, "[C": curses.KEY_RIGHT, "
            "[5~": curses.KEY_PPAGE, "[6~": curses.KEY_NPAGE}
 _SGR_MOUSE = re.compile(r"\[<(\d+);(\d+);(\d+)([Mm])")
 
-CLICK, WHEEL_UP, WHEEL_DOWN = 1, 4, 5
+PRESS, DRAG, RELEASE, WHEEL_UP, WHEEL_DOWN = 1, 2, 3, 4, 5  # the left button down, moved while down, and up
 TICK_MS = 40  # how often the screen redraws while waiting for a key
 
 
 def decode_sgr_mouse(seq: str) -> tuple[int, int, int] | None:
-    """An SGR mouse report (without the leading ESC) as (button, x, y), or None if it isn't a click or wheel."""
+    """An SGR mouse report (without the leading ESC) as (button, x, y), or None if it is some other button."""
     m = _SGR_MOUSE.fullmatch(seq)
     if not m:
         return None
     b, x, y, kind = int(m.group(1)), int(m.group(2)) - 1, int(m.group(3)) - 1, m.group(4)
-    if kind == "M" and b & 3 == 0 and not b & 64 and not b & 32:
-        return (CLICK, x, y)
-    if kind == "M" and b in (64, 65):
-        return (WHEEL_UP if b == 64 else WHEEL_DOWN, x, y)
-    return None
+    if b in (64, 65):
+        return (WHEEL_UP if b == 64 else WHEEL_DOWN, x, y) if kind == "M" else None
+    if b & 3 or b & 64:
+        return None
+    if kind == "m":
+        return (RELEASE, x, y)
+    return (DRAG if b & 32 else PRESS, x, y)
 
 
 def wheel_down(bstate: int) -> bool:
@@ -33,7 +35,8 @@ def wheel_down(bstate: int) -> bool:
     button5 = getattr(curses, "BUTTON5_PRESSED", 0)
     if button5:
         return bool(bstate & button5)
-    # Mouse version 1 has no button 5; wheel-down arrives as a bare position report (we never ask for motion).
+    # Mouse version 1 has no button 5; wheel-down arrives as a bare position report, as does the pointer moving
+    # with the button held, which the caller tells apart by knowing whether the button is down.
     return bstate == curses.REPORT_MOUSE_POSITION
 
 
@@ -42,6 +45,7 @@ class Terminal:
         self.scr = scr
         self.pending: list[tuple[int, int, int]] = []
         self.native_mouse = False
+        self.held = False  # the left button is down, so position reports are a drag
 
     def start(self) -> None:
         curses.curs_set(0)
@@ -68,29 +72,42 @@ class Terminal:
             available = 0
         self.native_mouse = bool(available)
         # SGR either way: curses decodes it when the terminal's kmous is "\E[<" (Ghostty, iTerm2, xterm),
-        # and read_key decodes it when curses doesn't.
-        sys.stdout.write("\033[?1006h" if available else "\033[?1000h\033[?1006h")
+        # and read_key decodes it when curses doesn't. 1002 adds the pointer's movement while a button is held,
+        # so a drag can select text.
+        sys.stdout.write("\033[?1002h\033[?1006h" if available else "\033[?1000h\033[?1002h\033[?1006h")
         sys.stdout.flush()
 
     def disable_mouse(self) -> None:
-        sys.stdout.write("\033[?1006l" if self.native_mouse else "\033[?1006l\033[?1000l")
+        sys.stdout.write("\033[?1006l\033[?1002l" if self.native_mouse else "\033[?1006l\033[?1002l\033[?1000l")
         sys.stdout.flush()
 
     def mouse_event(self) -> tuple[int, int, int] | None:
-        """The next mouse event as (button, x, y), or None if it was something other than a click or the wheel."""
+        """The next mouse event as (button, x, y), or None if it was some other button."""
         if self.pending:
-            return self.pending.pop(0)
-        try:
-            _, x, y, _, b = curses.getmouse()
-        except curses.error:
-            return None
-        if b & (curses.BUTTON1_PRESSED | curses.BUTTON1_CLICKED):
-            return (CLICK, x, y)
-        if b & curses.BUTTON4_PRESSED:
-            return (WHEEL_UP, x, y)
-        if wheel_down(b):
-            return (WHEEL_DOWN, x, y)
-        return None
+            event = self.pending.pop(0)
+        else:
+            try:
+                _, x, y, _, b = curses.getmouse()
+            except curses.error:
+                return None
+            if b & curses.BUTTON1_CLICKED:  # curses folded the press and release into one
+                self.pending.append((RELEASE, x, y))
+                event = (PRESS, x, y)
+            elif b & curses.BUTTON1_PRESSED:
+                event = (PRESS, x, y)
+            elif b & curses.BUTTON1_RELEASED:
+                event = (RELEASE, x, y)
+            elif b & curses.REPORT_MOUSE_POSITION and self.held:
+                event = (DRAG, x, y)
+            elif b & curses.BUTTON4_PRESSED:
+                event = (WHEEL_UP, x, y)
+            elif wheel_down(b):
+                event = (WHEEL_DOWN, x, y)
+            else:
+                return None
+        if event[0] in (PRESS, RELEASE):
+            self.held = event[0] == PRESS
+        return event
 
     # ---- keys
 

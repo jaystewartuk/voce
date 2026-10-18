@@ -103,10 +103,11 @@ voce --check notes.md      # how it will read: sentences, minutes, characters
 | <kbd>c</kbd> <kbd>C</kbd> | copy the sentence, or the whole paragraph |
 | <kbd>q</kbd> | quit, keeping your place |
 
-A click on a sentence jumps to it, and a click on a code block copies the code. To select text with the mouse as
-in any terminal, hold <kbd>shift</kbd> while you drag.
+A click on a sentence or a line of code jumps to it. Drag across any text to copy it, without moving the voice:
+it is on the clipboard when you let go. With `--skip-code`, a click on a code block copies it. To select text
+with the terminal's own mouse instead, hold <kbd>shift</kbd> while you drag.
 
-A click on a sentence jumps to it. The mouse wheel scrolls, and the page follows the voice again at the next
+The mouse wheel scrolls, and the page follows the voice again at the next
 sentence. Vim users can use <kbd>h</kbd> <kbd>j</kbd> <kbd>k</kbd> <kbd>l</kbd>.
 
 ## Code, read aloud

@@ -6,7 +6,7 @@ import curses
 
 from voce.playlist import Entry
 from voce.state import State
-from voce.ui.terminal import CLICK, TICK_MS, WHEEL_DOWN, WHEEL_UP, Terminal
+from voce.ui.terminal import PRESS, TICK_MS, WHEEL_DOWN, WHEEL_UP, Terminal
 from voce.ui.theme import Theme
 
 ENTER = (10, 13, curses.KEY_ENTER)
@@ -64,7 +64,7 @@ def menu(term: Terminal, theme: Theme, state: State, playlist: list[Entry], curr
                 if not event:
                     continue
                 button, _, y = event
-                if button == CLICK and 1 <= y <= body and top + y - 1 < len(rows):
+                if button == PRESS and 1 <= y <= body and top + y - 1 < len(rows):
                     kind, val = rows[top + y - 1]
                     if kind == "file":
                         return int(val)

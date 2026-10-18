@@ -12,6 +12,7 @@ from voce.document import Unit
 from voce.playlist import Entry
 from voce.state import State
 from voce.ui.reader import Options, Reader, same_place
+from voce.ui.terminal import DRAG, PRESS, RELEASE, WHEEL_DOWN, decode_sgr_mouse
 
 
 class FakeScreen:
@@ -32,7 +33,7 @@ class FakeTerm:
 
 
 class FakeTheme:
-    bar = dim = heading = selected = 0
+    bar = dim = heading = selected = progress = 0
     def base(self, _): return 0
     def prefix(self, _): return 0
     def text(self, *_): return 0
@@ -71,6 +72,11 @@ def reader(tmp_path, files, **options):
                lambda v: None, FakePlayer(), entries, 0)
     r.open(0)
     return r
+
+
+def click(r, x, y):
+    r.mouse((PRESS, x, y))
+    r.mouse((RELEASE, x, y))
 
 
 def play_through(r, ticks=200):
@@ -115,9 +121,9 @@ def test_same_place_prefers_the_nearest_repeat():
 def test_clicks_outside_the_text_are_ignored_and_clamped_to_the_line(tmp_path):
     r = reader(tmp_path, {"a.md": "First sentence here. Second.\n\nNext paragraph."})
     r.draw()
-    r.mouse((1, 5, 23))  # the status bar
+    click(r, 5, 23)  # the status bar
     assert r.pos == 0
-    r.mouse((1, 70, 1))  # far right of the first line, past its end
+    click(r, 70, 1)  # far right of the first line, past its end
     assert r.units[r.pos].say == "Second."
 
 
@@ -128,6 +134,26 @@ def test_a_stuck_player_is_skipped(tmp_path):
     r.deadline = time.monotonic() - 1
     r.tick()
     assert r.mode == "gap" and "stopped responding" in r.message
+
+
+def test_pausing_in_the_gap_after_a_sentence_carries_on_to_the_next(tmp_path):
+    r = reader(tmp_path, {"a.md": "One. Two. Three."})
+    r.tick()
+    r.player.done = True
+    r.tick()
+    assert r.mode == "gap" and r.pos == 0
+    r.toggle()  # space while the last word is still in the ear: the sentence has already been read
+    assert r.mode == "paused"
+    r.toggle()
+    assert r.pos == 1 and r.mode == "loading"
+    r.tick()
+    assert r.player.played[-1].name == "Two."
+    r.player.can_pause = False  # with afplay a pause mid-sentence stops it, and carrying on replays that sentence
+    r.toggle()
+    assert r.mode == "paused"
+    r.toggle()
+    r.tick()
+    assert r.pos == 1 and r.player.played[-2:] == [Path("/audio/Two."), Path("/audio/Two.")]
 
 
 def test_restart_really_restarts(tmp_path):
@@ -185,7 +211,132 @@ def test_copy_keys_and_a_click_on_code(tmp_path, monkeypatch):
     r.key(ord("C"))
     assert copied[-1] == "First one. Second one." and r.message == "Copied the paragraph"
     r.draw()
-    code_line = next(n for n, ln in enumerate(r.lines) if ln.block >= 0 and r.doc.blocks[ln.block].kind == "code")
-    r.mouse((1, 10, code_line + 1))
-    assert copied[-1] == "$x = 1;\n$y = 2;\n" and r.message == "Copied the code, 2 lines"
-    assert r.pos == 0  # a click on code copies, it does not jump
+    code = next(n for n, ln in enumerate(r.lines) if ln.block >= 0 and r.doc.blocks[ln.block].kind == "code")
+    click(r, 10, code + 3)  # the second line of code, under the language header
+    assert r.doc.blocks[r.units[r.pos].block].text[r.units[r.pos].start:r.units[r.pos].end] == "$y = 2;"
+    click(r, 10, code + 1)  # the language header counts as the first line
+    assert r.units[r.pos].start == 0 and r.doc.blocks[r.units[r.pos].block].kind == "code"
+    r.key(ord("C"))
+    assert copied[-1] == "$x = 1;\n$y = 2;" and r.message == "Copied the paragraph"
+    assert len(copied) == 3  # the clicks on code read it; they do not copy
+
+
+def test_a_click_on_unread_code_copies_it(tmp_path, monkeypatch):
+    copied = []
+    monkeypatch.setattr("voce.ui.reader.write_clipboard", copied.append)
+    r = reader(tmp_path, {"a.md": "First one.\n\n```php\n$x = 1;\n$y = 2;\n```\n\nAfter."}, skip_code=True)
+    r.draw()
+    code = next(n for n, ln in enumerate(r.lines) if ln.block >= 0 and r.doc.blocks[ln.block].kind == "code")
+    click(r, 10, code + 2)
+    assert copied == ["$x = 1;\n$y = 2;\n"] and r.message == "Copied the code, 2 lines"
+    assert r.pos == 0
+
+
+def test_the_sentence_being_read_glides_to_the_anchor_row(tmp_path):
+    md = "\n\n".join(f"Sentence number {i} is here." for i in range(60))
+    r = reader(tmp_path, {"a.md": md})
+    body = 24 - 3
+    anchor = r.anchor(body)
+    r.draw()
+    assert r.top == 0  # the first sentence stays at the top: nothing above it to show
+    r.go(30)
+    r.draw()
+    first = r.where[r.units[30].block]
+    assert r.top == first - anchor  # a jump to somewhere off screen snaps there at once
+    r.go(32)  # two blank-separated sentences on: four lines further down
+    tops = []
+    for _ in range(6):
+        r.draw()
+        tops.append(r.top)
+    goal = r.where[r.units[32].block] - anchor
+    assert tops[0] < goal and tops[-1] == goal  # a nearby move glides a line or so a frame
+    assert all(b - a in (0, 1, 2) for a, b in zip(tops, tops[1:]))
+    r.go(len(r.units) - 1)
+    r.draw()
+    assert r.top == r.where[r.units[-1].block] - anchor  # the last line rises to the anchor rather than stopping
+
+
+def test_carrying_on_after_a_wheel_scroll_brings_the_text_back(tmp_path):
+    md = "\n\n".join(f"Sentence number {i} is here." for i in range(60))
+    r = reader(tmp_path, {"a.md": md})
+    r.go(10)
+    r.draw()
+    r.tick(); r.tick()
+    assert r.mode == "playing"
+    r.toggle()
+    assert r.mode == "held"
+    for _ in range(5):
+        r.mouse((WHEEL_DOWN, 0, 0))
+    assert r.scrolled
+    r.toggle()
+    assert r.mode == "playing" and not r.scrolled
+
+
+def test_a_drag_copies_the_text_it_crosses_without_moving_the_voice(tmp_path, monkeypatch):
+    copied = []
+    monkeypatch.setattr("voce.ui.reader.write_clipboard", copied.append)
+    r = reader(tmp_path, {"a.md": "First one. Second one.\n\nAnother paragraph here.\n\n```php\n$x = 1;\n$y = 2;\n```\n"})
+    r.go(1)
+    r.draw()
+    m = r.margin
+    # within one line: from "Second" to the end of the line, the far cell included
+    r.mouse((PRESS, m + 11, 1))
+    r.mouse((DRAG, m + 16, 1))
+    assert r.selection and r.selected_on(0) == (11, 17)
+    r.mouse((RELEASE, m + 21, 1))
+    assert copied == ["Second one."] and r.message == "Copied the selection"
+    assert r.pos == 1 and r.selection  # the voice stayed where it was; the selection shows until the next sentence
+    # across lines, backwards, through a blank line and into the code: blocks come out whole with real line breaks
+    code = next(n for n, ln in enumerate(r.lines) if ln.block >= 0 and r.doc.blocks[ln.block].kind == "code")
+    r.mouse((PRESS, m + 8, code + 3))
+    r.mouse((RELEASE, m + 8, 3))
+    assert copied[-1] == "paragraph here.\n\n$x = 1;\n$y = 2;" and r.message == "Copied 4 lines"
+    assert r.pos == 1
+    # a press and release in the same cell is still a click
+    click(r, m + 2, 1)
+    assert r.pos == 0 and r.selection is None
+    # the next sentence clears the highlight
+    r.mouse((PRESS, m, 1)); r.mouse((RELEASE, m + 5, 1))
+    assert r.selection
+    r.go(1)
+    assert r.selection is None
+
+
+def test_the_text_holds_still_while_the_button_is_down(tmp_path):
+    md = "\n\n".join(f"Sentence number {i} is here." for i in range(60))
+    r = reader(tmp_path, {"a.md": md})
+    r.go(30)
+    r.draw()
+    top = r.top
+    r.mouse((PRESS, r.margin, 5))
+    r.mouse((DRAG, r.margin + 4, 6))
+    r.go(40)  # the voice moves on under a held button: the view stays and so does the selection
+    r.draw()
+    assert r.top == top and r.selection
+    r.mouse((RELEASE, r.margin + 4, 6))
+    r.draw()
+    assert r.top == top  # still, until the next sentence
+    r.go(41)
+    r.draw()
+    assert r.top != top and r.selection is None
+
+
+def test_sgr_mouse_reports_decode_to_press_drag_release_and_wheel():
+    assert decode_sgr_mouse("[<0;5;3M") == (PRESS, 4, 2)
+    assert decode_sgr_mouse("[<32;6;3M") == (DRAG, 5, 2)
+    assert decode_sgr_mouse("[<0;7;3m") == (RELEASE, 6, 2)
+    assert decode_sgr_mouse("[<65;1;1M") == (WHEEL_DOWN, 0, 0)
+    assert decode_sgr_mouse("[<65;1;1m") is None  # the wheel has no release
+    assert decode_sgr_mouse("[<2;1;1M") is None   # the right button is the terminal's
+
+
+def test_the_title_bar_fills_as_the_file_is_read(tmp_path):
+    md = "\n\n".join(f"Sentence number {i} is here." for i in range(10))
+    r = reader(tmp_path, {"a.md": md})
+    r.draw()
+    assert r.progress() == 0.0
+    r.go(5)
+    r.draw()
+    assert r.progress() == 0.5
+    play_through(r)
+    assert r.mode == "end" and r.progress() == 1.0

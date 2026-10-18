@@ -13,7 +13,7 @@ from voce.playlist import Entry
 from voce.state import State
 from voce.ui.layout import Line, layout, word_at
 from voce.ui.menu import menu
-from voce.ui.terminal import WHEEL_DOWN, WHEEL_UP, Terminal
+from voce.ui.terminal import DRAG, PRESS, RELEASE, WHEEL_DOWN, WHEEL_UP, Terminal
 from voce.ui.theme import Theme
 from voce.voices import FREE_CHARS, Voice
 
@@ -28,6 +28,7 @@ STATUS = {"playing": "▶ reading", "loading": "… fetching the voice", "gap": 
           "waiting": "Your turn: answer out loud, then press space for the answer", "end": "■ finished"}
 HEADINGS = ("h1", "h2", "h3")
 STALL_SECONDS = 5.0    # grace after a sentence's length before the player counts as stuck
+ANCHOR = 0.4           # how far down the screen the sentence being read sits: above centre, so more lies ahead
 
 
 def same_place(old: list, new: list, pos: int) -> int:
@@ -81,6 +82,9 @@ class Reader:
         self.top = 0
         self.margin = 1
         self.scrolled = False  # the wheel moved the text away from the voice
+        self._words, self._words_of = [0], None   # running word counts, and the units they were counted for
+        self.press: tuple[int, int] | None = None       # where the left button went down: (line, offset)
+        self.selection: tuple[tuple[int, int], tuple[int, int]] | None = None  # text dragged over, to copy
         self.width = 0
         self.lines: list[Line] = []
         self.where: dict[int, int] = {}
@@ -90,6 +94,7 @@ class Reader:
         self.next_check = 0.0
         self.deadline = 0.0     # when a sentence that hasn't finished counts as stuck
         self.held_left = 0.0
+        self.said = False       # paused in the gap after a sentence: it has been read, so carry on to the next
 
     @property
     def units(self) -> list:
@@ -159,8 +164,11 @@ class Reader:
 
     def go(self, pos: int, keep_pause: bool = False) -> None:
         self.player.stop()
-        self.scrolled = False
+        if self.press is None:  # unless a drag is under way: the text holds still and the selection stays
+            self.scrolled = False
+            self.selection = None
         self.pos = max(0, min(pos, len(self.units) - 1))
+        self.said = False
         if not self.options.quiz_only:
             self.state.place(self.doc.path, self.units, self.pos)
             self.state.save()
@@ -302,14 +310,19 @@ class Reader:
             self.mode = "held"
             self.held_left = self.deadline - time.monotonic()
         elif self.mode in ("playing", "loading", "gap", "gap-start"):
+            self.said = self.mode == "gap"
             self.player.stop()
             self.mode = "paused"
         elif self.mode == "held":
             self.player.resume()
+            self.scrolled = False  # carrying on brings the text back to the voice
             self.mode = "playing"
             self.deadline = time.monotonic() + self.held_left
         elif self.mode == "paused":
-            self.go(self.pos)
+            if self.said and self.pos + 1 < len(self.units):
+                self.go(self.pos + 1)
+            else:
+                self.go(self.pos)
         elif self.mode == "end":
             self.next_file()
 
@@ -364,39 +377,93 @@ class Reader:
         self.width = 0
 
     def mouse(self, event: tuple[int, int, int]) -> None:
-        """A click jumps to the sentence under the pointer; the wheel scrolls the text."""
+        """A click jumps to the sentence or code line under the pointer; a drag copies the text it crosses
+        without moving the voice; the wheel scrolls the text."""
         button, x, y = event
         if not self.units:
             return
-        if button in (WHEEL_UP, WHEEL_DOWN):
-            h, _ = self.term.size()
-            body = max(1, h - 3)
-            step = 3 if button == WHEEL_DOWN else -3
-            self.top = max(0, min(self.top + step, max(0, len(self.lines) - body)))
-            self.scrolled = True
-            return
         h, _ = self.term.size()
+        body = max(1, h - 3)
+        if button in (WHEEL_UP, WHEEL_DOWN):
+            step = 3 if button == WHEEL_DOWN else -3
+            self.top = max(0, min(self.top + step, self.bottom(body)))
+            self.scrolled = True
+        elif button == PRESS:
+            self.selection = None
+            self.press = self.cell(x, y, body)
+            if self.press is not None:
+                self.scrolled = True  # the text holds still under the pointer while the button is down
+        elif button == DRAG and self.press is not None:
+            here = self.cell(x, y, body, clamp=True)
+            self.selection = self.span(self.press, here) if here != self.press else None
+        elif button == RELEASE and self.press is not None:
+            press, self.press = self.press, None
+            here = self.cell(x, y, body, clamp=True)
+            if here != press:
+                self.selection = self.span(press, here)
+            if self.selection:
+                text = self.selected_text()
+                lines = text.count("\n") + 1
+                self.copy(text, "the selection" if lines == 1 else f"{lines} lines")
+            else:
+                self.jump(*press)
+
+    def cell(self, x: int, y: int, body: int, clamp: bool = False) -> tuple[int, int] | None:
+        """The screen cell as (line, offset into its block's text); None if it is off the text, unless clamped."""
+        if clamp:
+            y = max(1, min(y, body))
+        elif not 1 <= y <= body:
+            return None
         n = self.top + y - 1
-        if not 1 <= y <= max(1, h - 3) or n >= len(self.lines):
-            return
+        if n >= len(self.lines):
+            if not clamp or not self.lines:
+                return None
+            n = len(self.lines) - 1
+        line = self.lines[n]
+        at = line.start + max(0, x - self.margin - line.indent - len(line.prefix))
+        return (n, min(at, max(line.start, line.end - 1)))
+
+    @staticmethod
+    def span(a: tuple[int, int], b: tuple[int, int]) -> tuple[tuple[int, int], tuple[int, int]]:
+        """The selection between two cells, in order, taking in the cell at the far end."""
+        lo, (n, at) = min(a, b), max(a, b)
+        return lo, (n, at + 1)
+
+    def selected_text(self) -> str:
+        """The text under the selection as it is in the document: each block's run whole, blank lines between."""
+        (n0, a0), (n1, z1) = self.selection
+        runs: list[list[int]] = []  # [block, start, end], or [-1] for a blank line
+        for n in range(n0, n1 + 1):
+            line = self.lines[n]
+            a = a0 if n == n0 else line.start
+            z = min(z1, line.end) if n == n1 else line.end
+            if line.block < 0:
+                runs.append([-1])
+            elif runs and runs[-1][0] == line.block:
+                runs[-1][2] = z
+            else:
+                runs.append([line.block, a, z])
+        pieces = ["" if b < 0 else self.doc.blocks[b].text[a:z].rstrip() for b, *rest in runs for a, z in [rest or (0, 0)]]
+        return "\n".join(pieces).strip("\n")
+
+    def jump(self, n: int, at: int) -> None:
+        """Start reading at the sentence or code line containing this offset of the line's block."""
         line = self.lines[n]
         if line.block < 0:
             return
         block = self.doc.blocks[line.block]
-        if block.kind == "code":
+        units = self.units
+        same = [i for i, u in enumerate(units) if u.block == line.block]
+        if block.kind == "code" and not same:  # code that is shown but not read: a click copies it
             lines = block.text.count("\n") + 1
             self.copy(block.text + "\n", f"the code, {lines} line{'s' * (lines != 1)}")
             return
-        at = line.start + max(0, x - self.margin - line.indent - len(line.prefix))
-        at = min(at, max(line.start, line.end - 1))
-        units = self.units
-        same = [i for i, u in enumerate(units) if u.block == line.block]
         if same:
             pick = next((i for i in same if units[i].start <= at < units[i].end), None)
             if pick is None:
                 before = [i for i in same if units[i].start <= at]
                 pick = before[-1] if before else same[0]
-        else:  # an unspoken block (code, a Next link): the nearest block after it that is read
+        else:  # an unspoken block (a Next link): the nearest block after it that is read
             after = [(u.block, i) for i, u in enumerate(units) if u.block > line.block]
             if not after:
                 return
@@ -420,17 +487,28 @@ class Reader:
             word = word_at(unit, self.doc.blocks[unit.block].text, self.player.position(), self.player.length)
         if unit and unit.block >= 0 and unit.block in self.where and not self.scrolled:
             self.follow(unit, body)
-        self.top = max(0, min(self.top, max(0, len(self.lines) - body)))
+        self.top = max(0, min(self.top, self.bottom(body)))
         for row in range(body):
             n = self.top + row
             if n >= len(self.lines):
                 break
-            self.draw_line(row + 1, self.margin, self.lines[n], unit, word)
+            self.draw_line(row + 1, self.margin, self.lines[n], unit, word, self.selected_on(n))
         self.draw_bars(h, w)
         self.term.scr.refresh()
 
+    def anchor(self, body: int) -> int:
+        """The row the sentence being read is kept on."""
+        return int(body * ANCHOR)
+
+    def bottom(self, body: int) -> int:
+        """The furthest the text scrolls: the last line can rise to the anchor, so the eye never drops at the end."""
+        return max(0, len(self.lines) - 1 - self.anchor(body))
+
     def follow(self, unit, body: int) -> None:
-        """Keep the sentence being read about a third of the way down the screen."""
+        """Glide the text so the sentence being read sits on the anchor row, a frame at a time, easing in.
+
+        The eye stays in one place and the words come to it. A sentence a few lines on takes a few frames to
+        arrive; a jump to somewhere off screen snaps, as there is nothing continuous to follow."""
         first = self.where[unit.block]
         for n in range(first, len(self.lines)):
             line = self.lines[n]
@@ -439,10 +517,24 @@ class Reader:
             if line.end > unit.start:
                 first = n
                 break
-        if not (self.top + 1 <= first <= self.top + body * 2 // 3):
-            self.top = max(0, first - body // 3)
+        goal = max(0, min(first - self.anchor(body), self.bottom(body)))
+        gap = goal - self.top
+        if abs(gap) > body:
+            self.top = goal
+        elif gap:
+            self.top += max(1, abs(gap) // 4) * (1 if gap > 0 else -1)
 
-    def draw_line(self, y: int, x: int, line: Line, unit, word) -> None:
+    def selected_on(self, n: int) -> tuple[int, int] | None:
+        """The selected character range of line n, if the selection reaches it."""
+        if not self.selection:
+            return None
+        (n0, a0), (n1, z1) = self.selection
+        if not n0 <= n <= n1:
+            return None
+        line = self.lines[n]
+        return (a0 if n == n0 else line.start, min(z1, line.end) if n == n1 else line.end)
+
+    def draw_line(self, y: int, x: int, line: Line, unit, word, selected=None) -> None:
         if line.block < 0:
             return
         block = self.doc.blocks[line.block]
@@ -455,32 +547,55 @@ class Reader:
         here = unit is not None and unit.block == line.block
         sa, sz = (unit.start, unit.end) if here else (0, 0)
         wa, wz = word if word and here else (0, 0)
+        ka, kz = selected or (0, 0)
         spans = [s for s in block.spans if s[0] < line.end and s[1] > line.start]
         cuts = {line.start, line.end}
-        for c in (sa, sz, wa, wz, *(c for s in spans for c in s[:2])):
+        for c in (sa, sz, wa, wz, ka, kz, *(c for s in spans for c in s[:2])):
             if line.start < c < line.end:
                 cuts.add(c)
         edges = sorted(cuts)
         for a, z in zip(edges, edges[1:]):
             roles = frozenset().union(*(r for s0, s1, r in spans if s0 <= a and z <= s1))
-            mark = "word" if wz > wa and wa <= a and z <= wz else \
+            mark = "selected" if kz > ka and ka <= a and z <= kz else \
+                "word" if wz > wa and wa <= a and z <= wz else \
                 "sentence" if sz > sa and sa <= a and z <= sz else None
             self.term.put(y, cx + (a - line.start), text[a:z], self.theme.text(block, base, roles, mark))
+
+    def words(self) -> list[int]:
+        """Words before each sentence, and the total last: counted once per document, not every frame."""
+        if self._words_of is not self.units:
+            counts, total = [0], 0
+            for u in self.units:
+                total += len(u.say.split())
+                counts.append(total)
+            self._words, self._words_of = counts, self.units
+        return self._words
+
+    def progress(self) -> float:
+        """How far through the file the voice is, by words: 0 at the start, 1 once the last sentence is done."""
+        words = self.words()
+        if not words[-1]:
+            return 0.0
+        return 1.0 if self.mode == "end" else words[self.pos] / words[-1]
 
     def draw_bars(self, h: int, w: int) -> None:
         entry = self.playlist[self.index]
         title = self.doc.title if self.doc else entry.title
         brand = " voce "
         heading = f" {entry.part + ' · ' if entry.part else ''}{title} "
-        self.term.put(0, 0, (heading[:max(0, w - len(brand))].ljust(w - len(brand)) + brand)[:w], self.theme.bar)
+        top = (heading[:max(0, w - len(brand))].ljust(w - len(brand)) + brand)[:w]
+        done = self.progress()
+        fill = round(w * done)  # the title bar fills from the left as the file is read
+        self.term.put(0, 0, top[:fill], self.theme.progress)
+        self.term.put(0, fill, top[fill:], self.theme.bar)
         status = f" {STATUS.get(self.mode, self.mode)}"
         if self.message:
             status += f"   {self.message}"
         where = ""
         if self.units:
-            left = sum(len(u.say.split()) for u in self.units[self.pos:])
-            left_minutes = minutes(left, self.speed)
-            where = f"{self.pos + 1}/{len(self.units)} · " + \
+            words = self.words()
+            left_minutes = minutes(words[-1] - words[self.pos], self.speed)
+            where = f"{done:.0%} · " + \
                 (f"{left_minutes:.0f} min left" if left_minutes >= 1 else "under a minute left")
         right = f"{self.speed:g}× · {self.voice.label} "
         room = max(0, w - len(right) - len(where) - 3)
