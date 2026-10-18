@@ -30,6 +30,7 @@ COMMON_WORDS = {
     "res": "response", "err": "error", "msg": "message", "idx": "index", "val": "value", "obj": "object",
     "cb": "callback", "fmt": "format", "prev": "previous", "sprintf": "S print F", "printf": "print F",
     "env": "env", "md": "M D", "ci": "C I", "ui": "U I", "io": "I O", "os": "O S", "pr": "P R",
+    "pkg": "package", "cmd": "command", "lib": "lib", "repo": "repo", "auth": "auth", "impl": "implementation",
 }
 
 # A bit of inline code that is only an operator, said on its own: `===` is "identical".

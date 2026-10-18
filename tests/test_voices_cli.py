@@ -43,3 +43,4 @@ def test_help_and_version(capsys):
     with pytest.raises(SystemExit):
         cli.main(["--version"])
     assert "voce " in capsys.readouterr().out
+
