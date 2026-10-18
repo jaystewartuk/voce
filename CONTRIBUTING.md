@@ -27,8 +27,31 @@ Some guidelines:
   are spans over it. New Markdown features should fit that shape. See [docs/architecture.md](docs/architecture.md).
 - **Keep the voice's text stable.** Audio is cached by the exact text sent to the voice. A change to
   `speech.speakable` or to how blocks are split makes everyone re-fetch audio, so make such changes on purpose.
-- **Add a test** for any change to parsing, sentence splitting, layout or the transcript reader.
+- **Add a test** for any change to parsing, sentence splitting, code reading, layout, a source or the reader.
 - **Write for people.** Messages, help text and docs use plain words and short sentences.
+
+## Adding a language
+
+How code is read is data in `src/voce/speech/words.py`. A language is a `Language` with the words it says
+differently from the common ones, its operator names, and how its comments start:
+
+```python
+RUBY = Language("ruby", comments=("#",), words={"attr_accessor": "attribute accessor", "puts": "puts"},
+                operators={"=>": "hash rocket", "<=>": "spaceship", "&.": "safe navigation"})
+```
+
+Then add its fence labels and Pygments aliases to `LANGUAGES` (`"ruby": RUBY, "rb": RUBY`). Code fences, diffs
+of `.rb` files and inline code in documents about Ruby will use it. If the language has an operator the
+tokeniser in `speech/code.py` doesn't know, add it to the `op` alternation there. Use the names from the
+language's own manual, and add a line to `tests/test_speech.py` with a line of code and how it should sound.
+
+## Adding a source
+
+A source is a module in `src/voce/sources/` that turns something into a Markdown file and raises a `SourceError`
+when it can't. `sources.resolve` is the one place the command line is turned into a file; add a flag to
+`cli.parser` and a branch there. The pull request source is the pattern to follow: `github.py` talks to the API
+and returns plain dataclasses, `pullrequest.py` writes them as Markdown, and `tests/test_github.py` answers the
+API from a dict so no test needs the network.
 
 ## Re-recording the demo
 

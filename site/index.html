@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>voce · Read Markdown aloud in your terminal</title>
+<title>voce · Review pull requests by ear</title>
 <meta name="description" content="voce reads Markdown aloud in your terminal. Each sentence lights up as it is read, and each word as it is spoken. Code is read the way a pairing partner says it, operator names and all. Built for Claude Code replies and study notes.">
 <meta name="theme-color" content="#0E1116">
 <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <meta property="og:type" content="website">
-<meta property="og:title" content="voce · Read Markdown aloud in your terminal">
+<meta property="og:title" content="voce · Review pull requests by ear">
 <meta property="og:description" content="Each sentence lights up as it is read, and each word as it is spoken. Built for Claude Code replies and study notes.">
 <meta property="og:image" content="https://jaystewartuk.github.io/voce/assets/og.png">
 <meta property="og:url" content="https://jaystewartuk.github.io/voce/">
@@ -241,10 +241,11 @@ footer a:hover { color: var(--text); }
 <main id="main">
   <section class="hero">
     <div class="wrap">
-      <span class="eyebrow"><b>New</b> code is read the way a pairing partner says it</span>
-      <h1>Your terminal, <span class="said">read <b>aloud</b></span>.</h1>
-      <p class="lede">voce (Italian for &ldquo;voice&rdquo;, said <em>VOH-chay</em>) reads Markdown to you in the terminal. Each sentence lights up as it is read, and each word
-        as it is spoken. Code is read the way a pairing partner says it, operator names and all. Your place is always kept.</p>
+      <span class="eyebrow"><b>New</b> <code>voce --pr URL</code> reads a pull request to you</span>
+      <h1>Review pull requests <span class="said">by <b>ear</b></span>.</h1>
+      <p class="lede">More code is written by machines every week, and all of it still has to be reviewed by a person. voce (Italian for &ldquo;voice&rdquo;,
+        said <em>VOH-chay</em>) reads a pull request to you in the terminal: the description, each file's diff, the conversation. The line being read
+        lights up as you hear it, and code is read the way a colleague says it, operator names and all. It reads Claude Code's replies and any Markdown too.</p>
       <div class="cta">
         <div class="install"><span class="p">$</span><code id="install-cmd">uv tool install git+https://github.com/jaystewartuk/voce</code>
           <button class="copy" data-copy="install-cmd" type="button">Copy</button></div>
@@ -320,7 +321,27 @@ footer a:hover { color: var(--text); }
     </div>
   </section>
 
-  <section class="band" id="code">
+  <section class="band" id="pull-requests">
+    <div class="wrap split">
+      <div>
+        <p class="kicker">Made for reviewing</p>
+        <h2>Hear the whole pull request, and watch it as you listen.</h2>
+        <p class="intro">Huge diffs are hard to read and easy to skim. voce fetches a pull request from GitHub and walks
+          through it the way a careful reviewer does, so you take in every change, and your eyes are free to look where they want.</p>
+        <ol class="steps">
+          <li><h3>Run <code>voce --pr URL</code></h3><p>Or <code>owner/repo#123</code>, or just <code>123</code> inside a clone. Private repositories work through <code>gh</code>'s sign-in.</p></li>
+          <li><h3>Listen</h3><p>What it is and who opened it, the checks, the description, then each file: &ldquo;Line 40. Removed, return x. Added, y equals x to the power of 2.&rdquo; Context lines are shown dimmed and skipped.</p></li>
+          <li><h3>Follow the conversation</h3><p>Reviews, comments and inline comments read against the lines they are about. <kbd>]</kbd> skips to the next file; a click on any line starts there.</p></li>
+        </ol>
+      </div>
+      <div>
+        <div class="mini" aria-label="voce reading a pull request"><span class="d">~/project</span> <span class="p">❯</span> voce --pr 123<br><span class="d">### src/app.py (+10 −3)</span><br><span class="d">@@ -1,3 +1,4 @@</span><br><span class="d">-x = 1</span><br><span class="hl">+y = x <span class="hw">**</span> 2</span><br><span class="d">▶ reading · 41% · 1.2× · Charon</span></div>
+        <p class="small">The request is saved as Markdown too, and <code>--export review.mp3</code> takes it on a walk.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="band alt" id="code">
     <div class="wrap">
       <p class="kicker">New</p>
       <h2>Code, read the way a pairing partner says it.</h2>
@@ -451,7 +472,7 @@ footer a:hover { color: var(--text); }
         and ffmpeg is only needed for MP3 export.</p>
       <div class="install-steps">
         <div class="mini"><span class="d"># with uv</span><br><span class="p">❯</span> uv tool install git+https://github.com/jaystewartuk/voce<br><span class="d"># or with pipx</span><br><span class="p">❯</span> pipx install git+https://github.com/jaystewartuk/voce</div>
-        <div class="mini"><span class="p">❯</span> voce README.md <span class="d">          # any Markdown file</span><br><span class="p">❯</span> voce -r <span class="d">                 # Claude Code's latest reply</span><br><span class="p">❯</span> voce -c <span class="d">                 # the clipboard</span><br><span class="p">❯</span> voce notes.md --export notes.mp3</div>
+        <div class="mini"><span class="p">❯</span> voce --pr owner/repo#123 <span class="d"># a pull request</span><br><span class="p">❯</span> voce README.md <span class="d">          # any Markdown file</span><br><span class="p">❯</span> voce -r <span class="d">                 # Claude Code's latest reply</span><br><span class="p">❯</span> voce -c <span class="d">                 # the clipboard</span><br><span class="p">❯</span> voce notes.md --export notes.mp3</div>
       </div>
       <p class="small">Full documentation is in the <a href="https://github.com/jaystewartuk/voce#readme">README</a>.</p>
     </div>

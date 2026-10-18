@@ -7,6 +7,34 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ### Added
 
+- **Pull requests.** `voce --pr URL` (or `owner/repo#123`, or `123` inside a clone) fetches a pull request from
+  GitHub and reads it the way a reviewer walks through it: what it is, who opened it, the checks; the
+  description; the commits; each file's diff, hunk by hunk, with the changed lines read and the context shown
+  dimmed; and the conversation, with inline comments against the lines they are about. Private repositories
+  work through `gh`'s sign-in or `GITHUB_TOKEN`. The request is written as Markdown under
+  `~/.local/state/voce/pulls/`, one file each, so your place is kept across fetches and `--check`, `--export`
+  and `--prepare` work on it. `[` and `]` move between files and comments.
+- **Diffs anywhere.** A fenced `diff` block in any Markdown is highlighted with added lines in the file's
+  syntax, removed lines in red and context dimmed, and read as above. Name the file's language after the word
+  diff (```` ```diff python ````) to have the added lines highlighted and read in that language.
+- **Languages.** Code is read in each language's own words. PHP is the full set; Python ("returns", "floor
+  divided by", "dunder init"), JavaScript and TypeScript (MDN's "is strictly equal to", "optional chaining",
+  "spread"), shell and SQL have starters; Markdown and text are read as prose. Inline code in a sentence is
+  read in the language most of the document's code is in. A language is a few lines of data in
+  `speech/words.py`.
+- Paths and file names are said with their slashes and the extension by letter: `src/voce/cli.py` is "source
+  slash voce slash C L I dot P Y". A line of prose inside code, such as a doc comment, is read as prose.
+- Link reference definitions (`[name]: url`, and the `[//]: # (comment)` idiom) are neither shown nor read.
+
+### Changed
+
+- The code is arranged for people who want to extend it: `markdown/` (inline, blocks, tables), `speech/`
+  (sentences, prose, code, the word tables), `sources/` (Claude's reply, the clipboard, GitHub), `commands.py`
+  for the printing commands, `ui/session.py` for the curses session and `ui/view.py` for where things sit on
+  the screen, leaving `ui/reader.py` to what happens in time. Every source raises one `SourceError`.
+- The text sent to the voice changes for inline code with a slash, a file name or an operator in it, and for
+  text with a middle dot or a diff count such as "(+12 −3)", so those sentences are fetched again once.
+
 - Drag across any text to copy it, without moving the voice. The text holds still while the button is down,
   the selection shows as you drag, and it is on the clipboard when you let go. Whole blocks come out as they
   are in the document, so a drag down a code block copies real lines.
