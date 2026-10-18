@@ -6,9 +6,9 @@
 </p>
 
 <p align="center">
-  <strong>Read Markdown aloud in your terminal.</strong><br>
-  Each sentence lights up as it is read, and each word as it is spoken.<br>
-  Code is read the way a pairing partner says it.
+  <strong>Review pull requests by ear.</strong><br>
+  voce reads a pull request, a Claude Code reply or any Markdown aloud in your terminal.<br>
+  Each line lights up as it is read, and code is read the way a colleague says it.
 </p>
 
 <p align="center">
@@ -21,6 +21,7 @@
 <p align="center">
   <a href="https://jaystewartuk.github.io/voce/">Website</a> ·
   <a href="#install">Install</a> ·
+  <a href="#review-a-pull-request">Pull requests</a> ·
   <a href="#use-it-with-claude-code">Claude Code</a> ·
   <a href="#voices">Voices</a> ·
   <a href="docs/playlists.md">Playlists</a>
@@ -30,26 +31,39 @@
   <img src="docs/assets/demo.gif" alt="voce reading a Claude Code reply: the sentence being read is on a pale blue band, the word being spoken on a dark blue one, code is syntax highlighted and the table is lined up" width="860">
 </p>
 
-voce (Italian for "voice", said *VOH-chay*) reads Markdown to you in the terminal. It shows the page as it should
-look, with headings, bold, links, highlighted code and lined-up tables, and reads it the way a person would: the
-prose as prose, and the code the way a pairing partner says it out loud. You can look away, follow along, or
-jump around with the keyboard or the mouse.
+```bash
+voce --pr https://github.com/owner/repo/pull/123
+```
 
-It was built to listen to long Claude Code replies and study notes, but it reads any Markdown.
+More code is written by machines every week, and all of it still has to be reviewed by a person. voce (Italian
+for "voice", said *VOH-chay*) is a reviewer's second pair of eyes: it reads a pull request to you, top to
+bottom, while the line being read lights up on the screen. The description, then each file's diff, then the
+conversation. Added lines are read in the language's own words ("y equals x to the power of 2"), removed lines
+are announced as removed, unchanged lines are shown dimmed and skipped, and every inline comment is read against
+the lines it is about. You can look away and listen, follow along, or jump around with the keyboard or the mouse.
+Private repositories work through the sign-in `gh` already has.
 
-- **Reads code like a pairing partner.** `'1' === 1` is heard as "the string 1 is identical to 1", and
-  `$totals[$channel] ??= 0;` as "totals channel null coalescing assignment zero". Operators get their manual's
-  real names, in each language's own words, so you learn to say them. See [Code, read aloud](#code-read-aloud).
-- **Reads what a person would read.** Markup is never spoken. Tables are read row by row, and links by their
-  text. Things meant for the eye stay on the screen.
-- **Follows along.** The sentence being read sits on a pale band, and the word being spoken on a darker one. The
-  page scrolls to keep your place, and a click on any sentence jumps there.
+It also reads Claude Code's replies straight from the session, and any Markdown: notes, documentation, a book
+chapter. It was built to study PHP, and the way it reads code carries to any language.
+
+- **Reviews a pull request with you.** `voce --pr URL` fetches the request from GitHub and walks through it:
+  what it is and who opened it, the checks, the description, each file's diff with the changes highlighted and
+  read, and every review and comment in order. Run it again later and it picks up where you were.
+- **Reads code like a colleague.** `$totals[$channel] ??= 0;` is "totals channel null coalescing assignment
+  zero", `a === b` is "a is identical to b" in PHP and "a is strictly equal to b" in JavaScript, and
+  `def f(x) -> str:` is "def f x returns string". Operators get their manual's real names, so you learn to say
+  them. See [Code, read aloud](#code-read-aloud).
+- **Reads what a person would read.** Markup is never spoken. Tables are read row by row, links by their text,
+  and a diff's context lines are shown but not said. Things meant for the eye stay on the screen.
+- **Follows along.** The sentence or line being read sits on a pale band, and the word being spoken on a darker
+  one. The page glides to keep your place, a click on any line jumps there, and a drag copies.
 - **Knows Claude Code.** `voce -r` reads Claude's latest reply in the folder you are in, with no copying.
-- **Keeps your place.** Quit at any point and it starts from the same sentence next time, even if the file has
-  changed. It also reloads a file when it changes on disk.
+- **Keeps your place.** Quit at any point and it starts from the same sentence next time, even if the file or
+  the pull request has changed. It reloads a file when it changes on disk.
 - **Sounds good, costs little.** It uses the Mac's own voices out of the box, or Google's Chirp 3 HD voices if you
   set them up. Every sentence is fetched once and cached, so listening again is free and works offline.
-- **Goes with you.** `--export` turns files into one MP3 with the same voice and pauses, for a walk or a drive.
+- **Goes with you.** `--export` turns a pull request or files into one MP3 with the same voice and pauses, for a
+  walk or a drive.
 
 ## Install
 
@@ -77,6 +91,7 @@ Two optional extras make it better:
 ## Use it
 
 ```bash
+voce --pr https://github.com/owner/repo/pull/123   # review a pull request
 voce notes.md              # read a file, from where you left off
 voce a.md b.md             # read several files in a row
 voce -r                    # read Claude Code's latest reply in this folder
@@ -95,7 +110,7 @@ voce --check notes.md      # how it will read: sentences, minutes, characters
 | <kbd>space</kbd> | pause or carry on |
 | <kbd>←</kbd> <kbd>→</kbd> | previous or next sentence |
 | <kbd>↑</kbd> <kbd>↓</kbd> | previous or next paragraph |
-| <kbd>[</kbd> <kbd>]</kbd> | previous or next section |
+| <kbd>[</kbd> <kbd>]</kbd> | previous or next section, file or comment |
 | <kbd>+</kbd> <kbd>-</kbd> | faster or slower, from 0.8× to 2× |
 | <kbd>n</kbd> <kbd>p</kbd> | next or previous file |
 | <kbd>v</kbd> | next voice (Google voices) |
@@ -110,6 +125,39 @@ with the terminal's own mouse instead, hold <kbd>shift</kbd> while you drag.
 
 The mouse wheel scrolls, and the page follows the voice again at the next
 sentence. Vim users can use <kbd>h</kbd> <kbd>j</kbd> <kbd>k</kbd> <kbd>l</kbd>.
+
+## Review a pull request
+
+```bash
+voce --pr https://github.com/owner/repo/pull/123   # a URL
+voce --pr owner/repo#123                           # or the short form
+voce --pr 123                                      # or just the number, inside a clone of the repository
+voce --pr 123 --export review.mp3                  # or take it with you
+```
+
+voce fetches the pull request and reads it the way a reviewer walks through it:
+
+1. **What it is.** The title, who opened it and when, whether it is open, a draft or merged, the branches, how
+   many commits and files, the labels, the reviewers asked for, and whether the checks passed.
+2. **The description**, as the author wrote it.
+3. **The commits**, when there is more than one.
+4. **Each file**, with its diff. The heading says the path and the count ("12 added, 3 removed"); a renamed
+   file says what it was called before. Then each hunk: "Line 40", then the changed lines. The first line of a
+   run of additions is introduced with "Added" and of removals with "Removed"; the rest of the run is just read.
+   Unchanged context lines are shown dimmed but not read, so the ear gets the change and the eye gets the
+   context. Added lines are highlighted in the file's language, removed lines in red.
+5. **The conversation.** Reviews ("carol requested changes"), comments, and inline comments shown against the
+   diff lines they are about, with replies under them, in the order they happened.
+
+Press <kbd>]</kbd> to skip to the next file or comment and <kbd>[</kbd> to go back; a click on any line of a diff
+starts reading there. Your place is kept per pull request, so `voce --pr 123` tomorrow carries on where you
+stopped, with the latest version of the request. `--skip-code` reads only the prose, to hear what a request
+is about before reading its code.
+
+**Private repositories** work when `gh` is signed in (`gh auth login`), or with a token in `GITHUB_TOKEN` or
+`GH_TOKEN`. Public ones need no sign-in, though GitHub allows anonymous callers only sixty requests an hour.
+GitHub Enterprise hosts work with their URL. The pull request is written as Markdown to
+`~/.local/state/voce/pulls/`, so you can read it with anything else too.
 
 ## Code, read aloud
 
@@ -228,27 +276,32 @@ are only links, such as breadcrumbs or "Next:" links, are shown but not read. Sy
 abbreviations such as "e.g." and "i.e.", are read as words.
 
 Code, in fenced blocks and in sentences, is read the way a pairing partner says it: see [Code, read
-aloud](#code-read-aloud). A fenced `diff` block is highlighted with added lines in the file's syntax and removed
-lines in red, and read hunk by hunk: "Line 40", then the changed lines, with "Added" and "Removed" said once at
-the start of each run and the unchanged context shown but not read. Write the file's language after the word
-diff, as in ```` ```diff python ````, to have the added lines highlighted and read in that language.
+aloud](#code-read-aloud). A fenced `diff` block, in a pull request or in any Markdown, is highlighted with added
+lines in the file's syntax and removed lines in red, and read hunk by hunk as described under [Review a pull
+request](#review-a-pull-request). Write the file's language after the word diff, as in ```` ```diff python ````,
+to have the added lines highlighted and read in that language.
 
 ## Privacy
 
 voce has no telemetry and makes no network calls of its own. Text goes to Google only when you use Google's
-voices, and only to the Text-to-Speech API. Everything else stays on your Mac:
+voices, and only to the Text-to-Speech API. `--pr` calls GitHub's API for the pull request you name, with the
+token `gh` holds or the one in `GITHUB_TOKEN` if there is one, and nothing else. Everything else stays on your
+Mac:
 
 | What | Where |
 | --- | --- |
 | Your place in each file, settings and monthly character count | `~/.local/state/voce/state.json` |
 | The last 50 clipboard, reply and piped texts | `~/.local/state/voce/clips/` |
+| Pull requests as Markdown, one file each | `~/.local/state/voce/pulls/` |
 | Cached audio and the compiled player | `~/.cache/voce/` |
 
 voce respects `XDG_STATE_HOME` and `XDG_CACHE_HOME`. The cache is safe to delete at any time.
 
 ## How it works
 
-voce parses Markdown into blocks of plain text, keeping bold, code and the rest as styled spans over that text.
+Everything voce reads becomes a Markdown file first: a pull request is written as Markdown with a diff block
+per file, and a Claude Code reply or the clipboard is saved as one. voce parses Markdown into blocks of plain
+text, keeping bold, code and the rest as styled spans over that text.
 The screen draws the spans, and the voice reads the plain text a sentence at a time. Audio is fetched up to eight
 sentences ahead on a small thread pool and played by a tiny Swift program over a pipe. That program reports its
 position every 50 milliseconds, and voce uses it to time the word highlight. The interface is plain `curses`,

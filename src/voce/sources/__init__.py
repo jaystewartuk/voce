@@ -5,6 +5,8 @@ and your saved place all work the same way whatever the text came from:
 
     claude.py        Claude Code's latest reply, from its session transcript
     clips.py         the clipboard and standard input
+    github.py        a pull request on GitHub, fetched through the API
+    pullrequest.py   that pull request written as Markdown, with its diff
 
 Every source raises a SourceError, with a message for the user, when it has nothing to give.
 """
@@ -21,11 +23,14 @@ class SourceError(Exception):
 def resolve(args) -> Path | None:
     """The Markdown file for the one-off source the command line asks for, or None when it names files or nothing.
 
-    ``args`` is the parsed command line: ``reply`` (-r), ``clip`` (-c) and ``files == ["-"]``.
+    ``args`` is the parsed command line: ``reply`` (-r), ``clip`` (-c), ``files == ["-"]`` and ``pr``.
     """
     from voce.sources.claude import last_reply, latest_transcript
     from voce.sources.clips import read_clipboard, read_stdin, save_clip
 
+    if getattr(args, "pr", None):
+        from voce.sources.pullrequest import read_pull_request
+        return read_pull_request(args.pr)
     if args.reply:
         return save_clip(last_reply(latest_transcript()), "reply")
     if args.clip:

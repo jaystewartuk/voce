@@ -10,6 +10,8 @@ src/voce/
   sources/          where text comes from, besides files: each one ends as a Markdown file
     claude.py         Claude Code's latest reply from its session transcript
     clips.py          clipboard and standard input, kept as files
+    github.py         a pull request from GitHub's REST API, as plain data
+    pullrequest.py    that pull request written as Markdown
   markdown/         Markdown into Blocks: plain text plus styled spans
     inline.py         bold, italic, code, links and strikethrough as spans
     blocks.py         headings, paragraphs, lists, quotes, fences and the rest
@@ -26,7 +28,7 @@ src/voce/
   player.py         the native player (player.swift) and the afplay fallback
   export.py         one MP3 from many sentences, with ffmpeg
   state.py          your place, settings and usage, in one JSON file
-  paths.py          where state, clips and the cache live
+  paths.py          where state, clips, pull requests and the cache live
   ui/               the screen
     theme.py          colours and attributes
     terminal.py       keys and the mouse
@@ -40,16 +42,17 @@ src/voce/
 ## Everything is a Markdown file
 
 Whatever voce reads, it reads from a Markdown file. A file on disk is read as it is. A Claude Code reply, the
-clipboard and standard input are saved under `~/.local/state/voce/clips/`.
+clipboard and standard input are saved under `~/.local/state/voce/clips/`. A pull request is fetched from GitHub
+and written under `~/.local/state/voce/pulls/`, one file per request, rewritten only when its text changes.
 
 That is what makes the rest simple: the reader, `--check`, `--export`, `--prepare`, your saved place and the
 reload-on-change all work the same way whatever the text came from. `sources.resolve` is the one place that
-turns the command line's `-r`, `-c` and `-` into a file, and every source raises one `SourceError` with a message
-written for the person at the keyboard.
+turns the command line's `-r`, `-c`, `-` and `--pr` into a file, and every source raises one `SourceError` with a
+message written for the person at the keyboard.
 
 To add a source, write a module in `sources/` that ends in a Markdown file and add a line to `sources.resolve`.
-Keep what knows the outside world (an API, a transcript format) apart from what writes the Markdown; neither
-needs to know about voices or screens.
+The pull request source is the model: `github.py` knows the API and returns plain dataclasses; `pullrequest.py`
+knows what a reviewer wants to hear and writes the Markdown; neither knows about voices or screens.
 
 ## From Markdown to what you see and hear
 
@@ -124,5 +127,6 @@ your speed, voice, playlist, Google project and a count of characters sent to Go
 ## Testing
 
 Everything below the screen is plain functions over plain data, and the tests use them directly: Markdown in,
-blocks out; a line of code in, words out. The reader runs in tests against a fake terminal, player and voice
-(`tests/test_reader.py`). No test touches the network, your state or your cache.
+blocks out; a line of code in, words out; a dict of API answers in, Markdown out. The reader runs in tests
+against a fake terminal, player and voice (`tests/test_reader.py`), and GitHub is stood in for by a function that
+answers URLs from a dict (`tests/test_github.py`). No test touches the network, your state or your cache.

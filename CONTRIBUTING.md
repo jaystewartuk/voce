@@ -49,8 +49,9 @@ language's own manual, and add a line to `tests/test_speech.py` with a line of c
 
 A source is a module in `src/voce/sources/` that turns something into a Markdown file and raises a `SourceError`
 when it can't. `sources.resolve` is the one place the command line is turned into a file; add a flag to
-`cli.parser` and a branch there. Keep the code that talks to the outside world apart from the code that writes
-the Markdown, and stand the outside world in for in tests so none of them needs the network.
+`cli.parser` and a branch there. The pull request source is the pattern to follow: `github.py` talks to the API
+and returns plain dataclasses, `pullrequest.py` writes them as Markdown, and `tests/test_github.py` answers the
+API from a dict so no test needs the network.
 
 ## Re-recording the demo
 

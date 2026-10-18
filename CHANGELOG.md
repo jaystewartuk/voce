@@ -7,7 +7,14 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ### Added
 
-- **Diffs.** A fenced `diff` block in any Markdown is highlighted with added lines in the file's
+- **Pull requests.** `voce --pr URL` (or `owner/repo#123`, or `123` inside a clone) fetches a pull request from
+  GitHub and reads it the way a reviewer walks through it: what it is, who opened it, the checks; the
+  description; the commits; each file's diff, hunk by hunk, with the changed lines read and the context shown
+  dimmed; and the conversation, with inline comments against the lines they are about. Private repositories
+  work through `gh`'s sign-in or `GITHUB_TOKEN`. The request is written as Markdown under
+  `~/.local/state/voce/pulls/`, one file each, so your place is kept across fetches and `--check`, `--export`
+  and `--prepare` work on it. `[` and `]` move between files and comments.
+- **Diffs anywhere.** A fenced `diff` block in any Markdown is highlighted with added lines in the file's
   syntax, removed lines in red and context dimmed, and read as above. Name the file's language after the word
   diff (```` ```diff python ````) to have the added lines highlighted and read in that language.
 - **Languages.** Code is read in each language's own words. PHP is the full set; Python ("returns", "floor
@@ -22,7 +29,7 @@ and versions follow [Semantic Versioning](https://semver.org).
 ### Changed
 
 - The code is arranged for people who want to extend it: `markdown/` (inline, blocks, tables), `speech/`
-  (sentences, prose, code, the word tables), `sources/` (Claude's reply, the clipboard), `commands.py`
+  (sentences, prose, code, the word tables), `sources/` (Claude's reply, the clipboard, GitHub), `commands.py`
   for the printing commands, `ui/session.py` for the curses session and `ui/view.py` for where things sit on
   the screen, leaving `ui/reader.py` to what happens in time. Every source raises one `SourceError`.
 - The text sent to the voice changes for inline code with a slash, a file name or an operator in it, and for
