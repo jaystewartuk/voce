@@ -13,10 +13,12 @@ import os
 import re
 from pathlib import Path
 
+from voce.sources import SourceError
+
 _NOT_A_PROMPT = ("<command-", "<local-command", "<system-reminder", "<bash-", "<user-memory", "Caveat:")
 
 
-class TranscriptError(Exception):
+class TranscriptError(SourceError):
     pass
 
 
