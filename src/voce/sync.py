@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Callable
 
 IGNORE = "usage.json\nstate-v1.json\n*.tmp\n.DS_Store\n"
-TOKEN_PAGE = "https://github.com/settings/personal-access-tokens/new"
+WEB_APP = "https://jaystewartuk.github.io/voce/app/"
 
 
 class SyncError(Exception):

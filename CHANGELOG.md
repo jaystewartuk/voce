@@ -22,9 +22,10 @@ and versions follow [Semantic Versioning](https://semver.org).
   shows and says it, so a phone or a browser needs only it and a voice; the reader writes one for whatever it
   opens, and `--prepare` and `--sync` write them for the playlist, with `prepared/index.json` listing them.
 - **A web app**, at [jaystewartuk.github.io/voce/app](https://jaystewartuk.github.io/voce/app/): the same
-  library on a phone or in any browser, read from that repository with a token for it alone, played by the
-  device's own voice or by Kokoro running in the page, with your place written back. Static files on GitHub
-  Pages; no server.
+  library on a phone or in any browser, played by the device's own voice or by Kokoro running in the page, with
+  your place written back. Sign in with GitHub and choose the repository; the voce GitHub App reaches only that
+  one, and a stateless relay (`relay/`) does the code-for-token swap a page can't. Static files on GitHub Pages
+  otherwise. A fine-grained token can be pasted instead.
 
 ### Changed
 

@@ -153,9 +153,14 @@ machine's business. There is no voce server.
 ## The web app
 
 `site/app/` is the library in a browser: three static files (`index.html`, `app.js`, `sw.js`) and a manifest,
-served by GitHub Pages beside the website. `app.js` talks to GitHub's API with a fine-grained token for the one
-repository: one request for the `prepared/` tree and one for `places/`, then only the blobs whose sha it hasn't
-cached (the Cache API, keyed by sha). A document is rendered from its prepared JSON: each block's text is cut at
+served by GitHub Pages beside the website. Signing in is GitHub's: the page sends the user to authorize the voce
+GitHub App and comes back with a code, which `relay/worker.js` (a stateless function on Cloudflare Workers, the
+only thing that is not a static file) swaps for a user token, because that swap needs the app's client secret and
+GitHub's token endpoint refuses browsers. The token reaches only the repositories the app is installed on; the
+page lists them and uses the one chosen, refreshing the token through the relay when it is about to expire. With
+no client ID in `app.js` the page falls back to a pasted fine-grained token. `app.js` then talks to GitHub's API:
+one request for the `prepared/` tree and one for `places/`, then only the blobs whose sha it hasn't cached (the
+Cache API, keyed by sha). A document is rendered from its prepared JSON: each block's text is cut at
 every unit edge and every style edge, so a span knows its unit and its roles, and the sentence being read is the
 spans of that unit. Code spans carry the same role names as the terminal (`keyword`, `string`, `comment`...).
 

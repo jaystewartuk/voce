@@ -1,0 +1,13 @@
+# The sign-in relay for the web app, on Cloudflare Workers (the free plan is plenty).
+#   npx wrangler login
+#   npx wrangler secret put CLIENT_SECRET      # the GitHub App's client secret, pasted when asked
+#   npx wrangler deploy
+name = "voce-relay"
+main = "worker.js"
+compatibility_date = "2026-01-01"
+workers_dev = true
+preview_urls = false
+
+[vars]
+ORIGIN = "https://jaystewartuk.github.io"   # the only origin the relay answers: where the web app is served
+CLIENT_ID = "Iv23liKDXAS67GVEUEA6"                             # the GitHub App's client ID (public; also in site/app/app.js)

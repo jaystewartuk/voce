@@ -258,13 +258,16 @@ The repository is yours, on any git host. There is no voce service, and nothing 
 ### On your phone, or any browser
 
 [jaystewartuk.github.io/voce/app](https://jaystewartuk.github.io/voce/app/) is the same library in a web page.
-It is static files on GitHub Pages: the page reads your repository through GitHub's API with a fine-grained token
-you make for that one repository (contents, read and write), plays each document with a voice in the page, and
-writes your place back. Add it to the home screen and it opens like an app.
+Sign in with GitHub, choose the repository `voce --sync` made, and the page reads it through GitHub's API, plays
+each document with a voice in the page, and writes your place back. It is static files on GitHub Pages. Add it to
+the home screen and it opens like an app.
 
 Two voices: the device's own, instantly, or Kokoro, the open voice model, which the browser downloads once
-(about 90 MB, 330 MB with WebGPU) and runs on the device. Nothing is sent anywhere but api.github.com. The token
-stays in that browser; disconnecting in settings forgets it.
+(about 90 MB, 330 MB with WebGPU) and runs on the device. Nothing is sent anywhere but GitHub. Signing in goes
+through the voce GitHub App, which can reach only the repositories you install it on, and a tiny relay
+([relay/](relay/)) that swaps GitHub's sign-in code for a token and keeps nothing; the library never passes
+through it. The token stays in that browser; disconnecting in settings forgets it, and removing the app on GitHub
+signs out every device. A fine-grained token for the one repository can be pasted instead.
 
 ## Privacy
 

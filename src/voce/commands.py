@@ -151,5 +151,5 @@ def sync_up(state: State, entries: list[Entry], repo: str) -> None:
     state.save(force=True)
     sync.run(state.root, print)
     if repo:
-        print(f"\nOn your phone, the web app needs a token that can read and write that repository:\n"
-              f"  {sync.TOKEN_PAGE}\nFine-grained, only that repository, contents: read and write.")
+        print(f"\nOn your phone, open {sync.WEB_APP} and sign in with GitHub.\n"
+              f"When it asks which repository voce may reach, choose this one.")

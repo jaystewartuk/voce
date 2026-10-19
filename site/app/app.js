@@ -1,10 +1,14 @@
 /* voce on any device: the library and places from your own git repository, played by a voice in the page.
 
    The Mac did the reading work (prepared/<hash>.json holds the blocks to show and the units to say); this page
-   fetches those through the GitHub API with a token that reaches one repository, plays them, and writes your place
-   back as places/<hash>.json. There is no voce server. */
+   fetches those through the GitHub API, plays them, and writes your place back as places/<hash>.json. You sign in
+   with GitHub: the voce GitHub App, installed on the one repository, gives this page a token for it, and a relay
+   (relay/worker.js, a stateless function) does the code-for-token swap that GitHub won't let a page do. The
+   library itself never leaves GitHub and this device. A fine-grained token pasted by hand works the same way. */
 
 const API = "https://api.github.com";
+// The GitHub App and its relay. With no client ID, the connect screen offers only the token form.
+const GITHUB_APP = { client: "Iv23liKDXAS67GVEUEA6", slug: "voce-reader", relay: "https://voce-relay.jay73x.workers.dev" };
 const KOKORO_URL = "https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1/+esm";
 const KOKORO_MODEL = "onnx-community/Kokoro-82M-v1.0-ONNX";
 const AHEAD = 3;          // units generated ahead of the one playing
@@ -19,29 +23,108 @@ const store = {
 };
 const now = () => new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
 
+// ---------------------------------------------------------------- signing in
+
+/** The token GitHub gave this device, refreshed through the relay when it is about to expire. */
+class Auth {
+  constructor(fields) { Object.assign(this, { token: "", refresh: "", expires: 0, manual: false }, fields); }
+  static manual(token) { return new Auth({ token, manual: true }); }
+  static fromGrant(g) {
+    return new Auth({ token: g.access_token, refresh: g.refresh_token || "", expires: g.expires_in ? Date.now() + g.expires_in * 1000 : 0 });
+  }
+  static saved() {
+    const a = store.get("auth");
+    if (a) return new Auth(a);
+    const old = store.get("token"); // a token pasted before sign-in existed
+    return old ? Auth.manual(old) : null;
+  }
+  save() { store.set("auth", { token: this.token, refresh: this.refresh, expires: this.expires, manual: this.manual }); }
+  async bearer() {
+    if (this.refresh && this.expires && Date.now() > this.expires - 120e3) {
+      const g = await relay("refresh", { refresh_token: this.refresh });
+      Object.assign(this, Auth.fromGrant(g));
+      this.save();
+    }
+    return this.token;
+  }
+}
+
+async function relay(step, body) {
+  if (!GITHUB_APP.relay) throw new Error("Signing in isn't set up on this copy of the app.");
+  let r;
+  try { r = await fetch(`${GITHUB_APP.relay}/${step}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); }
+  catch { throw new Error("Couldn't reach the sign-in relay. Check the connection and try again."); }
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || d.error) throw new Error(d.error_description || d.error || `The sign-in relay said ${r.status}.`);
+  return d;
+}
+
+const here = () => location.origin + location.pathname;
+
+/** Off to GitHub: to authorize the app, or to install it on a repository. Back at here() with a code. */
+function signIn(install = false) {
+  const state = crypto.randomUUID();
+  store.set("signin", state);
+  const u = install ? new URL(`https://github.com/apps/${GITHUB_APP.slug}/installations/new`)
+                    : new URL("https://github.com/login/oauth/authorize");
+  if (!install) { u.searchParams.set("client_id", GITHUB_APP.client); u.searchParams.set("redirect_uri", here()); }
+  u.searchParams.set("state", state);
+  location.href = u.href;
+}
+
+/** Back from GitHub with ?code=: swap it for a token. True when a sign-in was finished here. */
+async function finishSignIn() {
+  const q = new URLSearchParams(location.search);
+  if (!q.has("code") && !q.has("error")) return false;
+  history.replaceState(null, "", location.pathname + location.hash);
+  const expected = store.get("signin");
+  store.del("signin");
+  if (q.has("error")) throw new Error(q.get("error_description") || "GitHub didn't sign you in.");
+  if (!expected || q.get("state") !== expected) throw new Error("The sign-in didn't come back the way it left. Try again.");
+  const grant = await relay("token", { code: q.get("code"), redirect_uri: here() });
+  auth = Auth.fromGrant(grant);
+  auth.save();
+  return true;
+}
+
+/** One GitHub API call with this device's token. 404 is returned, not thrown. */
+async function gh(auth, path, init = {}) {
+  const r = await fetch(API + path, {
+    ...init,
+    headers: { Authorization: `Bearer ${await auth.bearer()}`, Accept: "application/vnd.github+json",
+               "X-GitHub-Api-Version": "2022-11-28", ...(init.headers || {}) },
+  });
+  if (!r.ok && r.status !== 404) {
+    const text = await r.text().catch(() => "");
+    throw new Error(r.status === 401 ? (auth.manual ? "GitHub didn't accept the token." : "GitHub signed this device out. Sign in again.")
+      : r.status === 403 ? "voce can't reach this repository, or the API limit is reached for the hour."
+      : `GitHub said ${r.status}. ${text.slice(0, 120)}`);
+  }
+  return r;
+}
+
+/** The repositories the app is installed on, as owner/name. */
+async function reachable(auth) {
+  const { installations = [] } = await (await gh(auth, "/user/installations?per_page=100")).json();
+  const names = [];
+  for (const i of installations) {
+    const d = await (await gh(auth, `/user/installations/${i.id}/repositories?per_page=100`)).json();
+    names.push(...(d.repositories || []).map((r) => r.full_name));
+  }
+  return names;
+}
+
 // ---------------------------------------------------------------- the repository
 
 class Repo {
-  constructor(name, token) { this.name = name; this.token = token; this.trees = {}; }
+  constructor(name, auth) { this.name = name; this.auth = auth; this.trees = {}; }
 
-  async api(path, init = {}) {
-    const r = await fetch(API + path, {
-      ...init,
-      headers: { Authorization: `Bearer ${this.token}`, Accept: "application/vnd.github+json",
-                 "X-GitHub-Api-Version": "2022-11-28", ...(init.headers || {}) },
-    });
-    if (!r.ok && r.status !== 404) {
-      const text = await r.text().catch(() => "");
-      throw new Error(r.status === 401 ? "GitHub didn't accept the token."
-        : r.status === 403 ? "The token can't reach this repository, or the API limit is reached for the hour."
-        : `GitHub said ${r.status}. ${text.slice(0, 120)}`);
-    }
-    return r;
-  }
+  api(path, init) { return gh(this.auth, path, init); }
 
   async check() {
     const r = await this.api(`/repos/${this.name}`);
-    if (r.status === 404) throw new Error("No such repository, or the token can't see it.");
+    if (r.status === 404) throw new Error(this.auth.manual ? "No such repository, or the token can't see it."
+                                                           : "voce can't see that repository any more. Choose another, or give voce access to it on GitHub.");
   }
 
   /** {path: sha} for the files in a top-level folder, in one request. */
@@ -70,7 +153,7 @@ class Repo {
     const body = { message, content: btoa(unescape(encodeURIComponent(text))), ...(sha ? { sha } : {}) };
     const r = await fetch(`${API}/repos/${this.name}/contents/${path}`, {
       method: "PUT", keepalive: true,
-      headers: { Authorization: `Bearer ${this.token}`, Accept: "application/vnd.github+json",
+      headers: { Authorization: `Bearer ${await this.auth.bearer()}`, Accept: "application/vnd.github+json",
                  "X-GitHub-Api-Version": "2022-11-28", "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
@@ -409,13 +492,39 @@ const ui = {
 
 // ---------------------------------------------------------------- the app
 
-let repo, library, reader, voice;
+let auth, repo, library, reader, voice;
 
 function show(view) {
   ["connect", "library", "reader"].forEach((v) => $(v).classList.toggle("hidden", v !== view));
   $("player").classList.toggle("hidden", view !== "reader");
   $("refresh").classList.toggle("hidden", view === "connect");
   if (view !== "reader") $("title").textContent = "";
+}
+
+/** The connect screen in one of its states: "signin", "busy", "choose" (with the repositories) or "install". */
+function connectView(state, repos = []) {
+  show("connect");
+  const signedIn = state !== "signin";
+  $("signin").classList.toggle("hidden", signedIn);
+  $("choose").classList.toggle("hidden", !signedIn);
+  $("connect-status").textContent = state === "busy" ? "Signing in…" : "";
+  $("signin-go").disabled = state === "busy";
+  if (!signedIn) return;
+  $("choose-title").textContent = state === "install" ? "Give voce access to your library" : state === "busy" ? "Signing in…" : "Which repository?";
+  $("choose-lead").textContent = state === "install"
+    ? "voce isn't installed on any of your repositories yet. On GitHub, choose the one voce --sync made."
+    : state === "busy" ? "" : "The repositories voce can reach. Choose the one voce --sync made.";
+  $("repos").replaceChildren(...repos.map((name) => {
+    const b = document.createElement("button"); b.className = "btn quiet repo"; b.textContent = name;
+    b.onclick = () => useRepo(name);
+    return b;
+  }));
+  $("install-go").textContent = state === "install" ? "Choose the repository on GitHub" : "Give voce access to another repository";
+}
+
+function fail(message) {
+  $("connect-error").textContent = message;
+  $("connect-error").classList.remove("hidden");
 }
 
 function makeVoice() {
@@ -426,14 +535,33 @@ function makeVoice() {
     : new BrowserVoice(name);
 }
 
-async function connect(name, token) {
-  repo = new Repo(name, token);
+async function connect(name, with_) {
+  repo = new Repo(name, with_);
   await repo.check();
-  store.set("repo", name); store.set("token", token);
+  auth = with_;
+  auth.save();
+  store.set("repo", name);
   library = new Library(repo);
   voice = makeVoice();
   reader = new Reader(library, voice, ui);
   ui.speed(reader.speed);
+}
+
+/** Signed in: settle on a repository. The remembered one, the only one, or ask. */
+async function pickRepo() {
+  connectView("busy");
+  let repos;
+  try { repos = await reachable(auth); } catch (e) { connectView("signin"); fail(e.message); return; }
+  const remembered = store.get("repo");
+  if (remembered && repos.includes(remembered)) return useRepo(remembered);
+  if (repos.length === 1) return useRepo(repos[0]);
+  connectView(repos.length ? "choose" : "install", repos.sort((a, b) => /voce/i.test(b) - /voce/i.test(a)));
+}
+
+async function useRepo(name) {
+  $("connect-error").classList.add("hidden");
+  try { await connect(name, auth); location.hash = "#/"; await route(); }
+  catch (e) { connectView("choose", await reachable(auth).catch(() => [])); fail(e.message); }
 }
 
 async function showLibrary() {
@@ -492,23 +620,27 @@ function fillVoices() {
 }
 
 function wire() {
+  if (!GITHUB_APP.client) { $("signin-row").classList.add("hidden"); $("token-form").open = true; $("token-form").querySelector("summary").classList.add("hidden"); }
+  $("signin-go").onclick = () => signIn();
+  $("install-go").onclick = () => signIn(true);
   $("connect-go").onclick = async () => {
     const name = $("repo").value.trim().replace(/^https:\/\/github\.com\//, "").replace(/\.git$/, "");
     const token = $("token").value.trim();
     $("connect-error").classList.add("hidden");
-    if (!/^[\w.-]+\/[\w.-]+$/.test(name) || !token) { $("connect-error").textContent = "Give the repository as owner/name and the token."; $("connect-error").classList.remove("hidden"); return; }
+    if (!/^[\w.-]+\/[\w.-]+$/.test(name) || !token) { fail("Give the repository as owner/name and the token."); return; }
     $("connect-go").disabled = true; $("connect-status").textContent = "Checking…";
-    try { await connect(name, token); location.hash = "#/"; await route(); }
-    catch (e) { $("connect-error").textContent = e.message; $("connect-error").classList.remove("hidden"); }
+    try { await connect(name, Auth.manual(token)); location.hash = "#/"; await route(); }
+    catch (e) { fail(e.message); }
     finally { $("connect-go").disabled = false; $("connect-status").textContent = ""; }
   };
   $("refresh").onclick = async () => { if (reader) reader.stop(); if (library) { library.docs = []; await caches.delete("voce-blobs").catch(() => {}); } await route(); };
-  $("settings").onclick = () => { $("s-repo").textContent = repo ? repo.name : "not connected"; fillVoices(); $("sheet").classList.remove("hidden"); };
+  $("settings").onclick = () => { $("s-repo").textContent = repo ? repo.name : "not connected"; $("s-change").classList.toggle("hidden", !auth || auth.manual); fillVoices(); $("sheet").classList.remove("hidden"); };
   $("s-close").onclick = () => $("sheet").classList.add("hidden");
   $("sheet").onclick = (e) => { if (e.target === $("sheet")) $("sheet").classList.add("hidden"); };
   $("s-engine").onchange = () => { store.set("engine", $("s-engine").value); swapVoice(); fillVoices(); };
   $("s-voice").onchange = () => { store.set(`voice.${store.get("engine", "browser")}`, $("s-voice").value); swapVoice(); };
-  $("s-disconnect").onclick = () => { if (reader) reader.stop(); ["repo", "token"].forEach(store.del); repo = library = reader = null; $("sheet").classList.add("hidden"); location.hash = "#/"; route(); };
+  $("s-change").onclick = async () => { if (reader) reader.stop(); repo = library = reader = null; $("sheet").classList.add("hidden"); location.hash = "#/"; await pickRepo(); };
+  $("s-disconnect").onclick = () => { if (reader) reader.stop(); ["repo", "token", "auth", "signin"].forEach(store.del); auth = repo = library = reader = null; $("sheet").classList.add("hidden"); location.hash = "#/"; route(); };
   $("play").onclick = () => { if (!reader) return; reader.playing ? reader.pause() : reader.play(); };
   $("prev").onclick = () => reader && reader.go(reader.pos - 1);
   $("next").onclick = () => reader && reader.go(reader.pos + 1);
@@ -544,9 +676,21 @@ function swapVoice() {
 
 (async () => {
   wire();
-  const name = store.get("repo"), token = store.get("token");
-  if (name && token) {
-    try { await connect(name, token); } catch (e) { show("connect"); $("repo").value = name; $("connect-error").textContent = e.message; $("connect-error").classList.remove("hidden"); return; }
+  try { if (await finishSignIn()) return pickRepo(); }
+  catch (e) { connectView("signin"); fail(e.message); return; }
+  auth = Auth.saved();
+  const name = store.get("repo");
+  if (auth && name) {
+    try { await connect(name, auth); }
+    catch (e) {
+      if (!auth.manual && /can't see|signed this device out/.test(e.message)) {
+        if (/signed this device out/.test(e.message)) { auth = null; connectView("signin"); fail(e.message); return; }
+        return pickRepo();
+      }
+      show("connect"); $("repo").value = name; fail(e.message); return;
+    }
+  } else if (auth && !auth.manual) {
+    return pickRepo();
   }
   await route();
 })();

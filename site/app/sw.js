@@ -1,6 +1,6 @@
 /* The app's own files, kept so the page opens offline. The repository and the voice model are never cached here:
    GitHub is asked each time, and the browser keeps the model itself. */
-const SHELL = "voce-app-v1";
+const SHELL = "voce-app-v2";
 const FILES = ["./", "index.html", "app.js", "manifest.json", "../assets/logo.svg"];
 
 self.addEventListener("install", (e) => {
