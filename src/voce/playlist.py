@@ -14,6 +14,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from voce.document import load, minutes, word_count
 from voce.markdown import plain
@@ -45,14 +46,14 @@ def find_playlist(where: Path | str) -> Path:
     return p
 
 
-def read_playlist(readme: Path | None) -> list[Entry]:
-    """The files in the README's playlist that exist, with the part (### heading) each sits under."""
-    if readme is None or not readme.exists():
-        return []
-    m = SECTION.search(readme.read_text(encoding="utf-8"))
+def parse_playlist(text: str) -> list[dict[str, Any]]:
+    """The playlist in a README's text: each item's link as written, title, part (### heading) and minutes, if any.
+    Plain data, so the browser can read a playlist straight from a repository."""
+    m = SECTION.search(text)
     if not m:
         return []
-    entries, part = [], ""
+    items: list[dict[str, Any]] = []
+    part = ""
     for line in m.group(1).splitlines():
         heading = re.match(r"^###\s+(.*)", line)
         if heading:
@@ -60,9 +61,21 @@ def read_playlist(readme: Path | None) -> list[Entry]:
             continue
         item = _ITEM.match(line)
         if item:
-            path = (readme.parent / item.group(2)).resolve()
-            if path.exists():
-                entries.append(Entry(path, plain(item.group(1)), part))
+            mins = re.search(r"·\s*(\d+)\s*min\b", line)
+            items.append({"path": item.group(2), "title": plain(item.group(1)), "part": part,
+                          "minutes": int(mins.group(1)) if mins else 0})
+    return items
+
+
+def read_playlist(readme: Path | None) -> list[Entry]:
+    """The files in the README's playlist that exist, with the part (### heading) each sits under."""
+    if readme is None or not readme.exists():
+        return []
+    entries = []
+    for item in parse_playlist(readme.read_text(encoding="utf-8")):
+        path = (readme.parent / item["path"]).resolve()
+        if path.exists():
+            entries.append(Entry(path, item["title"], item["part"]))
     return entries
 
 

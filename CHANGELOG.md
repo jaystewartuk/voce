@@ -26,6 +26,10 @@ and versions follow [Semantic Versioning](https://semver.org).
   your place written back. Sign in with GitHub and choose the repository; the voce GitHub App reaches only that
   one, and a stateless relay (`relay/`) does the code-for-token swap a page can't. Static files on GitHub Pages
   otherwise. A fine-grained token can be pasted instead.
+- **The web app reads for itself.** voce's reading code runs in the browser (Pyodide), so the app can take a
+  playlist README straight from any repository voce can reach, or a Markdown file from the device, and read it
+  with nothing prepared on a Mac first. Prepared copies carry a stamp of the reading code and are made again
+  when it changes, so a better way of saying something reaches every device.
 
 ### Changed
 

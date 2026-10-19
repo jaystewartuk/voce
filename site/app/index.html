@@ -78,6 +78,11 @@ details summary { cursor: pointer; margin-top: 14px; }
 .btn svg { flex: none; }
 .repos { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
 .repos .repo { justify-content: flex-start; font-family: var(--mono); font-weight: 500; font-size: 15px; }
+.kv.source { align-items: center; } .kv.source b { font-family: var(--mono); font-size: 13px; overflow-wrap: anywhere; }
+.kv.source .icon { width: 28px; height: 28px; font-size: 18px; }
+.add-source { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; margin-top: 8px; }
+@media (max-width: 480px) { .add-source { grid-template-columns: 1fr; } }
+.open-file { margin: 28px 0 10px; }
 #choose h2 { margin: 0 0 6px; font-size: 20px; }
 
 /* ---- library */
@@ -185,6 +190,7 @@ article .l { color: var(--accent); text-decoration: underline; text-decoration-c
   </section>
 
   <section id="library" class="hidden"></section>
+  <input type="file" id="file" accept=".md,.markdown,.txt,text/markdown,text/plain" class="hidden">
 
   <section id="reader" class="hidden"><article id="article"></article></section>
 </main>
@@ -204,6 +210,16 @@ article .l { color: var(--accent); text-decoration: underline; text-decoration-c
   <div class="card">
     <h2>Settings</h2>
     <div class="kv"><span>Repository</span><b id="s-repo"></b></div>
+    <label>Playlists read straight from GitHub</label>
+    <div id="s-sources"></div>
+    <div class="add-source">
+      <input id="s-src-repo" list="s-repos" placeholder="owner/repository" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <datalist id="s-repos"></datalist>
+      <input id="s-src-path" placeholder="path/to/README.md" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <button class="btn quiet" id="s-src-add">Add</button>
+    </div>
+    <p class="note" id="s-src-note">The page reads the README's "## Listen in this order" and the files it links, with voce's own
+      reading code running in the page. Not there? Give voce access to that repository on GitHub first.</p>
     <label for="s-engine">Voice</label>
     <select id="s-engine">
       <option value="browser">This device's voice (instant)</option>

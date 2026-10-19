@@ -154,7 +154,8 @@ machine's business. There is no voce server.
 
 ## The web app
 
-`site/app/` is the library in a browser: three static files (`index.html`, `app.js`, `sw.js`) and a manifest,
+`site/app/` is the library in a browser: four static files (`index.html`, `app.js`, `py.js`, `sw.js`), a manifest
+and, built by the Pages workflow (`.github/web.sh`), a wheel of this package under `py/` with a manifest naming it,
 served by GitHub Pages beside the website. Signing in is GitHub's: the page sends the user to authorize the voce
 GitHub App and comes back with a code, which `relay/worker.js` (a stateless function on Cloudflare Workers, the
 only thing that is not a static file) swaps for a user token, because that swap needs the app's client secret and
@@ -170,6 +171,16 @@ Two voices. The device's own, through the Web Speech API, is instant. Kokoro run
 and ONNX Runtime Web, on WebGPU where there is one; it is the same model the Mac uses, fetched from Hugging Face
 once and kept by the browser. Clips are generated a few units ahead and played through one audio element, so
 the lock screen's controls and background playback work through the Media Session API.
+
+`py.js` is voce's reading code in the page: a module worker that loads Pyodide from its CDN (Python 3.14 in
+WebAssembly, about 15 MB, kept by the browser), Pyodide's own pygments, and voce's wheel with `micropip`, then
+answers `prepare(text, name)` with the same JSON `prepared.as_json` writes, hash included. It is loaded the first
+time a document needs it, not before. A playlist source in settings is a repository and the path of a README in
+it: `app.js` reads the README's "## Listen in this order" with the same regexes as `playlist.py`, takes the
+folder's tree in one request, fetches each linked file once by its blob sha, hashes it, and lists it with the
+place that hash has. Opening one prepares it in the worker and keeps the result in the Cache API under the sha
+and the reading code's stamp from `py/manifest.json`, so a document is read once per version of voce. The Mac's
+prepared copies and files opened on the device are listed after the playlists, each once by hash.
 
 A place is written with the Contents API on pause, finish, leaving the page and every two minutes while playing.
 The write carries the blob's sha; a 409 means another device wrote first, so the page re-reads that place and

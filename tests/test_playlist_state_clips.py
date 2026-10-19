@@ -3,7 +3,7 @@ import json
 import pytest
 
 from voce.document import load
-from voce.playlist import PlaylistError, find_playlist, part_matches, read_playlist, update_minutes
+from voce.playlist import PlaylistError, find_playlist, parse_playlist, part_matches, read_playlist, update_minutes
 from voce.sources.clips import ClipError, save_clip
 from voce.state import State
 
@@ -21,6 +21,14 @@ def make_course(tmp_path):
 def test_reads_entries_with_parts_and_skips_missing_files(tmp_path):
     entries = read_playlist(make_course(tmp_path))
     assert [(e.title, e.part) for e in entries] == [("A", "Part 3. Later"), ("B", "Part 1. First")]
+
+
+def test_parse_playlist_is_the_text_alone_with_links_as_written(tmp_path):
+    items = parse_playlist(make_course(tmp_path).read_text())
+    assert items == [{"path": "a.md", "title": "A", "part": "Part 3. Later", "minutes": 9},
+                     {"path": "b.md", "title": "B", "part": "Part 1. First", "minutes": 9},
+                     {"path": "nope.md", "title": "Missing", "part": "Part 1. First", "minutes": 0}]
+    assert parse_playlist("# No playlist here\n\n1. [A](a.md)\n") == []
 
 
 def test_find_playlist_by_folder_and_errors(tmp_path):
