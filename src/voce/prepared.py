@@ -27,7 +27,8 @@ FORMAT = 1  # bump when the shape of these files changes
 def _reading_code() -> str:
     """A short hash of the source that turns Markdown into blocks and code into words."""
     here = Path(__file__).parent
-    files = sorted([here / "document.py", here / "highlight.py", *here.glob("markdown/*.py"), *here.glob("speech/*.py")])
+    files = sorted([here / "document.py", here / "highlight.py",
+                    *here.glob("markdown/*.py"), *here.glob("speech/*.py")])
     h = hashlib.sha256()
     for f in files:
         h.update(f.name.encode())
