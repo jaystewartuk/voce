@@ -220,10 +220,13 @@ function parsePlaylist(text) {
   return items;
 }
 
-/** A link relative to a folder, as a path in the repository. */
-function resolvePath(dir, rel) {
-  const out = dir ? dir.split("/") : [];
-  for (const seg of rel.split("/")) { if (seg === "..") out.pop(); else if (seg !== "." && seg) out.push(seg); }
+/** A link as written in a README, as a path under the README's folder; null when it leads out of that folder. */
+function under(rel) {
+  const out = [];
+  for (const seg of rel.split("/")) {
+    if (seg === "..") { if (!out.length) return null; out.pop(); }
+    else if (seg !== "." && seg) out.push(seg);
+  }
   return out.join("/");
 }
 
@@ -262,18 +265,19 @@ class Library {
   async fromSource(source) {
     const repo = new Repo(source.repo, this.auth);
     const dir = source.path.includes("/") ? source.path.slice(0, source.path.lastIndexOf("/")) : "";
-    const tree = await repo.tree(dir, true);
+    const tree = await repo.tree(dir, true);                       // paths under the README's folder
     const readme = tree[dir ? source.path.slice(dir.length + 1) : source.path];
     if (!readme) throw new Error("no such file");
     const items = parsePlaylist(await repo.blob(readme));
     if (!items.length) throw new Error('no "## Listen in this order" section');
-    const found = items.map((it) => ({ ...it, full: resolvePath(dir, it.path) })).filter((it) => tree[it.full]);
+    const found = items.map((it) => ({ ...it, rel: under(it.path) })).filter((it) => it.rel && tree[it.rel]);
+    if (!found.length) throw new Error("none of its files are in that folder");
     const docs = [];
     for (let i = 0; i < found.length; i += 6) {        // a few at a time; each blob is fetched once and kept by its sha
       docs.push(...await Promise.all(found.slice(i, i + 6).map(async (it) => {
-        const sha = tree[it.full];
+        const sha = tree[it.rel];
         return { hash: await sha256(await repo.blob(sha)), title: it.title, part: it.part, minutes: it.minutes,
-                 sha, name: it.full.split("/").pop(), source };
+                 sha, name: it.rel.split("/").pop(), source };
       })));
     }
     return docs;
