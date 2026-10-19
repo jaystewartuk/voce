@@ -91,7 +91,7 @@ def spoken_code(code: str, lang: str | Language = GENERIC) -> str:
         return spoken_path(s)
     if lang.dunder and re.fullmatch(r"__\w+__", s):
         return spoken_name(s, lang)
-    if _EXPRESSION.search(s):
+    if _EXPRESSION.search(s) or (_WHERE.search(s) and (lang is GENERIC or lang.name == "php")):
         return spoken_line(s, lang)
     s = re.sub(r"\(\s*\)", " ", s)                       # a call's empty brackets are not said
     s = re.sub(r"\$(?=[A-Za-z_])", "", s)                 # $reservation is "reservation"
@@ -127,6 +127,9 @@ _CAST = re.compile(r"\((" + "|".join(CAST_TYPES) + r")\)")
 _PHP_TAGS = re.compile(r"<\?php\b|<\?=|\?>")
 _PHP_TAGS_SAID = {"<?php": "P H P open tag", "<?=": "P H P echo tag", "?>": "P H P close tag"}
 _SIGNATURE = re.compile(r"\s*(public |protected |private |static )*function\b")
+# A query builder's where with the operator left out, or written as '=': where('id', 1) is where id is equal to 1.
+_WHERE = re.compile(r"\b(where|orWhere|whereNot|orWhereNot|having|orHaving)\(\s*(['\"][\w.]+['\"])\s*,\s*"
+                    r"(?:'='\s*,\s*)?((?:[^,()\[\]]|\(\))+?)\s*\)")
 # A line of words with a sentence's punctuation and none of code's: prose inside a string, a doc comment or a
 # heredoc, read as prose.
 _PROSE_LINE = re.compile(r"^[\w\s,.;:!?'\"-]+$")
@@ -282,6 +285,7 @@ def spoken_line(line: str, lang: str | Language = GENERIC) -> str:
         line = _CAST.sub(lambda m: f"cast to {m.group(1)} ", line)
         line = re.sub(r"^(\s*)#\[", r"\1attribute [", line)  # #[AsCommand] is an attribute, not a comment
         line = _PHP_TAGS.sub(lambda m: f" {_PHP_TAGS_SAID[m.group()]} ", line)
+        line = _WHERE.sub(r"\1(\2 == \3)", line)  # where('id', 1) and where('id', '=', 1) are both where id = 1
     for m in _tokens(lang.comments).finditer(line):
         kind = m.lastgroup
         tok = m.group()

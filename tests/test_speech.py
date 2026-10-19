@@ -182,6 +182,15 @@ def test_strings_say_their_symbols_and_their_code():
     assert spoken_line('$sql = "where id = ?";', "php") == "S Q L equals where id = question mark"
 
 
+def test_a_where_with_its_operator_left_out_says_the_equals_it_means():
+    assert spoken_line("->where('property_id', 1),", "php") == "arrow where property I D is equal to 1"
+    assert spoken_line("$q->where('property_id', '=', 1);", "php") == "q arrow where property I D is equal to 1"
+    assert spoken_line("->orWhere('status', 'active')", "php") == "arrow or Where status is equal to active"
+    assert spoken_line("->whereIn('id', $ids)", "php") == "arrow where In I D, ids"  # no operator is implied
+    assert spoken_line("->where('a', [1, 2])", "php") == "arrow where a, array of 1, 2"
+    assert spoken_code("->where('property_id', 1)", "php") == "arrow where property I D is equal to 1"
+
+
 def test_abbreviations_inside_camel_case_names():
     assert spoken_code("expectsJson") == "expects JSON"
     assert spoken_code("getId") == "get I D"
