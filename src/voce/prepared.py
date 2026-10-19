@@ -86,10 +86,12 @@ def _current(path: Path) -> bool:
 
 
 def index(state: State, entries: list[Entry]) -> Path:
-    """prepared/index.json: every prepared document, the playlist's first and in its order, the rest by title."""
+    """prepared/index.json: every prepared document, the playlist's first and in its order, the rest by title.
+    A copy of a playlist file made from an older text of it is removed: the file was edited, and this is its past."""
     folder = state.root / "prepared"
     folder.mkdir(parents=True, exist_ok=True)
     order = {state.key(e.path): (i, e.part) for i, e in enumerate(entries)}
+    names = {e.path.name for e in entries}
     rows = []
     for f in folder.glob("*.json"):
         if f.name == "index.json" or len(f.stem) != 64:
@@ -97,6 +99,9 @@ def index(state: State, entries: list[Entry]) -> Path:
         try:
             d = json.loads(f.read_text())
         except (OSError, ValueError):
+            continue
+        if f.stem not in order and d.get("file") in names:
+            f.unlink(missing_ok=True)
             continue
         i, part = order.get(f.stem, (len(order), ""))
         rows.append({"hash": f.stem, "title": d.get("title", f.stem), "file": d.get("file", ""), "part": part,

@@ -255,7 +255,8 @@ class Library {
       try { (await this.fromSource(source)).forEach(add); }
       catch (e) { notes.push(`${source.repo} ${source.path}: ${e.message}`); }
     }
-    index.documents.filter((d) => prepared[`${d.hash}.json`]).forEach(add);
+    const fresh = new Set(docs.map((d) => d.name));              // a Mac copy of a playlist file is its past: skip it
+    index.documents.filter((d) => prepared[`${d.hash}.json`] && !fresh.has(d.file)).forEach(add);
     Object.values(this.local).forEach((d) => add({ hash: d.hash, title: d.title, part: "On this device", minutes: d.minutes }));
     this.docs = docs;
     this.notes = notes;

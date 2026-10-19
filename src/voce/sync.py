@@ -101,7 +101,8 @@ def commit(root: Path) -> str:
 
 
 def _newer(root: Path, path: str) -> None:
-    """A place saved on both devices: keep the one written last. Anything else keeps this device's version."""
+    """A place saved on both devices: keep the one written last. Anything else keeps this device's version, or,
+    when one device removed the file and the other changed it, whichever version survives."""
     try:
         theirs, ours = (json.loads(git(root, "show", f":{n}:{path}")) for n in (2, 3))  # in a rebase, 3 is ours
         keep = ours if ours.get("updated", "") >= theirs.get("updated", "") else theirs
@@ -110,7 +111,15 @@ def _newer(root: Path, path: str) -> None:
     if keep is not None:
         (root / path).write_text(json.dumps(keep, indent=1))
     else:
-        git(root, "checkout", "--theirs", "--", path)
+        for side in ("--theirs", "--ours"):
+            try:
+                git(root, "checkout", side, "--", path)
+                break
+            except SyncError:
+                continue
+        else:
+            git(root, "rm", "-q", "--", path)
+            return
     git(root, "add", "--", path)
 
 

@@ -42,6 +42,21 @@ def test_prepared_copy_is_made_again_when_the_reading_code_changed(tmp_path, mon
     assert "Old words." not in out.read_text() and d["made"] == "something-else"
 
 
+def test_index_drops_the_copy_of_an_edited_playlist_file(tmp_path):
+    path = tmp_path / "a.md"
+    path.write_text("# A\n\nFirst text.\n")
+    other = tmp_path / "other.md"
+    other.write_text("# Other\n\nNot in the playlist, kept.\n")
+    state = State(tmp_path / "state")
+    old = prepared.save(load(path), state)
+    prepared.save(load(other), state)
+    path.write_text("# A\n\nEdited text.\n")
+    new = prepared.save(load(path), state)
+    d = json.loads(prepared.index(state, [Entry(path, "A", "")]).read_text())
+    assert not old.exists() and new.exists()
+    assert [r["title"] for r in d["documents"]] == ["A", "Other"]
+
+
 def test_index_lists_the_playlist_in_order_then_the_rest(tmp_path):
     for name in "abc":
         (tmp_path / f"{name}.md").write_text(f"# {name.upper()}\n\nOne.\n")
@@ -105,6 +120,29 @@ def test_two_devices_share_places_and_the_newer_place_wins(tmp_path):
     sync.run(a.root, lambda s: None)
     assert State(a.root).resume(doc_path, doc.units) == 3
     assert "rebase" not in sync.git(a.root, "status")
+
+
+@needs_git
+def test_a_place_removed_on_one_device_and_changed_on_another_survives(tmp_path):
+    doc_path = tmp_path / "a.md"
+    doc_path.write_text("One. Two. Three. Four.\n")
+    doc = load(doc_path)
+    remote = bare(tmp_path)
+    a = device(tmp_path, "a", remote)
+    a.place(doc_path, doc.units, 2)
+    a.save(force=True)
+    sync.run(a.root, lambda s: None)
+    b = device(tmp_path, "b", remote)
+    sync.run(b.root, lambda s: None)
+    b = State(b.root)
+
+    (a.root / "places" / f"{a.key(doc_path)}.json").unlink()   # a moved on: the place is gone there
+    sync.run(a.root, lambda s: None)
+    b.place(doc_path, doc.units, 3)                             # b changed it meanwhile
+    b.save(force=True)
+    sync.run(b.root, lambda s: None)
+    assert State(b.root).resume(doc_path, doc.units) == 3
+    assert "rebase" not in sync.git(b.root, "status")
 
 
 @needs_git
