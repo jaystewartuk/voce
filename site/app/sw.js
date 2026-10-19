@@ -13,7 +13,7 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
   if (url.origin !== location.origin || e.request.method !== "GET") return;
-  e.respondWith(fetch(e.request).then((r) => {
+  e.respondWith(fetch(e.request, { cache: "no-cache" }).then((r) => {   // ask the server, not the browser's ten-minute copy
     const copy = r.clone();
     caches.open(SHELL).then((c) => c.put(e.request, copy)).catch(() => {});
     return r;
