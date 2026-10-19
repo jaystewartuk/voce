@@ -598,6 +598,20 @@ function segments(b, unitRanges) {
     if (classes.length) span.className = classes.join(" ");
     out.push(span);
   }
+  return b.kind === "code" ? grouped(out) : out;
+}
+
+/** In code, one span per unit holding its styled pieces, so a line lights up as one band across the block. */
+function grouped(spans) {
+  const out = [];
+  let wrap = null;
+  for (const s of spans) {
+    const unit = s.dataset.unit;
+    if (unit === undefined) { wrap = null; out.push(s); continue; }
+    if (!wrap || wrap.dataset.unit !== unit) { wrap = document.createElement("span"); wrap.dataset.unit = unit; out.push(wrap); }
+    delete s.dataset.unit;
+    wrap.append(s);
+  }
   return out;
 }
 
