@@ -3,10 +3,15 @@
 The Mac does the work of reading Markdown and turning code into words (document.py, speech/); a phone or a browser
 then needs only this file and a voice. Each document is kept under `prepared/<hash>.json` in the state directory,
 named by the same hash as its place (state.py), and `prepared/index.json` lists them in playlist order.
+
+A prepared file also says which reading code made it: a hash of the modules that decide what is shown and said.
+When those change, every document is prepared again the next time it is opened or synced, so a better way of
+saying something reaches the other devices without anyone having to remember.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import asdict
 from pathlib import Path
@@ -17,6 +22,20 @@ from voce.playlist import Entry
 from voce.state import State
 
 FORMAT = 1  # bump when the shape of these files changes
+
+
+def _reading_code() -> str:
+    """A short hash of the source that turns Markdown into blocks and code into words."""
+    here = Path(__file__).parent
+    files = sorted([here / "document.py", here / "highlight.py", *here.glob("markdown/*.py"), *here.glob("speech/*.py")])
+    h = hashlib.sha256()
+    for f in files:
+        h.update(f.name.encode())
+        h.update(f.read_bytes())
+    return h.hexdigest()[:12]
+
+
+MADE_BY = _reading_code()
 
 
 def _plain(value: Any) -> Any:
@@ -34,6 +53,7 @@ def as_json(doc: Doc, key: str) -> dict[str, Any]:
     words = word_count(doc)
     return {
         "voce": FORMAT,
+        "made": MADE_BY,
         "hash": key,
         "title": doc.title,
         "file": doc.path.name,
@@ -46,15 +66,22 @@ def as_json(doc: Doc, key: str) -> dict[str, Any]:
 
 
 def save(doc: Doc, state: State) -> Path:
-    """Write the document's prepared file, unless the one there is already for this text."""
+    """Write the document's prepared file, unless the one there was made for this text by this reading code."""
     key = state.key(doc.path)
     out = state.root / "prepared" / f"{key}.json"
-    if not out.exists():
+    if not _current(out):
         out.parent.mkdir(parents=True, exist_ok=True)
         tmp = out.with_suffix(".tmp")
         tmp.write_text(json.dumps(as_json(doc, key), ensure_ascii=False))
         tmp.replace(out)
     return out
+
+
+def _current(path: Path) -> bool:
+    try:
+        return json.loads(path.read_text()).get("made") == MADE_BY
+    except (OSError, ValueError, AttributeError):
+        return False
 
 
 def index(state: State, entries: list[Entry]) -> Path:

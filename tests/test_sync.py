@@ -28,6 +28,20 @@ def test_prepared_copy_holds_blocks_and_units_as_plain_json(tmp_path):
     assert out.stat().st_mtime_ns == before  # the same text is not written twice
 
 
+def test_prepared_copy_is_made_again_when_the_reading_code_changed(tmp_path, monkeypatch):
+    path = tmp_path / "a.md"
+    path.write_text("# A\n\nOne sentence.\n")
+    state = State(tmp_path / "state")
+    out = prepared.save(load(path), state)
+    out.write_text(out.read_text().replace("One sentence.", "Old words."))
+    prepared.save(load(path), state)
+    assert "Old words." in out.read_text(), "the same reading code leaves a prepared file alone"
+    monkeypatch.setattr(prepared, "MADE_BY", "something-else")
+    prepared.save(load(path), state)
+    d = json.loads(out.read_text())
+    assert "Old words." not in out.read_text() and d["made"] == "something-else"
+
+
 def test_index_lists_the_playlist_in_order_then_the_rest(tmp_path):
     for name in "abc":
         (tmp_path / f"{name}.md").write_text(f"# {name.upper()}\n\nOne.\n")

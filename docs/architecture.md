@@ -142,7 +142,9 @@ written last is what the sync leaves. An older `state.json` is split into these 
 their spans, and its units with the words to say and the pause after each. A phone or a browser needs only this
 and a voice, so the pipeline runs in one place and the word tables have one copy. The reader writes one for each
 document it opens; `--prepare` and `--sync` write them for the playlist, and `prepared/index.json` lists them in
-playlist order with titles and minutes.
+playlist order with titles and minutes. Each carries a hash of the reading code that made it (`document.py`,
+`highlight.py`, `markdown/`, `speech/`), and is written again when that code has changed since, so a better way
+of saying something reaches the phone on the next open or `--sync` without anyone remembering to redo it.
 
 `sync.py` makes the state directory a git repository (`voce --sync OWNER/REPO` creates a private one on GitHub
 through `gh`, or takes any git URL). Every run pulls first and pushes at the end; `--sync` also prepares the
