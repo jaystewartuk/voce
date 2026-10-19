@@ -337,21 +337,25 @@ footer a:hover { color: var(--text); }
             <li><code>'1' === 1;   // false: a string is not an integer</code></li>
             <li><code>(int) (19.99 * 100);   // 1998, a cent short</code></li>
             <li><code>Str::slug('Sea View');</code></li>
+            <li><code> * @param  array|string  $columns</code></li>
+            <li><code>$reservation-&gt;guest?-&gt;notify(new BookingConfirmed($reservation));</code></li>
           </ul></div>
         <div class="card"><h4>What you hear</h4>
           <ul class="said-list">
             <li>"totals channel null coalescing assignment zero"</li>
-            <li>"F N a, b double arrow a nights spaceship b nights"</li>
+            <li>"arrow function a, b returns a nights spaceship b nights"</li>
             <li>"for each rows as by reference row"</li>
             <li>"the string 1 is identical to 1, false: a string is not an integer"</li>
             <li>"cast to int 19.99 times 100, 1998, a cent short"</li>
             <li>"string double colon slug Sea View"</li>
+            <li>"parameter array or string, columns"</li>
+            <li>"reservation arrow guest nullsafe arrow notify new Booking Confirmed reservation"</li>
           </ul></div>
       </div>
       <div class="grid" style="margin-top: 18px">
         <div class="card"><h3>Real names, so you learn them</h3><p>Operators are called what they are called: arrow, double arrow, double colon, identical, equal, null coalescing, spaceship, nullable, cast, increment, by reference, unpack, variadic. They are the PHP manual's own names. After a few sessions you say them without thinking, which is what a pair-programming interview or a code review asks of you.</p></div>
         <div class="card"><h3>Names as words</h3><p><code>array_values</code> is "array values", <code>strlen</code> is "string length", <code>usort</code> is "U sort", <code>isset</code> is "is set". A variable's dollar sign, the brackets and the semicolon are silent. A string is read by its contents, and a trailing comment as prose.</p></div>
-        <div class="card"><h3>Checked by ear</h3><p>Every rule is fetched from the real voice, transcribed with whisper and compared with what should be heard. Written for PHP and Laravel first; most rules carry to any language with the same symbols, and the rest are a line each. Prefer the prose alone? <code>--skip-code</code>.</p></div>
+        <div class="card"><h3>Checked by ear, and against Laravel</h3><p>Every rule is fetched from the real voice, transcribed with whisper and compared with what should be heard, and the rules were read right through laravel/framework to find what came out odd. Written for PHP and Laravel first; most rules carry to any language with the same symbols, and the rest are a line each. Hear it on <a href="https://github.com/jaystewartuk/voce/blob/main/docs/examples/laravel.md">a reservation sync in Laravel</a>, or prefer the prose alone with <code>--skip-code</code>.</p></div>
       </div>
     </div>
   </section>

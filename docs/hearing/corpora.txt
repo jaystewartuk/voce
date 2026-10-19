@@ -1,0 +1,2 @@
+# Code bases to read right through with corpus.py: name, where to clone it from, its language, the directory to read.
+laravel  https://github.com/laravel/framework.git  php  src

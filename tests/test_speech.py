@@ -54,7 +54,7 @@ def test_spoken_code_variables_arrows_and_operators():
     assert spoken_code("===") == "identical"
     assert spoken_code("??=") == "null coalescing assignment"
     assert spoken_code("<=>") == "spaceship"
-    assert spoken_code("fn") == "F N"
+    assert spoken_code("fn") == "arrow function"
 
 
 def test_spoken_line_reads_code_as_a_person_would():
@@ -63,16 +63,17 @@ def test_spoken_line_reads_code_as_a_person_would():
     assert spoken_line("[] == false;") == "empty array is equal to false"
     assert spoken_line("$email = $r['guest']['email'] ?? 'none';") == "email equals r guest email null coalescing none"
     assert spoken_line("usort($list, fn ($a, $b) => $a['check_in'] <=> $b['check_in']);") == \
-        "U sort list, F N a, b double arrow a check in spaceship b check in"
+        "U sort list, arrow function a, b returns a check in spaceship b check in"
     assert spoken_line("foreach ($a as &$n) {") == "for each a as by reference n"
-    assert spoken_line("$channels[] = 'vrbo';") == "channels square brackets equals vrbo"
+    assert spoken_line("$channels[] = 'vrbo';") == "channels append vrbo"
     assert spoken_line("$all = [...$a, ...$b];") == "all equals array of unpack a, unpack b"
     assert spoken_line("if ($i !== false) { ... }   // the key can be 0") == \
         "if i is not identical to false and so on, the key can be 0"
     assert spoken_line("explode(',', '');") == "explode a comma, the empty string"
-    assert spoken_line("function f(?string $tz = null): int") == "function f nullable string tz equals null colon int"
+    assert spoken_line("function f(?string $tz = null): int") == \
+        "function f nullable string time zone equals null colon int"
     assert spoken_line("    ->filter(fn ($r) => $r['channel'] === 'airbnb')") == \
-        "arrow filter F N r double arrow r channel is identical to airbnb"
+        "arrow filter arrow function r returns r channel is identical to airbnb"
     assert spoken_line("new BlockDates()   // has __invoke") == "new Block Dates, has invoke"
     assert spoken_line("];") == ""
     assert spoken_line("# a python comment") == "a python comment"
@@ -126,3 +127,87 @@ def test_speakable_diff_stats_and_middle_dots():
     assert speakable("x (+4) and y (−2)") == "x, 4 added and y, 2 removed"
     assert speakable("Part 1 · 12 min") == "Part 1, 12 min"
     assert speakable("(x)") == "(x)"
+
+
+def test_doc_comment_lines_are_read_as_a_person_reads_them():
+    assert spoken_line("/**", "php") == ""
+    assert spoken_line(" */", "php") == ""
+    assert spoken_line(" * Determine if the HTTP status code has been set.", "php") == \
+        "Determine if the HTTP status code has been set"
+    assert spoken_line(" * @param  array|string  $columns  The columns to select.", "php") == \
+        "parameter array or string, columns, The columns to select"
+    assert spoken_line(" * @return \\Illuminate\\Contracts\\Auth\\Authenticatable|null", "php") == \
+        "returns Illuminate Contracts auth Authenticatable or null"
+    assert spoken_line(" * @var array<int, string>", "php") == "var array of int, string"
+    assert spoken_line(" * @param  \\Closure(TValue): bool  $callback", "php") == \
+        "parameter Closure taking T Value returning bool, callback"
+    assert spoken_line(" * @param  ?string  &$name", "php") == "parameter nullable string, by reference name"
+    assert spoken_line(" * @param  mixed  ...$args", "php") == "parameter mixed, variadic args"
+    assert spoken_line(" * @method static void mixin(object $mixin, bool $replace = true)", "php") == \
+        "method static void mixin taking object mixin, bool replace equals true"
+    assert spoken_line(" * @return array{\\DateTimeInterface, int}", "php") == \
+        "returns array of Date Time Interface, int"
+    assert spoken_line(" * {@inheritdoc}", "php") == "inherit doc"
+    assert spoken_line("    * 2;", "php") == "star 2"  # a multiplication carried onto the next line
+
+
+def test_php_attributes_tags_and_alternative_syntax():
+    assert spoken_line("#[AsCommand(name: 'make:cast')]", "php") == "attribute As Command name colon make colon cast"
+    assert spoken_line("<?php", "php") == "P H P open tag"
+    assert spoken_line("<?= $title ?>", "php") == "P H P echo tag title P H P close tag"
+    assert spoken_line("@endforeach", "php") == "at end for each"
+    assert spoken_line("if ($p instanceof Arrayable) {", "php") == "if p instance of array able"
+
+
+def test_append_ternary_and_union_types():
+    assert spoken_line("$this->beforeCallbacks[] = $callback;", "php") == "this arrow before Callbacks append callback"
+    assert spoken_line("return $request->expectsJson() ? null : $this->redirectTo($request);", "php") == \
+        "return request arrow expects JSON then null else this arrow redirect To request"
+    assert spoken_line("    : $default;", "php") == "else default"
+    assert spoken_line("return [$a ?: 'x', $b ? $c : $d];", "php") == "return a short ternary x, b then c else d"
+    assert spoken_line("public function withScheme(Stringable|string $scheme): static", "php") == \
+        "public function with Scheme Stringable or string scheme colon static"
+    assert spoken_line("function foo(A&B $x, ?\\Closure $cb = null): int|null", "php") == \
+        "function foo A and B x, nullable Closure callback equals null colon int or null"
+    assert spoken_line("$flags = $a | $b;", "php") == "flags equals a pipe b"
+
+
+def test_strings_say_their_symbols_and_their_code():
+    assert spoken_line("$query->where('votes', '>=', 100);", "php") == \
+        "query arrow where votes, greater than or equal to, 100"
+    assert spoken_line("str_contains($key, '@');", "php") == "string contains key, an at sign"
+    assert spoken_line("explode('\\\\', $class);", "php") == "explode a backslash, class"
+    assert spoken_line('$column = Str::after($column, "{$this->model->getTable()}.");', "php") == \
+        "column equals string double colon after column, this arrow model arrow get Table"
+    assert spoken_line('$sql = "where id = ?";', "php") == "S Q L equals where id = question mark"
+
+
+def test_abbreviations_inside_camel_case_names():
+    assert spoken_code("expectsJson") == "expects JSON"
+    assert spoken_code("getId") == "get I D"
+    assert spoken_code("toHtml") == "to HTML"
+    assert spoken_code("SqsQueue") == "S Q S Queue"
+    assert spoken_code("IoC") == "I O C"
+    assert spoken_code("rtrim") == "R trim"
+
+
+def test_a_class_declaration_is_not_prose():
+    assert spoken_line("class Router implements BindingRegistrar, RegistrarContract", "php") == \
+        "class Router implements Binding Registrar, Registrar Contract"
+    assert spoken_line("return 'The table is empty';", "php") == "return 'The table is empty';"
+
+
+def test_an_arrow_function_returns_its_expression_and_keeps_its_double_arrows():
+    assert spoken_line("fn ($x) => ['a' => $x, 'b' => fn () => 2]", "php") == \
+        "arrow function x returns array of a double arrow x, b double arrow arrow function returns 2"
+    assert spoken_line("$items->map(fn ($item) => $item->toArray())->filter(fn ($i) => $i > 1);", "php") == \
+        "items arrow map arrow function item returns item arrow to Array " \
+        "arrow filter arrow function i returns i greater than 1"
+    assert spoken_line("const fn = () => 1;", "javascript") == "const function equals arrow 1"
+
+
+def test_a_path_inside_a_string_is_read_as_a_path():
+    assert spoken_line("Route::middleware(['web', 'auth:sanctum'])->group(base_path('routes/web.php'));", "php") == \
+        "Route double colon middleware array of web, auth colon sanctum arrow group base path " \
+        "routes slash web dot P H P"
+    assert spoken_line("str_ends_with($host, 'booking.com')", "php") == "string ends with host, booking dot com"

@@ -18,6 +18,23 @@ and versions follow [Semantic Versioning](https://semver.org).
 - Paths and file names are said with their slashes and the extension by letter: `src/voce/cli.py` is "source
   slash voce slash C L I dot P Y". A line of prose inside code, such as a doc comment, is read as prose.
 - Link reference definitions (`[name]: url`, and the `[//]: # (comment)` idiom) are neither shown nor read.
+- **Doc comments.** The lines of a `/** ... */` block are read as a person reads them: `@param  array|string
+  $columns  The columns` is "parameter array or string, columns, The columns", `@return` is "returns",
+  `array<int, string>` is "array of int, string", `\Closure(TValue): bool` is "Closure taking T Value returning
+  bool", `{@inheritdoc}` is "inherit doc", and the opening and closing lines are silent.
+- `docs/hearing/corpus.py` reads a whole code base the way voce would and reports the words that came out odd,
+  so the rules can be checked against real code. `corpora.txt` names the code bases; laravel/framework is the
+  first, and a framework in another language is one more line.
+- `fn` is "arrow function", the manual's name, and the `=>` that follows its parameters is "returns": `fn ($x)
+  => $x * 2` is "arrow function x returns x times 2". A `=>` inside the body is still "double arrow".
+- PHP, after reading laravel/framework: `<?php` is "P H P open tag", `#[AsCommand]` is "attribute As Command",
+  `$list[] = $item` is "list append item", `$a ? $b : $c` is "a then b else c", `Stringable|string` in a
+  signature is "Stringable or string", `instanceof` is "instance of", `endforeach` is "end for each", and
+  some two hundred of the standard library's names are said in full, `rtrim` as "R trim" and `realpath` as
+  "real path". A string of one symbol is said by name, `'@'` as "an at sign" and `'>='` as "greater than or
+  equal to", and `"{$this->name}"` inside a string is read as code, and a path in a string,
+  `'routes/web.php'`, as a path. An abbreviation inside a camel-case name
+  is said as it would be on its own: `expectsJson` is "expects JSON", `getId` is "get I D".
 
 ### Changed
 

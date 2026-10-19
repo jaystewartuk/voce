@@ -123,7 +123,7 @@ as it is read, with the word being spoken marked, just like a sentence of prose.
 | On the line | What you hear |
 | --- | --- |
 | `$totals[$channel] ??= 0;` | totals channel null coalescing assignment zero |
-| `usort($rows, fn ($a, $b) => $a['nights'] <=> $b['nights']);` | U sort rows, F N a, b double arrow a nights spaceship b nights |
+| `usort($rows, fn ($a, $b) => $a['nights'] <=> $b['nights']);` | U sort rows, arrow function a, b returns a nights spaceship b nights |
 | `foreach ($rows as &$row) {` | for each rows as by reference row |
 | `'1' === 1;   // false: a string is not an integer` | the string 1 is identical to 1, false: a string is not an integer |
 | `if (strpos($s, 'Hi') !== false) { ... }` | if string position s, Hi is not identical to false and so on |
@@ -144,8 +144,10 @@ Because the names are the real ones, you learn them as you listen. After a few s
 "null coalescing assignment" and "spaceship" come out of your mouth as easily as "equals", which is exactly what you want in a
 pair-programming interview or a code review.
 
-The rules were written for PHP and Laravel first, checked by ear against the real voice with
-[docs/hearing/check.py](docs/hearing/check.py). Each language then has its own words on top of what is common
+The rules were written for PHP and Laravel first, read right through laravel/framework with
+[docs/hearing/corpus.py](docs/hearing/corpus.py) to find what came out odd, and checked by ear against the real
+voice with [docs/hearing/check.py](docs/hearing/check.py). A doc comment is read as a person reads it: `@param
+array|string $columns` is "parameter array or string, columns". Each language then has its own words on top of what is common
 to all of them, in [`speech/words.py`](src/voce/speech/words.py): a Python line says "returns" for `->`, "floor
 divided by" for `//` and "dunder init" for `__init__`; a JavaScript line says "is strictly equal to" for `===`
 and "optional chaining" for `?.`, which are MDN's names; shell says "pipe" and "and then"; SQL says "is not
