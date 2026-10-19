@@ -18,7 +18,7 @@ from voce.voices import Voice
 
 
 def play(playlist: list[Entry], start: int, options: Options, state: State, voice: Voice,
-         next_voice: Callable[[Voice], Voice | None], player, show_menu: bool = False) -> None:
+         switch: Callable[[Voice, str], Voice | None], player, show_menu: bool = False) -> None:
     """Read the playlist from the file at start, in the terminal, until the listener quits."""
 
     def session(scr) -> None:
@@ -33,7 +33,7 @@ def play(playlist: list[Entry], start: int, options: Options, state: State, voic
                 if choice is None:
                     return
                 index = choice
-            Reader(term, theme, options, state, voice, next_voice, player, playlist, index).run()
+            Reader(term, theme, options, state, voice, switch, player, playlist, index).run()
         finally:
             term.stop()
 

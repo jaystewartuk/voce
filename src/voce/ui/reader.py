@@ -11,6 +11,7 @@ import time
 from dataclasses import dataclass
 from typing import Callable
 
+from voce import prepared
 from voce.document import Doc, Unit, load, minutes
 from voce.playlist import Entry
 from voce.sources.clips import ClipError, write_clipboard
@@ -20,12 +21,12 @@ from voce.ui.menu import menu
 from voce.ui.terminal import DRAG, PRESS, RELEASE, WHEEL_DOWN, WHEEL_UP, Terminal
 from voce.ui.theme import Theme
 from voce.ui.view import View
-from voce.voices import FREE_CHARS, Voice
+from voce.voices import Voice, remember
 
 AHEAD = 8              # sentences fetched ahead of the one playing
 SPEEDS = [0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.75, 2.0]
-KEYS = ["space pause", "←→ sentence", "↑↓ paragraph", "[ ] section", "+- speed", "n p file", "v voice", "m menu",
-        "r restart", "c copy", "q quit"]
+KEYS = ["space pause", "←→ sentence", "↑↓ paragraph", "[ ] section", "+- speed", "n p file", "v voice", "V engine",
+        "m menu", "r restart", "c copy", "q quit"]
 STATUS = {"playing": "▶ reading", "loading": "… fetching the voice", "gap": "▶ reading",
           "gap-start": "▶ next file", "paused": "⏸ paused (space to carry on)",
           "held": "⏸ paused (space to carry on)",
@@ -70,9 +71,9 @@ class Reader:
     """A small state machine driven by a 40 ms tick: loading → playing → gap → loading, with pauses and waits."""
 
     def __init__(self, term: Terminal, theme: Theme, options: Options, state: State, voice: Voice,
-                 next_voice: Callable[[Voice], Voice | None], player, playlist: list[Entry], start: int) -> None:
+                 switch: Callable[[Voice, str], Voice | None], player, playlist: list[Entry], start: int) -> None:
         self.term, self.theme, self.options, self.state = term, theme, options, state
-        self.voice, self.next_voice, self.player = voice, next_voice, player
+        self.voice, self.switch, self.player = voice, switch, player
         self.playlist, self.index = playlist, start
         self.view = View(term, theme)
         self.speed = options.speed
@@ -116,6 +117,11 @@ class Reader:
             self.mode = "end"
             self.say(f"Couldn't read {path.name}: {str(e)[:60]}. n for the next file, q to quit.")
             return
+        if not (self.options.quiz_only or self.options.skip_code):
+            try:
+                prepared.save(self.doc, self.state)  # so another device can play it
+            except OSError:
+                pass
         fresh = fresh or self.options.quiz_only
         self.pos = 0 if fresh else self.state.resume(self.doc.path, self.doc.units)
         if not self.doc.units:
@@ -274,7 +280,9 @@ class Reader:
         elif k in (ord("n"), ord("p")):
             self.next_file(1 if k == ord("n") else -1)
         elif k == ord("v"):
-            self.change_voice()
+            self.change_voice("voice")
+        elif k == ord("V"):
+            self.change_voice("engine")
         elif k == ord("m"):
             self.menu()
         elif k == ord("c"):
@@ -346,22 +354,23 @@ class Reader:
         if self.mode == "playing" and not self.player.can_pause:
             self.go(self.pos)
 
-    def change_voice(self) -> None:
-        voice = self.next_voice(self.voice)
+    def change_voice(self, what: str) -> None:
+        """The next voice of this engine (v), or the next engine that is set up (V); either is remembered."""
+        voice = self.switch(self.voice, what)
         if voice is None:
-            self.say("Only Google voices can be switched here; set up Google to get eight of them.")
+            self.say("This engine has one voice here." if what == "voice" else
+                     "No other voice engine is set up; voce --voices shows how.")
             return
         self.voice.close()
         self.voice = voice
-        self.state.set("voice", voice.name)
+        remember(self.state, voice)
         self.say(f"Voice: {voice.label} (each sentence is fetched once in a new voice, then kept)")
         self.go(self.pos, keep_pause=True)
 
     def menu(self) -> None:
         self.player.stop()
         was = self.mode
-        footer = f"Google characters this month: {self.state.month_chars():,} of {FREE_CHARS:,} free" \
-            if self.voice.uses_google else ""
+        footer = self.voice.usage()
         choice = menu(self.term, self.theme, self.state, self.playlist, self.index, footer)
         if choice is not None:
             self.open(choice)

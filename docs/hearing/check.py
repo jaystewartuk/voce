@@ -29,9 +29,9 @@ import sys
 import tempfile
 from pathlib import Path
 
+from voce import voices
 from voce.document import spoken
 from voce.state import State
-from voce.voices import DEFAULT_GOOGLE_VOICE, Google, Voice
 
 HERE = Path(__file__).resolve().parent
 
@@ -72,7 +72,8 @@ def main() -> int:
     ap.add_argument("--model", type=Path, default=os.environ.get("WHISPER_MODEL", "ggml-base.en.bin"),
                     help="a whisper.cpp model file (or set WHISPER_MODEL)")
     ap.add_argument("--voice", default="", help="voice name, as for voce --voice")
-    ap.add_argument("--mac", action="store_true", help="use the Mac's voice instead of Google")
+    ap.add_argument("--engine", choices=list(voices.ENGINES), help="which engine to check (default: as voce)")
+    ap.add_argument("--mac", action="store_true", help="the same as --engine mac")
     ap.add_argument("--raw", action="store_true", help="send the text as written, without any rewrite")
     args = ap.parse_args()
 
@@ -83,11 +84,12 @@ def main() -> int:
         sys.exit(f"No whisper model at {args.model}: see the top of {__file__}")
 
     state = State()
-    google = None if args.mac else Google.from_environment(state.get("google_project", ""))
-    if google is None and not args.mac:
-        sys.exit("Google is not set up (VOCE_GOOGLE_API_KEY or gcloud): pass --mac to check the Mac voice")
-    voice = Voice(args.voice or (state.get("voice") or DEFAULT_GOOGLE_VOICE if google else ""), state,
-                  mac=args.mac, google=google)
+    kind = args.engine or ("mac" if args.mac else "") or \
+        (voices.engine_for(args.voice, state) if args.voice else voices.default_engine(state))
+    if not voices.ENGINES[kind].configured(state):
+        sys.exit(f"{voices.ENGINES[kind].title} is not set up. {voices.ENGINES[kind].setup}")
+    voice = voices.make(kind, args.voice or "", state)
+    voice.engine.prepare(print)
     print(f"Voice: {voice.label}{'  (raw text)' if args.raw else ''}")
 
     phrases = read_phrases(args.phrases)

@@ -23,7 +23,11 @@ classifiers = [
     "Topic :: Multimedia :: Sound/Audio :: Speech",
     "Topic :: Text Processing :: Markup :: Markdown",
 ]
-dependencies = ["pygments>=2.12"]
+dependencies = [
+    "pygments>=2.12",
+    # Kokoro, the voice that works out of the box. It needs Python 3.10; on 3.9 voce uses the Mac's voices.
+    "kokoro-onnx>=0.4.5; python_version >= '3.10' and python_version < '3.14'",
+]
 
 [project.optional-dependencies]
 dev = ["pytest>=7", "ruff>=0.5"]

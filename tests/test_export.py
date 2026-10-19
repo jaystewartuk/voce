@@ -7,7 +7,7 @@ import pytest
 from voce.document import Unit, load
 from voce.export import QUIZ_THINKING, export_mp3, silence_after, spoken
 from voce.state import State
-from voce.voices import Voice
+from voce.voices import Mac, Voice
 
 
 def test_spoken_starts_each_file_with_its_title(tmp_path):
@@ -28,6 +28,6 @@ def test_exports_one_mp3_with_the_mac_voice(tmp_path):
     (tmp_path / "a.md").write_text("# Hello\n\nA short test.\n")
     state = State(tmp_path / "s.json")
     out = export_mp3([load(tmp_path / "a.md")], tmp_path / "out" / "a.mp3",
-                     Voice("", state, mac=True, cache=tmp_path / "cache"), state, say=lambda _: None)
+                     Voice(Mac(), state, cache=tmp_path / "cache"), state, say=lambda _: None)
     info = subprocess.run(["afinfo", str(out)], capture_output=True, text=True).stdout
     assert "24000 Hz" in info and out.stat().st_size > 1000

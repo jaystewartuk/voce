@@ -54,7 +54,8 @@ class FakePlayer:
 
 
 class FakeVoice:
-    label, uses_google, warning, mac = "Test", False, "", True
+    label, kind, name, warning = "Test", "mac", "", ""
+    def usage(self): return ""
     def want(self, text):
         f = concurrent.futures.Future()
         f.set_result((Path(f"/audio/{text}"), 1.0))
@@ -179,11 +180,15 @@ def test_unreadable_file_is_reported_not_raised(tmp_path):
     r.draw()
 
 
-@pytest.mark.parametrize("bad", ["[]", '{"files": [], "usage": 3}'])
+@pytest.mark.parametrize("bad", ["[]", "3", "not json"])
 def test_odd_state_files_start_fresh(tmp_path, bad):
-    (tmp_path / "s.json").write_text(bad)
-    state = State(tmp_path / "s.json")
-    assert state.data["files"] == {} and state.month_chars() == 0
+    (tmp_path / "settings.json").write_text(bad)
+    (tmp_path / "usage.json").write_text(bad)
+    (tmp_path / "places").mkdir()
+    (tmp_path / "places" / ("a" * 64 + ".json")).write_text(bad)
+    (tmp_path / "places" / ("b" * 64 + " (conflicted copy).json")).write_text('{"pos": 1}')
+    state = State(tmp_path)
+    assert state.settings == {} and state.places == {} and state.month_chars("google") == 0
 
 
 def test_wheel_down_on_either_ncurses_mouse_version(monkeypatch):

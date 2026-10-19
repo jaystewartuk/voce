@@ -9,7 +9,7 @@ from voce import cli
 from voce.markdown import parse, plain
 from voce.sources.claude import last_reply
 from voce.state import State
-from voce.voices import Google, GoogleRefused, Voice
+from voce.voices import Google, Mac, Refused, Voice
 
 
 def texts(md):
@@ -64,24 +64,24 @@ def test_transcripts_with_odd_lines(tmp_path):
 
 def test_google_rests_after_outages_but_not_after_a_refused_sentence(tmp_path, monkeypatch):
     state = State(tmp_path / "s.json")
-    voice = Voice("en-US-Chirp3-HD-Kore", state, google=Google(api_key="k"), cache=tmp_path)
+    voice = Voice(Google("en-US-Chirp3-HD-Kore", api_key="k"), state, cache=tmp_path)
     calls = []
-    monkeypatch.setattr(voice, "_fallback", lambda text: tmp_path / "mac.aiff")
+    monkeypatch.setattr(voice, "_fallback", lambda text, warning="": tmp_path / "mac.aiff")
 
-    def refused(text):
+    def refused(text, out):
         calls.append(text)
-        raise GoogleRefused("refused")
+        raise Refused("refused")
 
-    monkeypatch.setattr(voice, "_synthesize", refused)
+    monkeypatch.setattr(voice.engine, "synthesize", refused)
     for n in range(5):
         voice.fetch(f"r{n}")
     assert len(calls) == 5 and voice.resting_until == 0
 
-    def down(text):
+    def down(text, out):
         calls.append(text)
         raise RuntimeError("503")
 
-    monkeypatch.setattr(voice, "_synthesize", down)
+    monkeypatch.setattr(voice.engine, "synthesize", down)
     for n in range(5):
         voice.fetch(f"d{n}")
     assert len(calls) == 8 and voice.resting_until > time.monotonic()
@@ -93,7 +93,7 @@ def test_google_rests_after_outages_but_not_after_a_refused_sentence(tmp_path, m
 def test_mac_voice_never_runs_embedded_commands(tmp_path, monkeypatch):
     seen = {}
     monkeypatch.setattr("subprocess.run", lambda args, **kw: seen.update(args=args, input=kw.get("input")))
-    Voice("", State(tmp_path / "s.json"), mac=True, cache=tmp_path)._say("[[slnc 6000]] hi", tmp_path / "o", "")
+    Mac().synthesize("[[slnc 6000]] hi", tmp_path / "o")
     assert "[[" not in seen["input"] and "slnc" not in " ".join(seen["args"])
 
 

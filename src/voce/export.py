@@ -11,9 +11,9 @@ from pathlib import Path
 from typing import Callable
 
 from voce.document import Doc, Unit
-from voce.voices import FREE_CHARS, Voice
+from voce.voices import Voice
 
-SAMPLE_RATE = 24000   # Google's voices come at 24 kHz mono; everything else is converted to match
+SAMPLE_RATE = 24000   # most of the voices come at 24 kHz mono; anything else is converted to match
 QUIZ_THINKING = 1.5   # extra silence after a quiz question, to answer before the answer comes
 
 
@@ -47,8 +47,9 @@ def export_mp3(docs: list[Doc], out: Path, voice: Voice, state, say: Callable[[s
     chars = sum(len(t) for t in todo)
     say(f"{len(docs)} file{'s' * (len(docs) != 1)}, {len(units)} sentences, {len(todo)} not yet fetched "
         f"({chars:,} characters).")
-    if voice.uses_google and chars + state.month_chars() > FREE_CHARS:
-        say(f"Warning: that takes this month past the {FREE_CHARS:,} free characters.")
+    if voice.over_free(chars):
+        say(f"Warning: that takes this month past the {voice.engine.free_chars:,} free characters.")
+    voice.engine.prepare(say)
     audio_of: dict[str, Path] = {}
     warnings: set[str] = set()
     futures = {voice.pool.submit(voice.fetch, t): t for t in todo}
@@ -79,8 +80,8 @@ def export_mp3(docs: list[Doc], out: Path, voice: Voice, state, say: Callable[[s
             return silences[seconds]
 
         def audio(path: Path) -> Path:
-            """Google's MP3s join as they are; anything else (the Mac voice) is converted to match first."""
-            if path.suffix == ".mp3":
+            """A 24 kHz MP3 joins as it is; anything else (a WAV, an AIFF, a 44.1 kHz MP3) is converted first."""
+            if path.suffix == ".mp3" and voice.engine.rate == SAMPLE_RATE:
                 return path
             if path not in converted:
                 target = converted[path] = work / f"{len(converted)}.mp3"

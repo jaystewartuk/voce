@@ -7,6 +7,34 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ### Added
 
+- **Voices that work out of the box.** Kokoro, a small open voice model, runs on the Mac: free, offline, no key.
+  The model (350 MB) is downloaded once. It is the voice when no cloud engine is set up; on Python 3.9, where
+  Kokoro can't run, the Mac's voices are used as before.
+- **Azure, ElevenLabs and OpenAI** beside Google. Each is used as soon as its key is set (`VOCE_AZURE_KEY` and
+  `VOCE_AZURE_REGION`, `VOCE_ELEVENLABS_API_KEY`, `VOCE_OPENAI_API_KEY`), with eight voices to cycle through,
+  the month's characters counted against each one's free allowance, and a fallback to Kokoro when one fails.
+  `--engine` picks one; `--voice` picks a voice and the engine follows from the name; `voce --voices` shows what
+  is set up. <kbd>V</kbd> in the reader moves to the next engine, and <kbd>v</kbd> now cycles the Mac's voices too.
+
+- **Pick up on another device.** `voce --sync OWNER/REPO` keeps your places, settings and a prepared copy of each
+  document in a private git repository, made on GitHub for you when `gh` is signed in; any git URL works too.
+  Every run pulls first and pushes when you stop. A prepared copy (`prepared/<hash>.json`) is the document as voce
+  shows and says it, so a phone or a browser needs only it and a voice; the reader writes one for whatever it
+  opens, and `--prepare` and `--sync` write them for the playlist, with `prepared/index.json` listing them.
+- **A web app**, at [jaystewartuk.github.io/voce/app](https://jaystewartuk.github.io/voce/app/): the same
+  library on a phone or in any browser, read from that repository with a token for it alone, played by the
+  device's own voice or by Kokoro running in the page, with your place written back. Static files on GitHub
+  Pages; no server.
+
+### Changed
+
+- **State is laid out for syncing.** Your place in each document is its own small file under
+  `~/.local/state/voce/places/`, named by a hash of the document's text rather than its path, so the same file
+  resumes on any machine however it got there. Settings and the month's character counts have their own files.
+  Point `VOCE_STATE` at a synced folder to pick up on another Mac where you left off. An existing `state.json` is
+  migrated once and kept as `state-v1.json`.
+- The usage file counts characters per engine. Existing counts are kept as Google's.
+
 - **Diffs.** A fenced `diff` block in any Markdown is highlighted with added lines in the file's
   syntax, removed lines in red and context dimmed, and read as above. Name the file's language after the word
   diff (```` ```diff python ````) to have the added lines highlighted and read in that language.

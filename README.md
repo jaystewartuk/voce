@@ -47,8 +47,9 @@ It was built to listen to long Claude Code replies and study notes, but it reads
 - **Knows Claude Code.** `voce -r` reads Claude's latest reply in the folder you are in, with no copying.
 - **Keeps your place.** Quit at any point and it starts from the same sentence next time, even if the file has
   changed. It also reloads a file when it changes on disk.
-- **Sounds good, costs little.** It uses the Mac's own voices out of the box, or Google's Chirp 3 HD voices if you
-  set them up. Every sentence is fetched once and cached, so listening again is free and works offline.
+- **Sounds good, costs nothing.** Kokoro, a small open voice, runs on your Mac out of the box: no account, no key,
+  nothing sent anywhere. Google's Chirp 3 HD, Azure, ElevenLabs and OpenAI voices are there when you set a key.
+  Every sentence is fetched once and cached, so listening again is free and works offline.
 - **Goes with you.** `--export` turns files into one MP3 with the same voice and pauses, for a walk or a drive.
 
 ## Install
@@ -98,7 +99,8 @@ voce --check notes.md      # how it will read: sentences, minutes, characters
 | <kbd>[</kbd> <kbd>]</kbd> | previous or next section |
 | <kbd>+</kbd> <kbd>-</kbd> | faster or slower, from 0.8× to 2× |
 | <kbd>n</kbd> <kbd>p</kbd> | next or previous file |
-| <kbd>v</kbd> | next voice (Google voices) |
+| <kbd>v</kbd> | next voice |
+| <kbd>V</kbd> | next voice engine, of those set up |
 | <kbd>m</kbd> | the playlist menu |
 | <kbd>r</kbd> | hear this sentence again, or the file again at the end |
 | <kbd>c</kbd> <kbd>C</kbd> | copy the sentence, or the whole paragraph |
@@ -173,30 +175,31 @@ You can also `/copy` the reply and run `voce -c`, which works in any terminal an
 
 ## Voices
 
-**The Mac's voice** works with no setup. To pick one, run `voce --mac --voice Daniel`. You can add better voices
-in System Settings, under Accessibility, Spoken Content, System voice, Manage voices.
+**Kokoro** works out of the box. It is a small open voice model that runs on your Mac, so it is free, needs no
+account and sends nothing anywhere. The first time it speaks, voce downloads the model (350 MB) into its cache.
+It needs Python 3.10 or newer; on 3.9, voce uses the Mac's own voices instead.
 
-**Google's Chirp 3 HD voices** sound far more natural. There are two ways to set them up:
+**Four cloud engines** are used as soon as their key is set, and `voce --voices` shows which are:
 
-1. **An API key.** Make a key for a Google Cloud project with the Text-to-Speech API turned on, then export it:
-   ```bash
-   export VOCE_GOOGLE_API_KEY=...
-   ```
-2. **The gcloud CLI.** Sign in with `gcloud auth login`, then tell voce which project to bill. You only do this
-   once:
-   ```bash
-   voce --google-project my-project-id
-   ```
-   voce falls back to `gcloud config get-value project` if you skip this.
+| Engine | Set up with | Free each month, when this was written |
+| --- | --- | --- |
+| Google Chirp 3 HD | `VOCE_GOOGLE_API_KEY`, or `gcloud auth login` and `voce --google-project ID` once | 1,000,000 characters, about 18 hours |
+| Azure | `VOCE_AZURE_KEY` and `VOCE_AZURE_REGION` | 500,000 characters |
+| ElevenLabs | `VOCE_ELEVENLABS_API_KEY` | 10,000 characters |
+| OpenAI | `VOCE_OPENAI_API_KEY` | nothing, but the cheapest per hour |
 
-Press <kbd>v</kbd> to cycle through eight voices, or pick one with `--voice en-GB-Chirp3-HD-Leda`. Any Chirp 3 HD
-voice name works, in any language Google offers. When this was written, Google's free tier covered one million
-Chirp 3 HD characters a month, which is about 18 hours of listening. The playlist menu shows how much of that
-you have used this month. Check [Google's pricing](https://cloud.google.com/text-to-speech/pricing) for current
-numbers.
+Google is the best value and is used first when more than one is set up. Azure never skips a word. ElevenLabs
+is the most expressive. OpenAI is told to read every word as written. voce counts the characters it sends to
+each, and the playlist menu shows the month's count against the free amount.
 
-If Google fails part-way through, voce uses the Mac voice for that sentence and tells you why. The full setup
-guide is in [docs/google-voices.md](docs/google-voices.md).
+**The Mac's voices** are always there: `voce --mac`, or `voce --mac --voice Daniel` to pick one. Add better ones in
+System Settings, under Accessibility, Spoken Content, System voice, Manage voices.
+
+Press <kbd>v</kbd> to move through an engine's voices and <kbd>V</kbd> to move to the next engine; both are
+remembered. Or name a voice and the engine follows: `--voice bm_george` (Kokoro), `--voice en-GB-Chirp3-HD-Leda`
+(Google), `--voice en-GB-RyanNeural` (Azure), `--voice ash` (OpenAI), or `--engine elevenlabs --voice Alice`.
+`--engine` picks an engine outright. If an engine fails part-way through, voce reads that sentence with Kokoro
+and tells you why. The full guide, with Google's setup steps, is in [docs/voices.md](docs/voices.md).
 
 ## Playlists and quizzes
 
@@ -235,18 +238,55 @@ lines in red, and read hunk by hunk: "Line 40", then the changed lines, with "Ad
 the start of each run and the unchanged context shown but not read. Write the file's language after the word
 diff, as in ```` ```diff python ````, to have the added lines highlighted and read in that language.
 
+## Pick up on another device
+
+```sh
+voce --sync you/voce
+```
+
+makes a private repository on GitHub (with `gh`, if it is signed in; or give any git URL), and keeps your
+places, settings and a prepared copy of every document in your playlist there. From then on voce pulls when it
+starts and pushes when you stop, so a second Mac carries on where the first left off. `voce --sync` on its own
+prepares and pushes the playlist again.
+
+A prepared copy (`prepared/<hash>.json`) is the document as voce shows and says it: the blocks, and each
+sentence or line of code as words. Another device needs only that and a voice; it does none of the reading work.
+Everything you open in the reader gets one. `prepared/index.json` lists them in playlist order.
+
+The repository is yours, on any git host. There is no voce service, and nothing is sent anywhere else.
+
+### On your phone, or any browser
+
+[jaystewartuk.github.io/voce/app](https://jaystewartuk.github.io/voce/app/) is the same library in a web page.
+It is static files on GitHub Pages: the page reads your repository through GitHub's API with a fine-grained token
+you make for that one repository (contents, read and write), plays each document with a voice in the page, and
+writes your place back. Add it to the home screen and it opens like an app.
+
+Two voices: the device's own, instantly, or Kokoro, the open voice model, which the browser downloads once
+(about 90 MB, 330 MB with WebGPU) and runs on the device. Nothing is sent anywhere but api.github.com. The token
+stays in that browser; disconnecting in settings forgets it.
+
 ## Privacy
 
-voce has no telemetry and makes no network calls of its own. Text goes to Google only when you use Google's
-voices, and only to the Text-to-Speech API. Everything else stays on your Mac:
+voce has no telemetry and makes no network calls of its own. With Kokoro or the Mac's voices nothing leaves your
+Mac but the one-time download of the Kokoro model from GitHub. With a cloud engine, the text of each sentence goes
+to that engine's speech API and nowhere else. Everything else stays on your Mac:
 
 | What | Where |
 | --- | --- |
-| Your place in each file, settings and monthly character count | `~/.local/state/voce/state.json` |
+| Your place in each document, one small file per document | `~/.local/state/voce/places/` |
+| Speed, engine, voices and playlist | `~/.local/state/voce/settings.json` |
+| Documents prepared for other devices | `~/.local/state/voce/prepared/` |
+| Characters sent to each engine this month | `~/.local/state/voce/usage.json` |
 | The last 50 clipboard, reply and piped texts | `~/.local/state/voce/clips/` |
 | Cached audio and the compiled player | `~/.cache/voce/` |
 
 voce respects `XDG_STATE_HOME` and `XDG_CACHE_HOME`. The cache is safe to delete at any time.
+
+A place is named by a hash of the document's text, not its path, so the same file resumes wherever it is. With
+`--sync` the state directory is a git repository; without it, `VOCE_STATE` can point it at a folder that iCloud
+Drive, Dropbox or Syncthing carries between Macs. Two machines reading different documents never touch the same
+file, and the month's character counts stay on the machine that spent them.
 
 ## How it works
 

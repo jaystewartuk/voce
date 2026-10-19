@@ -22,10 +22,12 @@ src/voce/
   highlight.py      Pygments tokens reduced to a dozen roles; diffs highlighted as a reviewer reads them
   document.py       a file as Blocks to show and Units to say: sentences, code lines, diff hunks, quiz pairing
   playlist.py       "Listen in this order" READMEs
-  voices.py         Google and Mac voices, the audio cache, fetching ahead
+  voices.py         the six voice engines (Kokoro, Mac, Google, Azure, ElevenLabs, OpenAI), the cache, fetching ahead
   player.py         the native player (player.swift) and the afplay fallback
   export.py         one MP3 from many sentences, with ffmpeg
-  state.py          your place, settings and usage, in one JSON file
+  state.py          your place in each document, settings and usage, as small JSON files
+  prepared.py       a document as another device plays it: blocks and units as one JSON file, and the index
+  sync.py           the state directory as a git repository: commit, pull with the newer place winning, push
   paths.py          where state, clips and the cache live
   ui/               the screen
     theme.py          colours and attributes
@@ -117,9 +119,55 @@ of xterm-256 colours with 8-colour fallbacks.
 
 ## State
 
-`~/.local/state/voce/state.json` holds, for each file, the index of the unit you reached and the first 80
-characters of what it says. When a file changes, voce finds your place again by that text. The same file holds
-your speed, voice, playlist, Google project and a count of characters sent to Google each month.
+The state directory (`~/.local/state/voce/`, or `VOCE_STATE`) is laid out so a folder sync carries it between
+machines without conflicts:
+
+```
+settings.json        speed, engine, the voice chosen on each engine, playlist, Google project
+usage.json           the characters sent to each cloud engine each month
+places/<hash>.json   one file per document: the index of the unit you reached, the first 80 characters of what
+                     it says, when it was written, and the document's path on each machine that read it
+```
+
+A place is keyed by the SHA-256 of the document's bytes, so the same text resumes on any machine however it got
+there. When a file changes, its hash changes too: the place last saved under that path on this machine moves to
+the new hash, and voce finds your sentence again by its text. Only the files that changed are written on a save,
+each atomically; a sync tool's "conflicted copy" is ignored, and when two machines write the same place, the one
+written last is what the sync leaves. An older `state.json` is split into these files once and kept as
+`state-v1.json`.
+
+## Other devices
+
+`prepared/<hash>.json` is a document after all the work in `document.py` and `speech/` is done: its blocks with
+their spans, and its units with the words to say and the pause after each. A phone or a browser needs only this
+and a voice, so the pipeline runs in one place and the word tables have one copy. The reader writes one for each
+document it opens; `--prepare` and `--sync` write them for the playlist, and `prepared/index.json` lists them in
+playlist order with titles and minutes.
+
+`sync.py` makes the state directory a git repository (`voce --sync OWNER/REPO` creates a private one on GitHub
+through `gh`, or takes any git URL). Every run pulls first and pushes at the end; `--sync` also prepares the
+playlist. A pull is a fetch and a rebase; when both devices saved the same place, the conflicted file is settled
+by its `updated` time and the rebase continues. `usage.json` is ignored: the characters billed to a key are that
+machine's business. There is no voce server.
+
+## The web app
+
+`site/app/` is the library in a browser: three static files (`index.html`, `app.js`, `sw.js`) and a manifest,
+served by GitHub Pages beside the website. `app.js` talks to GitHub's API with a fine-grained token for the one
+repository: one request for the `prepared/` tree and one for `places/`, then only the blobs whose sha it hasn't
+cached (the Cache API, keyed by sha). A document is rendered from its prepared JSON: each block's text is cut at
+every unit edge and every style edge, so a span knows its unit and its roles, and the sentence being read is the
+spans of that unit. Code spans carry the same role names as the terminal (`keyword`, `string`, `comment`...).
+
+Two voices. The device's own, through the Web Speech API, is instant. Kokoro runs in the page through kokoro-js
+and ONNX Runtime Web, on WebGPU where there is one; it is the same model the Mac uses, fetched from Hugging Face
+once and kept by the browser. Clips are generated a few units ahead and played through one audio element, so
+the lock screen's controls and background playback work through the Media Session API.
+
+A place is written with the Contents API on pause, finish, leaving the page and every two minutes while playing.
+The write carries the blob's sha; a 409 means another device wrote first, so the page re-reads that place and
+keeps whichever `updated` is newer, the same rule as `sync.py`. The service worker caches the app's own files
+for offline opening and nothing else.
 
 ## Testing
 

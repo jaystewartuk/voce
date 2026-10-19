@@ -1,0 +1,552 @@
+/* voce on any device: the library and places from your own git repository, played by a voice in the page.
+
+   The Mac did the reading work (prepared/<hash>.json holds the blocks to show and the units to say); this page
+   fetches those through the GitHub API with a token that reaches one repository, plays them, and writes your place
+   back as places/<hash>.json. There is no voce server. */
+
+const API = "https://api.github.com";
+const KOKORO_URL = "https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1/+esm";
+const KOKORO_MODEL = "onnx-community/Kokoro-82M-v1.0-ONNX";
+const AHEAD = 3;          // units generated ahead of the one playing
+const SAVE_EVERY = 120e3; // ms between saves while playing
+const HOST = "web";
+
+const $ = (id) => document.getElementById(id);
+const store = {
+  get: (k, d = null) => { try { const v = localStorage.getItem("voce." + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set: (k, v) => { try { localStorage.setItem("voce." + k, JSON.stringify(v)); } catch { /* private window */ } },
+  del: (k) => { try { localStorage.removeItem("voce." + k); } catch { /* ignore */ } },
+};
+const now = () => new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+
+// ---------------------------------------------------------------- the repository
+
+class Repo {
+  constructor(name, token) { this.name = name; this.token = token; this.trees = {}; }
+
+  async api(path, init = {}) {
+    const r = await fetch(API + path, {
+      ...init,
+      headers: { Authorization: `Bearer ${this.token}`, Accept: "application/vnd.github+json",
+                 "X-GitHub-Api-Version": "2022-11-28", ...(init.headers || {}) },
+    });
+    if (!r.ok && r.status !== 404) {
+      const text = await r.text().catch(() => "");
+      throw new Error(r.status === 401 ? "GitHub didn't accept the token."
+        : r.status === 403 ? "The token can't reach this repository, or the API limit is reached for the hour."
+        : `GitHub said ${r.status}. ${text.slice(0, 120)}`);
+    }
+    return r;
+  }
+
+  async check() {
+    const r = await this.api(`/repos/${this.name}`);
+    if (r.status === 404) throw new Error("No such repository, or the token can't see it.");
+  }
+
+  /** {path: sha} for the files in a top-level folder, in one request. */
+  async tree(folder) {
+    const r = await this.api(`/repos/${this.name}/git/trees/HEAD:${folder}`);
+    if (r.status === 404) return {};
+    const d = await r.json();
+    return Object.fromEntries(d.tree.filter((e) => e.type === "blob").map((e) => [e.path, e.sha]));
+  }
+
+  /** A blob's text, cached by its sha so an unchanged file is never fetched twice. */
+  async blob(sha) {
+    const cache = await caches.open("voce-blobs").catch(() => null);
+    const key = `${API}/repos/${this.name}/git/blobs/${sha}`;
+    const hit = cache && await cache.match(key);
+    if (hit) return hit.text();
+    const r = await this.api(`/repos/${this.name}/git/blobs/${sha}`, { headers: { Accept: "application/vnd.github.raw+json" } });
+    if (r.status === 404) throw new Error("That file is gone from the repository.");
+    const text = await r.text();
+    if (cache) cache.put(key, new Response(text)).catch(() => {});
+    return text;
+  }
+
+  /** Write a file; sha is the version being replaced. 409/422 means someone else wrote first. */
+  async put(path, text, sha, message) {
+    const body = { message, content: btoa(unescape(encodeURIComponent(text))), ...(sha ? { sha } : {}) };
+    const r = await fetch(`${API}/repos/${this.name}/contents/${path}`, {
+      method: "PUT", keepalive: true,
+      headers: { Authorization: `Bearer ${this.token}`, Accept: "application/vnd.github+json",
+                 "X-GitHub-Api-Version": "2022-11-28", "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (r.status === 409 || r.status === 422) return null;
+    if (!r.ok) throw new Error(`Couldn't save your place: GitHub said ${r.status}.`);
+    return (await r.json()).content.sha;
+  }
+}
+
+// ---------------------------------------------------------------- the library and places
+
+class Library {
+  constructor(repo) { this.repo = repo; this.docs = []; this.places = {}; this.placeShas = {}; }
+
+  async load() {
+    const [prepared, places] = await Promise.all([this.repo.tree("prepared"), this.repo.tree("places")]);
+    this.prepared = prepared;
+    this.placeShas = places;
+    const index = prepared["index.json"] ? JSON.parse(await this.repo.blob(prepared["index.json"])) : { documents: [] };
+    this.docs = index.documents.filter((d) => prepared[`${d.hash}.json`]);
+    const entries = await Promise.all(Object.entries(places)
+      .filter(([name]) => /^[0-9a-f]{64}\.json$/.test(name))
+      .map(async ([name, sha]) => { try { return [name.slice(0, 64), JSON.parse(await this.repo.blob(sha))]; } catch { return null; } }));
+    this.places = Object.fromEntries(entries.filter(Boolean));
+  }
+
+  async doc(hash) { return JSON.parse(await this.repo.blob(this.prepared[`${hash}.json`])); }
+
+  progress(hash) {
+    const p = this.places[hash];
+    if (!p) return { text: "", ratio: 0 };
+    if (p.done) return { text: "done", ratio: 1, done: true };
+    if (!p.pos) return { text: "", ratio: 0 };
+    const ratio = p.pos / Math.max(1, p.total || 1);
+    return { text: `${Math.floor(100 * ratio)}%`, ratio };
+  }
+
+  /** Save a place, keeping the newer one when another device wrote meanwhile. */
+  async save(hash, title, fields) {
+    const current = this.places[hash] || {};
+    const place = { ...current, ...fields, updated: now(), paths: { ...(current.paths || {}), [HOST]: title } };
+    this.places[hash] = place;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const sha = await this.repo.put(`places/${hash}.json`, JSON.stringify(place, null, 1), this.placeShas[`${hash}.json`],
+                                      `web: ${title.slice(0, 60)}`);
+      if (sha) { this.placeShas[`${hash}.json`] = sha; return place; }
+      const fresh = await this.repo.tree("places");
+      const theirSha = fresh[`${hash}.json`];
+      this.placeShas[`${hash}.json`] = theirSha;
+      if (theirSha) {
+        const theirs = JSON.parse(await this.repo.blob(theirSha));
+        if ((theirs.updated || "") > place.updated) { this.places[hash] = theirs; return theirs; }
+      }
+    }
+    throw new Error("Couldn't save your place after three tries.");
+  }
+}
+
+// ---------------------------------------------------------------- voices
+
+class BrowserVoice {
+  constructor(name) { this.name = name; this.kind = "browser"; this.utterance = null; }
+  static voices() {
+    return speechSynthesis.getVoices().filter((v) => v.lang.startsWith("en")).map((v) => ({ id: v.voiceURI, label: `${v.name} (${v.lang})` }));
+  }
+  async ready() { if (!speechSynthesis.getVoices().length) await new Promise((r) => { speechSynthesis.onvoiceschanged = r; setTimeout(r, 500); }); }
+  prefetch() {}
+  speak(text, speed, onEnd, onError) {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    const voice = speechSynthesis.getVoices().find((v) => v.voiceURI === this.name);
+    if (voice) u.voice = voice;
+    u.rate = speed;
+    u.onend = () => { if (this.utterance === u) onEnd(); };
+    u.onerror = (e) => { if (this.utterance === u && e.error !== "interrupted" && e.error !== "canceled") onError(e.error); };
+    this.utterance = u;
+    speechSynthesis.speak(u);
+  }
+  pause() { speechSynthesis.pause(); }
+  resume() { speechSynthesis.resume(); }
+  stop() { this.utterance = null; speechSynthesis.cancel(); }
+  setSpeed() {} // takes effect from the next sentence
+}
+
+class KokoroVoice {
+  constructor(name, onProgress) {
+    this.name = name || "af_heart"; this.kind = "kokoro"; this.onProgress = onProgress;
+    this.audio = new Audio(); this.audio.preload = "auto";
+    this.clips = new Map(); this.generating = Promise.resolve();
+  }
+  static async load(onProgress) {
+    if (KokoroVoice.tts) return KokoroVoice.tts;
+    if (!KokoroVoice.loading) {
+      KokoroVoice.loading = (async () => {
+        const { KokoroTTS } = await import(KOKORO_URL);
+        const webgpu = !!navigator.gpu;
+        KokoroVoice.tts = await KokoroTTS.from_pretrained(KOKORO_MODEL, {
+          dtype: webgpu ? "fp32" : "q8", device: webgpu ? "webgpu" : "wasm",
+          progress_callback: (p) => { if (p.status === "progress" && onProgress) onProgress(p.progress || 0, p.file); },
+        });
+        return KokoroVoice.tts;
+      })().catch((e) => { KokoroVoice.loading = null; throw e; });
+    }
+    return KokoroVoice.loading;
+  }
+  static voices() {
+    const tts = KokoroVoice.tts;
+    if (!tts) return [{ id: "af_heart", label: "Heart (downloads the model first)" }];
+    return Object.entries(tts.voices || tts.list_voices?.() || {}).map(([id, v]) => ({ id, label: `${v.name || id} · ${v.language === "en-gb" ? "British" : "American"} ${v.gender || ""}`.trim() }));
+  }
+  async ready() { await KokoroVoice.load(this.onProgress); }
+  /** A WAV for a sentence, generated once; generation is serialised so the model is never asked twice at once. */
+  clip(text) {
+    if (!this.clips.has(text)) {
+      const job = this.generating.then(async () => {
+        const audio = await KokoroVoice.tts.generate(text, { voice: this.name });
+        return URL.createObjectURL(audio.toBlob());
+      });
+      this.generating = job.catch(() => {});
+      this.clips.set(text, job);
+      if (this.clips.size > 40) this.clips.delete(this.clips.keys().next().value);
+    }
+    return this.clips.get(text);
+  }
+  prefetch(texts) { texts.forEach((t) => this.clip(t).catch(() => {})); }
+  async speak(text, speed, onEnd, onError) {
+    const token = this.token = {};
+    let url;
+    try { url = await this.clip(text); } catch (e) { if (this.token === token) onError(e.message); return; }
+    if (this.token !== token) return;
+    this.audio.src = url;
+    this.audio.playbackRate = speed;
+    this.audio.onended = () => { if (this.token === token) onEnd(); };
+    this.audio.onerror = () => { if (this.token === token) onError("the clip wouldn't play"); };
+    try { await this.audio.play(); } catch (e) { if (this.token === token) onError(e.message); }
+  }
+  pause() { this.audio.pause(); }
+  resume() { this.audio.play().catch(() => {}); }
+  stop() { this.token = {}; this.audio.pause(); this.audio.removeAttribute("src"); }
+  setSpeed(speed) { this.audio.playbackRate = speed; }
+}
+
+// ---------------------------------------------------------------- the reader
+
+class Reader {
+  constructor(library, voice, ui) {
+    this.library = library; this.voice = voice; this.ui = ui;
+    this.doc = null; this.hash = ""; this.pos = 0; this.playing = false; this.timer = null; this.lastSave = 0;
+    this.speed = store.get("speed", 1.0);
+  }
+
+  async open(hash) {
+    this.stop();
+    this.hash = hash;
+    this.doc = await this.library.doc(hash);
+    this.units = this.doc.units;
+    this.pos = this.resume();
+    this.ui.render(this.doc, this.units);
+    this.show();
+  }
+
+  /** Where to start: the saved sentence, found again by its text if the document changed since. */
+  resume() {
+    const p = this.library.places[this.hash];
+    if (!p || p.done || !this.units.length) return 0;
+    const at = p.at || "";
+    if (p.pos >= 0 && p.pos < this.units.length && this.units[p.pos].say.slice(0, 80) === at) return p.pos;
+    const i = this.units.findIndex((u) => at && u.say.slice(0, 80) === at);
+    return i >= 0 ? i : Math.max(0, Math.min(p.pos || 0, this.units.length - 1));
+  }
+
+  show() { this.ui.highlight(this.pos, this.units.length); }
+
+  go(i, play = this.playing) {
+    this.pos = Math.max(0, Math.min(i, this.units.length - 1));
+    this.show();
+    if (play) this.play(); else this.stopVoice();
+  }
+
+  async play() {
+    if (!this.units.length) return;
+    this.playing = true;
+    this.ui.setPlaying(true);
+    try { await this.voice.ready(); } catch (e) { this.fail(`The voice couldn't load: ${e.message}`); return; }
+    this.sayCurrent();
+  }
+
+  sayCurrent() {
+    const unit = this.units[this.pos];
+    this.voice.prefetch(this.units.slice(this.pos + 1, this.pos + 1 + AHEAD).map((u) => u.say));
+    this.ui.status(`${this.pos + 1} of ${this.units.length}`);
+    this.voice.speak(unit.say, this.speed,
+      () => this.after(unit),
+      (why) => this.fail(`The voice stopped: ${why}`));
+    if (Date.now() - this.lastSave > SAVE_EVERY) this.save();
+  }
+
+  after(unit) {
+    if (!this.playing) return;
+    const wait = (unit.wait ? 2.5 : unit.pause) * 1000 / this.speed;
+    this.timer = setTimeout(() => {
+      if (!this.playing) return;
+      if (this.pos + 1 >= this.units.length) { this.finish(); return; }
+      this.pos += 1;
+      this.show();
+      this.sayCurrent();
+    }, wait);
+  }
+
+  pause() {
+    this.playing = false;
+    clearTimeout(this.timer);
+    this.voice.stop();
+    this.ui.setPlaying(false);
+    this.save();
+  }
+
+  stopVoice() { clearTimeout(this.timer); this.voice.stop(); }
+
+  stop() {
+    if (this.doc && (this.playing || this.pos)) this.save();
+    this.playing = false;
+    this.stopVoice();
+    this.ui.setPlaying(false);
+  }
+
+  finish() {
+    this.playing = false;
+    this.ui.setPlaying(false);
+    this.ui.status("Finished.");
+    this.save({ done: true, pos: 0, at: "" });
+  }
+
+  fail(message) {
+    this.playing = false;
+    this.stopVoice();
+    this.ui.setPlaying(false);
+    this.ui.status(message);
+  }
+
+  setSpeed(x) {
+    this.speed = x;
+    store.set("speed", x);
+    this.voice.setSpeed(x);
+    this.ui.speed(x);
+  }
+
+  save(fields) {
+    if (!this.doc) return;
+    this.lastSave = Date.now();
+    const unit = this.units[this.pos];
+    const place = fields || { pos: this.pos, at: unit ? unit.say.slice(0, 80) : "", total: this.units.length, done: false };
+    this.library.save(this.hash, this.doc.title, place).catch((e) => this.ui.status(e.message));
+  }
+}
+
+// ---------------------------------------------------------------- the screen
+
+const INLINE = { bold: "b", italic: "i", strike: "s", code: "c", link: "l" };
+
+function renderBlocks(doc, units) {
+  const article = $("article");
+  article.replaceChildren();
+  const byBlock = new Map();
+  units.forEach((u, i) => { if (u.block >= 0) { if (!byBlock.has(u.block)) byBlock.set(u.block, []); byBlock.get(u.block).push([u.start, u.end, i]); } });
+  const h1 = document.createElement("h1"); // the title line, when the document doesn't open with one
+  if (!doc.blocks.length || doc.blocks[0].kind !== "h1") { h1.textContent = doc.title; article.append(h1); }
+  let list = null;
+  doc.blocks.forEach((b, bi) => {
+    const el = element(b);
+    (el.querySelector(".body") || el).append(...segments(b, byBlock.get(bi) || []));
+    if (b.kind === "li") {
+      if (!list) { list = document.createElement("div"); list.className = "list"; article.append(list); }
+      list.append(el);
+    } else { list = null; article.append(el); }
+  });
+  const end = document.createElement("p"); end.className = "end"; end.textContent = "·";
+  article.append(end);
+}
+
+function element(b) {
+  if (/^h[1-6]$/.test(b.kind)) return document.createElement(b.kind);
+  if (b.kind === "hr") return document.createElement("hr");
+  if (b.kind === "code") { const pre = document.createElement("pre"); if (b.lang) pre.dataset.lang = b.lang; return pre; }
+  const el = document.createElement(b.kind === "p" ? "p" : "div");
+  el.className = b.kind + (b.kind === "row" && b.spans.some((s) => s[2].includes("bold")) ? " bold" : "");
+  if (b.kind === "li") {
+    el.style.marginLeft = `${1.4 * b.indent}em`;
+    const prefix = document.createElement("span"); prefix.className = "prefix"; prefix.textContent = b.prefix || "•";
+    el.append(prefix);
+    const body = document.createElement("span"); body.className = "body"; el.append(body);
+  }
+  return el;
+}
+
+/** The block's text cut at every unit edge and every style edge, each piece knowing its unit and its styles. */
+function segments(b, unitRanges) {
+  const text = b.text;
+  const edges = new Set([0, text.length]);
+  unitRanges.forEach(([s, e]) => { edges.add(s); edges.add(e); });
+  b.spans.forEach(([s, e]) => { edges.add(s); edges.add(e); });
+  const cuts = [...edges].filter((x) => x >= 0 && x <= text.length).sort((a, c) => a - c);
+  const out = [];
+  for (let k = 0; k + 1 < cuts.length; k++) {
+    const [s, e] = [cuts[k], cuts[k + 1]];
+    if (s === e) continue;
+    const span = document.createElement("span");
+    span.textContent = text.slice(s, e);
+    const classes = [];
+    b.spans.forEach(([ss, se, roles]) => { if (ss <= s && e <= se) roles.forEach((r) => classes.push(INLINE[r] || r)); });
+    const unit = unitRanges.find(([us, ue]) => us <= s && e <= ue);
+    if (unit) span.dataset.unit = unit[2];
+    if (classes.length) span.className = classes.join(" ");
+    out.push(span);
+  }
+  return out;
+}
+
+const ui = {
+  render(doc, units) { renderBlocks(doc, units); $("title").textContent = doc.title; },
+  highlight(i, total) {
+    document.querySelectorAll("[data-unit].now").forEach((el) => el.classList.remove("now"));
+    const els = document.querySelectorAll(`[data-unit="${i}"]`);
+    els.forEach((el) => el.classList.add("now"));
+    if (els[0]) { const r = els[0].getBoundingClientRect(); if (r.top < 80 || r.bottom > innerHeight - 140) els[0].scrollIntoView({ block: "center", behavior: "smooth" }); }
+    $("progress").style.width = `${100 * (i + 1) / Math.max(1, total)}%`;
+  },
+  setPlaying(on) {
+    $("play-icon").innerHTML = on ? '<path d="M7 5h4v14H7zM13 5h4v14h-4z"/>' : '<path d="M8 5v14l11-7z"/>';
+    $("play").setAttribute("aria-label", on ? "Pause" : "Play");
+    if ("mediaSession" in navigator) navigator.mediaSession.playbackState = on ? "playing" : "paused";
+  },
+  status(text) { $("status").textContent = text; },
+  speed(x) { $("speed").textContent = `${x.toFixed(1)}×`; },
+};
+
+// ---------------------------------------------------------------- the app
+
+let repo, library, reader, voice;
+
+function show(view) {
+  ["connect", "library", "reader"].forEach((v) => $(v).classList.toggle("hidden", v !== view));
+  $("player").classList.toggle("hidden", view !== "reader");
+  $("refresh").classList.toggle("hidden", view === "connect");
+  if (view !== "reader") $("title").textContent = "";
+}
+
+function makeVoice() {
+  const engine = store.get("engine", "browser");
+  const name = store.get(`voice.${engine}`, engine === "kokoro" ? "af_heart" : "");
+  return engine === "kokoro"
+    ? new KokoroVoice(name, (p, file) => ui.status(`Downloading the voice: ${Math.round(p)}% of ${file || "the model"}`))
+    : new BrowserVoice(name);
+}
+
+async function connect(name, token) {
+  repo = new Repo(name, token);
+  await repo.check();
+  store.set("repo", name); store.set("token", token);
+  library = new Library(repo);
+  voice = makeVoice();
+  reader = new Reader(library, voice, ui);
+  ui.speed(reader.speed);
+}
+
+async function showLibrary() {
+  show("library");
+  const el = $("library");
+  el.innerHTML = '<p class="note">Loading your library…</p>';
+  try { await library.load(); } catch (e) { el.innerHTML = `<p class="error">${e.message}</p>`; return; }
+  el.replaceChildren();
+  if (!library.docs.length) {
+    el.innerHTML = '<h1 class="page">Nothing here yet</h1><p class="lead">On the Mac, <code>voce --sync</code> prepares your playlist and pushes it here.</p>';
+    return;
+  }
+  let part;
+  for (const d of library.docs) {
+    if (d.part !== part) { part = d.part; const h = document.createElement("div"); h.className = "part"; h.textContent = part || (library.docs[0].part ? "Also" : "Library"); el.append(h); }
+    const p = library.progress(d.hash);
+    const b = document.createElement("button"); b.className = "doc"; b.dataset.hash = d.hash;
+    b.innerHTML = `<span class="mark ${p.done ? "done" : ""}">${p.done ? "✓" : p.text}</span>
+      <span class="name">${esc(d.title)}<small>${d.minutes ? `${Math.round(d.minutes)} min` : ""}</small>
+      <span class="bar"><i style="width:${100 * p.ratio}%"></i></span></span>`;
+    b.onclick = () => { location.hash = `#/doc/${d.hash}`; };
+    el.append(b);
+  }
+}
+
+function esc(s) { return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+async function showDoc(hash) {
+  show("reader");
+  $("article").innerHTML = '<p class="note">Loading…</p>';
+  try {
+    if (!library.docs.length) await library.load();
+    await reader.open(hash);
+    ui.status(`${reader.pos + 1} of ${reader.units.length}`);
+    if ("mediaSession" in navigator) navigator.mediaSession.metadata = new MediaMetadata({ title: reader.doc.title, artist: "voce" });
+  } catch (e) { $("article").innerHTML = `<p class="error">${esc(e.message)}</p>`; }
+}
+
+async function route() {
+  if (!repo) { show("connect"); return; }
+  const m = location.hash.match(/^#\/doc\/([0-9a-f]{64})$/);
+  if (m) await showDoc(m[1]);
+  else { if (reader) reader.stop(); await showLibrary(); }
+}
+
+function fillVoices() {
+  const engine = store.get("engine", "browser");
+  $("s-engine").value = engine;
+  const list = engine === "kokoro" ? KokoroVoice.voices() : BrowserVoice.voices();
+  const chosen = store.get(`voice.${engine}`, engine === "kokoro" ? "af_heart" : "");
+  $("s-voice").replaceChildren(...list.map((v) => { const o = document.createElement("option"); o.value = v.id; o.textContent = v.label; o.selected = v.id === chosen; return o; }));
+  if (!list.length) { const o = document.createElement("option"); o.textContent = "the device's default voice"; $("s-voice").append(o); }
+  $("s-kokoro-note").textContent = engine === "kokoro"
+    ? (KokoroVoice.tts ? "Kokoro is loaded. It runs on this device; nothing is sent anywhere." : "The model is fetched from Hugging Face once and kept by the browser.")
+    : "The voices your device has. Instant, and fine for prose; Kokoro reads code and names more evenly.";
+}
+
+function wire() {
+  $("connect-go").onclick = async () => {
+    const name = $("repo").value.trim().replace(/^https:\/\/github\.com\//, "").replace(/\.git$/, "");
+    const token = $("token").value.trim();
+    $("connect-error").classList.add("hidden");
+    if (!/^[\w.-]+\/[\w.-]+$/.test(name) || !token) { $("connect-error").textContent = "Give the repository as owner/name and the token."; $("connect-error").classList.remove("hidden"); return; }
+    $("connect-go").disabled = true; $("connect-status").textContent = "Checking…";
+    try { await connect(name, token); location.hash = "#/"; await route(); }
+    catch (e) { $("connect-error").textContent = e.message; $("connect-error").classList.remove("hidden"); }
+    finally { $("connect-go").disabled = false; $("connect-status").textContent = ""; }
+  };
+  $("refresh").onclick = async () => { if (reader) reader.stop(); if (library) { library.docs = []; await caches.delete("voce-blobs").catch(() => {}); } await route(); };
+  $("settings").onclick = () => { $("s-repo").textContent = repo ? repo.name : "not connected"; fillVoices(); $("sheet").classList.remove("hidden"); };
+  $("s-close").onclick = () => $("sheet").classList.add("hidden");
+  $("sheet").onclick = (e) => { if (e.target === $("sheet")) $("sheet").classList.add("hidden"); };
+  $("s-engine").onchange = () => { store.set("engine", $("s-engine").value); swapVoice(); fillVoices(); };
+  $("s-voice").onchange = () => { store.set(`voice.${store.get("engine", "browser")}`, $("s-voice").value); swapVoice(); };
+  $("s-disconnect").onclick = () => { if (reader) reader.stop(); ["repo", "token"].forEach(store.del); repo = library = reader = null; $("sheet").classList.add("hidden"); location.hash = "#/"; route(); };
+  $("play").onclick = () => { if (!reader) return; reader.playing ? reader.pause() : reader.play(); };
+  $("prev").onclick = () => reader && reader.go(reader.pos - 1);
+  $("next").onclick = () => reader && reader.go(reader.pos + 1);
+  $("speed").onclick = () => { if (!reader) return; const steps = [0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0]; reader.setSpeed(steps[(steps.findIndex((s) => s >= reader.speed - 0.01) + 1) % steps.length]); };
+  $("article").onclick = (e) => { const el = e.target.closest("[data-unit]"); if (el && reader) reader.go(+el.dataset.unit); };
+  document.addEventListener("keydown", (e) => {
+    if (!reader || $("reader").classList.contains("hidden") || e.target.tagName === "INPUT") return;
+    if (e.key === " ") { e.preventDefault(); $("play").click(); }
+    else if (e.key === "ArrowLeft") reader.go(reader.pos - 1);
+    else if (e.key === "ArrowRight") reader.go(reader.pos + 1);
+    else if (e.key === "+" || e.key === "=") $("speed").click();
+  });
+  if ("mediaSession" in navigator) {
+    navigator.mediaSession.setActionHandler("play", () => reader && reader.play());
+    navigator.mediaSession.setActionHandler("pause", () => reader && reader.pause());
+    navigator.mediaSession.setActionHandler("nexttrack", () => reader && reader.go(reader.pos + 1));
+    navigator.mediaSession.setActionHandler("previoustrack", () => reader && reader.go(reader.pos - 1));
+  }
+  addEventListener("hashchange", route);
+  addEventListener("pagehide", () => reader && reader.doc && reader.save());
+  document.addEventListener("visibilitychange", () => { if (document.hidden && reader && reader.doc) reader.save(); });
+  if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+
+function swapVoice() {
+  if (!reader) return;
+  const wasPlaying = reader.playing;
+  reader.stopVoice();
+  reader.playing = false;
+  voice = reader.voice = makeVoice();
+  if (wasPlaying) reader.play();
+}
+
+(async () => {
+  wire();
+  const name = store.get("repo"), token = store.get("token");
+  if (name && token) {
+    try { await connect(name, token); } catch (e) { show("connect"); $("repo").value = name; $("connect-error").textContent = e.message; $("connect-error").classList.remove("hidden"); return; }
+  }
+  await route();
+})();

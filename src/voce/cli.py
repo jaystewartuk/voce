@@ -12,13 +12,13 @@ import shutil
 import sys
 from pathlib import Path
 
-from voce import __version__, commands, sources
+from voce import __version__, commands, sources, sync, voices
 from voce.document import load
 from voce.export import ExportError
 from voce.player import make_player
 from voce.playlist import Entry, PlaylistError, find_playlist, part_matches, read_playlist
 from voce.state import State
-from voce.voices import DEFAULT_GOOGLE_VOICE, FREE_CHARS, Google, Voice, next_google_voice
+from voce.voices import ENGINES, Voice
 
 USAGE = """\
 examples:
@@ -30,15 +30,18 @@ examples:
   voce                     carry on where you left off: your playlist, or the last thing you read
   voce --playlist DIR      use DIR/README.md's "Listen in this order" list from now on
   voce --menu              choose a file from the playlist
+  voce --sync you/voce     keep your places and documents in a private GitHub repository, for other devices
 
 keys:
   space pause · ←/→ sentence · ↑/↓ paragraph · [ ] section or file · +/- speed
-  n/p next or previous file · v voice · m menu · r restart · q quit (your place is saved)
+  n/p next or previous file · v voice · V engine · m menu · r restart · q quit (your place is saved)
   click a sentence or a line of code to jump to it · drag to copy · the wheel scrolls
 
 voices:
-  The Mac's own voice works out of the box. For Google's Chirp 3 HD voices, set VOCE_GOOGLE_API_KEY, or sign
-  in with gcloud and pass --google-project once. Every sentence is fetched once and kept.
+  Kokoro, a small open voice that runs on the Mac, works out of the box and costs nothing. Google (Chirp 3 HD),
+  Azure, ElevenLabs and OpenAI are used when their keys are set: VOCE_GOOGLE_API_KEY (or gcloud, signed in,
+  with --google-project once), VOCE_AZURE_KEY and VOCE_AZURE_REGION, VOCE_ELEVENLABS_API_KEY,
+  VOCE_OPENAI_API_KEY. voce --voices shows what is set up. Every sentence is fetched once and kept.
 
 https://github.com/jaystewartuk/voce
 """
@@ -76,9 +79,13 @@ def parser() -> argparse.ArgumentParser:
     playlist.add_argument("--minutes", action="store_true", help="update the minutes in the playlist README")
 
     voice = ap.add_argument_group("voices")
+    voice.add_argument("--engine", choices=list(ENGINES), metavar="ENGINE",
+                       help="which voices to use: kokoro, mac, google, azure, elevenlabs or openai (saved)")
     voice.add_argument("--voice", metavar="NAME",
-                       help=f"a Google voice such as {DEFAULT_GOOGLE_VOICE}, or a Mac voice name with --mac")
-    voice.add_argument("--mac", action="store_true", help="use the Mac's voice even when Google is set up")
+                       help="a voice, such as af_heart, en-US-Chirp3-HD-Charon, en-GB-RyanNeural, George or ash; "
+                            "the engine follows from the name (saved)")
+    voice.add_argument("--mac", action="store_true", help="the same as --engine mac")
+    voice.add_argument("--voices", action="store_true", help="show the engines, which are set up, and their voices")
     voice.add_argument("--google-project", metavar="ID", help="the Google Cloud project to bill (saved)")
     voice.add_argument("--prepare", nargs="*", metavar="PART",
                        help="fetch the voice ahead of time: for the files given, or the playlist (or these parts)")
@@ -88,6 +95,9 @@ def parser() -> argparse.ArgumentParser:
                        help="write the files (or reply, clipboard or playlist) as one MP3 instead of playing")
     tools.add_argument("--check", nargs="*", metavar="FILE",
                        help="report how files will read, without audio (default: the playlist)")
+    tools.add_argument("--sync", nargs="?", const="", metavar="REPO",
+                       help="push your places and prepared documents to a git repository and pull the other "
+                            "devices'; give OWNER/REPO or a git URL the first time")
     tools.add_argument("--afplay", action="store_true", help="play with afplay instead of the built-in player")
     tools.add_argument("--mute", action="store_true", help=argparse.SUPPRESS)
     tools.add_argument("--version", action="version", version=f"voce {__version__}")
@@ -154,11 +164,20 @@ def quizzes(which: str, entries: list[Entry]) -> list[Entry]:
     return files
 
 
-def pick_voice(args, state: State) -> tuple[Voice, Google | None]:
-    google = None if args.mac else Google.from_environment(state.get("google_project", ""))
-    if google:
-        return Voice(args.voice or state.get("voice") or DEFAULT_GOOGLE_VOICE, state, google=google), google
-    return Voice(args.voice or "", state, mac=True), None
+def pick_voice(args, state: State) -> Voice:
+    """The engine asked for, or the one a voice name belongs to, or the one used last time, or the best set up."""
+    kind = args.engine or ("mac" if args.mac else "")
+    if not kind and args.voice:
+        kind = voices.engine_for(args.voice, state)
+    if not kind:
+        kind = voices.default_engine(state)
+    if not ENGINES[kind].configured(state):
+        sys.exit(f"{ENGINES[kind].title} isn't set up. {ENGINES[kind].setup}")
+    voice = voices.make(kind, args.voice or "", state)
+    if args.engine or args.voice or args.mac:
+        voices.remember(state, voice)
+        state.save(force=True)
+    return voice
 
 
 def needs_mac(args) -> None:
@@ -169,6 +188,31 @@ def needs_mac(args) -> None:
     for tool in ("afinfo", "say"):
         if not shutil.which(tool):
             sys.exit(f"{tool} not found: voce needs macOS.")
+
+
+# ---------------------------------------------------------------- syncing
+
+def pull_places(state: State) -> None:
+    """Before anything else, the other devices' places, when syncing is set up. Being offline is not an error."""
+    if not state.get("sync") or not sync.ready(state.root):
+        return
+    try:
+        if sync.pull(state.root, timeout=15):
+            state.__init__(state.root)  # the files changed under us
+    except sync.SyncError as e:
+        print(f"Couldn't pull your places: {e}")
+
+
+def push_places(state: State) -> None:
+    if not state.get("sync") or not sync.ready(state.root):
+        return
+    try:
+        if sync.commit(state.root):
+            sync.pull(state.root, timeout=15)
+            sync.push(state.root, timeout=30)
+            print("Synced.")
+    except sync.SyncError as e:
+        print(f"Couldn't sync your places: {e}")
 
 
 # ---------------------------------------------------------------- main
@@ -190,7 +234,17 @@ def main(argv: list[str] | None = None) -> None:
     if source is not None:
         args.files, args.one = [str(source)], True
     entries = read_playlist(readme)
-    voice, google = pick_voice(args, state)
+    if args.sync is not None:
+        try:
+            commands.sync_up(state, entries, args.sync)
+        except sync.SyncError as e:
+            sys.exit(f"Sync failed: {e}")
+        return
+    pull_places(state)
+    if args.voices:
+        commands.print_voices(state)
+        return
+    voice = pick_voice(args, state)
 
     if args.check is not None:
         targets = [Path(p) for p in args.check] or [Path(f) for f in args.files] or [e.path for e in entries]
@@ -201,7 +255,7 @@ def main(argv: list[str] | None = None) -> None:
     if args.list:
         if not entries:
             sys.exit("No playlist set. Use --playlist DIR.")
-        commands.print_list(state, entries, bool(google))
+        commands.print_list(state, entries, voice)
         return
     if args.minutes:
         if readme is None:
@@ -225,10 +279,16 @@ def main(argv: list[str] | None = None) -> None:
             paths = [e.path for e in entries if not wanted or any(part_matches(e.part, p) for p in wanted)]
         if not paths:
             sys.exit("Nothing to prepare: give files, use -r or -c, or set a playlist with --playlist DIR.")
-        commands.prepare(paths, voice, state)
+        commands.prepare(paths, voice, state, entries)
+        push_places(state)
         return
 
     needs_mac(args)
+    try:
+        voice.engine.prepare(print)
+    except RuntimeError as e:
+        print(f"{e}. Using the Mac voice for now.")
+        voice = voices.make("mac", "", state)
     if args.quiz is not None:
         playlist, start, quiz_only = quizzes(args.quiz, entries), 0, True
     else:
@@ -239,19 +299,24 @@ def main(argv: list[str] | None = None) -> None:
     from voce.ui.reader import Options
     from voce.ui.session import play
 
-    message = "" if google or args.mac else "Using the Mac voice. Google's voices sound better: see voce --help."
+    message = "" if voice.kind != "mac" or args.mac else \
+        "Using the Mac voice; voce --voices shows the better ones."
     options = Options(one=args.one, quiz_only=quiz_only, skip_code=args.skip_code,
                       speed=args.speed or state.get("speed", 1.0), message=message)
 
-    def next_voice(current: Voice) -> Voice | None:
-        if current.mac or google is None:
-            return None
-        return Voice(next_google_voice(current.name), state, google=google)
+    def switch(current: Voice, what: str) -> Voice | None:
+        """The next voice of the same engine, or (what == "engine") the same voice family on the next engine."""
+        if what == "voice":
+            name = current.engine.next_name()
+            return None if name == current.name else voices.make(current.kind, name, state)
+        kinds = voices.available(state)
+        kind = kinds[(kinds.index(current.kind) + 1) % len(kinds)] if current.kind in kinds else kinds[0]
+        return None if kind == current.kind else voices.make(kind, "", state)
 
     player = make_player(mute=args.mute, afplay=args.afplay)
-    play(playlist, start, options, state, voice, next_voice, player, show_menu=args.menu)
-    print("Your place is saved." + (f" Google characters this month: {state.month_chars():,} of "
-                                     f"{FREE_CHARS:,} free." if google else ""))
+    play(playlist, start, options, state, voice, switch, player, show_menu=args.menu)
+    print("Your place is saved." + (f" {voice.usage()}." if voice.usage() else ""))
+    push_places(state)
 
 
 if __name__ == "__main__":
