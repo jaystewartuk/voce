@@ -38,6 +38,10 @@ and versions follow [Semantic Versioning](https://semver.org).
   whole. After a longer pause, or with the device's own voice, the sentence starts again as before.
 - **The web app's play button is the whole player bar** between the previous and next arrows, so you can pause
   without looking. Tapping the sentence being read plays or pauses too; tapping any other sentence still goes there.
+- **The web app marks the word being read** inside the highlighted sentence, from how long Kokoro makes each
+  sound (or from the device's own voice, where it reports words). A line of code said differently from how it's
+  shown keeps only its line marked. It can be turned off in settings. Kokoro now downloads the timestamped copy of
+  the same model, once.
 - **State is laid out for syncing.** Your place in each document is its own small file under
   `~/.local/state/voce/places/`, named by a hash of the document's text rather than its path, so the same file
   resumes on any machine however it got there. Settings and the month's character counts have their own files.

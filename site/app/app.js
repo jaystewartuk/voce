@@ -13,11 +13,13 @@ const API = "https://api.github.com";
 // The GitHub App and its relay. With no client ID, the connect screen offers only the token form.
 const GITHUB_APP = { client: "Iv23liKDXAS67GVEUEA6", slug: "voce-reader", relay: "https://voce-relay.jay73x.workers.dev" };
 const KOKORO_URL = "https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1/+esm";
-const KOKORO_MODEL = "onnx-community/Kokoro-82M-v1.0-ONNX";
+const KOKORO_MODEL = "onnx-community/Kokoro-82M-v1.0-ONNX-timestamped"; // the same model, also saying how long each sound lasts
 const AHEAD = 3;          // units generated ahead of the one playing
 const SAVE_EVERY = 120e3; // ms between saves while playing
 const RESUME_WITHIN = 30e3; // ms a pause can last and still pick up mid-sentence; longer, and the sentence starts again
 const REWIND = 1.2;         // seconds of listening replayed on picking up, so the cut-off word is heard whole
+const SPACE = 16;           // Kokoro's token for the gap between words; the ones below it are punctuation
+const WORD = /[\p{L}\p{N}]+(?:['’]\p{L}+)*/gu;
 const HOST = "web";
 
 const $ = (id) => document.getElementById(id);
@@ -361,11 +363,14 @@ class BrowserVoice {
     u.rate = speed;
     u.onend = () => { if (this.utterance === u) onEnd(); };
     u.onerror = (e) => { if (this.utterance === u && e.error !== "interrupted" && e.error !== "canceled") onError(e.error); };
-    this.utterance = u;
+    u.onboundary = (e) => { if (this.utterance === u && e.name === "word") this.at = e.charIndex; };
+    this.utterance = u; this.at = -1;
     speechSynthesis.speak(u);
   }
   pause() { this.stop(); } // speechSynthesis.pause() is unreliable on iOS, so a paused sentence starts again
   resume() { return false; }
+  /** Where in the sentence the voice is: the offset of the word being said, where the device reports it, or -1. */
+  spokenAt() { return this.utterance ? this.at : -1; }
   stop() { this.utterance = null; speechSynthesis.cancel(); }
   setSpeed() {} // takes effect from the next sentence
 }
@@ -386,6 +391,13 @@ class KokoroVoice {
           dtype: webgpu ? "fp32" : "q8", device: webgpu ? "webgpu" : "wasm",
           progress_callback: (p) => { if (p.status === "progress" && onProgress) onProgress(p.progress || 0, p.file); },
         });
+        // kokoro-js keeps only the audio; keep the sounds and how long each lasts as well, for marking words.
+        const model = KokoroVoice.tts.model;
+        KokoroVoice.tts.model = async (inputs) => {
+          const out = await model(inputs);
+          KokoroVoice.run = { ids: Array.from(inputs.input_ids.data, Number), durations: out.durations ? Array.from(out.durations.data, Number) : null };
+          return out;
+        };
         return KokoroVoice.tts;
       })().catch((e) => { KokoroVoice.loading = null; throw e; });
     }
@@ -397,12 +409,16 @@ class KokoroVoice {
     return Object.entries(tts.voices || tts.list_voices?.() || {}).map(([id, v]) => ({ id, label: `${v.name || id} · ${v.language === "en-gb" ? "British" : "American"} ${v.gender || ""}`.trim() }));
   }
   async ready() { await KokoroVoice.load(this.onProgress); }
-  /** A WAV for a sentence and where it goes quiet, generated once; generation is serialised so the model is never asked twice at once. */
+  /** A WAV for a sentence, where it goes quiet and when each word starts, generated once; generation is serialised so the model is never asked twice at once. */
   clip(text) {
     if (!this.clips.has(text)) {
       const job = this.generating.then(async () => {
+        KokoroVoice.run = null;
         const audio = await KokoroVoice.tts.generate(text, { voice: this.name });
-        return { url: URL.createObjectURL(audio.toBlob()), quiet: quietTimes(audio.audio, audio.sampling_rate) };
+        return {
+          url: URL.createObjectURL(audio.toBlob()), quiet: quietTimes(audio.audio, audio.sampling_rate),
+          words: wordTimes(text, KokoroVoice.run, audio.audio.length / audio.sampling_rate),
+        };
       });
       this.generating = job.catch(() => {});
       this.clips.set(text, job);
@@ -429,11 +445,20 @@ class KokoroVoice {
     const { current, audio } = this;
     if (!current || !audio.src || audio.ended) return false;
     const target = Math.max(0, audio.currentTime - back * audio.playbackRate);
-    const gap = current.clip.quiet.findLast((t) => t <= target && t > target - 0.8);
-    audio.currentTime = gap ?? target;
+    const { words, quiet } = current.clip;
+    const start = words ? words.map((w) => w.t - 0.05).findLast((t) => t <= target) : quiet.findLast((t) => t <= target && t > target - 0.8);
+    audio.currentTime = Math.max(0, start ?? target);
     const token = this.token;
     audio.play().catch((e) => { if (this.token === token) current.onError(e.message); });
     return true;
+  }
+  /** Where in the sentence the voice is: the offset of the word being said, or -1. */
+  spokenAt() {
+    const words = this.current && this.current.clip.words;
+    if (!words) return -1;
+    let at = -1;
+    for (const w of words) { if (w.t > this.audio.currentTime) break; at = w.at; }
+    return at;
   }
   stop() { this.token = {}; this.current = null; this.audio.pause(); this.audio.removeAttribute("src"); }
   setSpeed(speed) { this.audio.playbackRate = speed; }
@@ -449,6 +474,24 @@ function quietTimes(samples, rate) {
   }
   const loudest = levels.reduce((a, b) => Math.max(a, b), 1e-6);
   return levels.flatMap((level, k) => (level < loudest * 0.05 ? [k * 0.02] : []));
+}
+
+/** When each word of `text` starts, in seconds, from how long the model made each sound: [{ at, t }], `at` being
+    the word's offset in `text`. Words follow the gaps in the sounds; where the two counts differ (a number said
+    as several words), they are shared out evenly. */
+function wordTimes(text, run, seconds) {
+  if (!run || !run.durations || run.durations.length !== run.ids.length) return null;
+  const total = run.durations.reduce((a, b) => a + b, 0);
+  const starts = [];
+  let t = 0, inWord = false;
+  run.ids.forEach((id, k) => {
+    if (id === SPACE) inWord = false;
+    else if (id > SPACE && !inWord) { starts.push(t); inWord = true; }
+    t += run.durations[k];
+  });
+  const words = [...text.matchAll(/\S*[\p{L}\p{N}]\S*/gu)];
+  if (!total || !starts.length || !words.length) return null;
+  return words.map((m, k) => ({ at: m.index, t: starts[Math.floor(k * starts.length / words.length)] * seconds / total }));
 }
 
 // ---------------------------------------------------------------- the reader
@@ -498,7 +541,7 @@ class Reader {
     this.ui.setPlaying(true);
     try { await this.voice.ready(); } catch (e) { this.fail(`The voice couldn't load: ${e.message}`); return; }
     if (recent && this.heard) { this.next(); return; } // paused in the silence after a sentence
-    if (recent && this.voice.resume(REWIND)) return;
+    if (recent && this.voice.resume(REWIND)) { this.follow(); return; }
     this.sayCurrent();
   }
 
@@ -507,10 +550,24 @@ class Reader {
     this.heard = false;
     this.voice.prefetch(this.units.slice(this.pos + 1, this.pos + 1 + AHEAD).map((u) => u.say));
     this.ui.status(`${this.pos + 1} of ${this.units.length}`);
+    this.ui.words(this.pos, unit.say);
     this.voice.speak(unit.say, this.speed,
       () => this.after(unit),
       (why) => this.fail(`The voice stopped: ${why}`));
+    this.follow();
     if (Date.now() - this.lastSave > SAVE_EVERY) this.save();
+  }
+
+  /** Mark the word being said, once a frame while playing. */
+  follow() {
+    if (this.following) return;
+    this.following = true;
+    const step = () => {
+      if (!this.playing) { this.following = false; return; }
+      this.ui.word(this.voice.spokenAt());
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
   }
 
   after(unit) {
@@ -579,6 +636,7 @@ class Reader {
 // ---------------------------------------------------------------- the screen
 
 const INLINE = { bold: "b", italic: "i", strike: "s", code: "c", link: "l" };
+const wordKey = (w) => w.toLowerCase().replace(/’/g, "'");
 
 function renderBlocks(doc, units) {
   const article = $("article");
@@ -655,12 +713,48 @@ function grouped(spans) {
 const ui = {
   render(doc, units) { renderBlocks(doc, units); $("title").textContent = doc.title; },
   highlight(i, total) {
+    this.unmark();
     document.querySelectorAll("[data-unit].now").forEach((el) => el.classList.remove("now"));
     const els = document.querySelectorAll(`[data-unit="${i}"]`);
     els.forEach((el) => el.classList.add("now"));
     if (els[0]) { const r = els[0].getBoundingClientRect(); if (r.top < 80 || r.bottom > innerHeight - 160) els[0].scrollIntoView({ block: "center", behavior: "smooth" }); }
     $("progress").style.width = `${100 * (i + 1) / Math.max(1, total)}%`;
   },
+  /** Line the sentence's spoken words up with the words on screen, so the one being said can be marked. A line
+      of code said differently from how it's shown keeps only its line marked. */
+  words(i, say) {
+    this.said = null;
+    if (!("highlights" in CSS) || !store.get("words", true)) return;
+    const shown = [];
+    document.querySelectorAll(`[data-unit="${i}"]`).forEach((el) => {
+      const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      while (walk.nextNode()) {
+        const node = walk.currentNode;
+        for (const m of node.data.matchAll(WORD)) shown.push({ node, start: m.index, end: m.index + m[0].length, key: wordKey(m[0]) });
+      }
+    });
+    const said = [...say.matchAll(WORD)].map((m) => ({ at: m.index, key: wordKey(m[0]), shown: null }));
+    let next = 0, matched = 0;
+    said.forEach((w) => {
+      for (let k = next; k < Math.min(shown.length, next + 5); k++) {
+        if (shown[k].key === w.key) { w.shown = shown[k]; next = k + 1; matched++; break; }
+      }
+    });
+    if (matched >= said.length / 2) this.said = said;
+  },
+  /** Mark the word on screen for the spoken word at offset `at` in the sentence. */
+  word(at) {
+    if (!this.said || at < 0) return;
+    let target = null;
+    for (const w of this.said) { if (w.at > at) break; if (w.shown) target = w.shown; }
+    if (!target || target === this.marked) return;
+    this.marked = target;
+    const range = new Range();
+    range.setStart(target.node, target.start);
+    range.setEnd(target.node, target.end);
+    CSS.highlights.set("word", new Highlight(range));
+  },
+  unmark() { this.marked = null; if ("highlights" in CSS) CSS.highlights.delete("word"); },
   setPlaying(on) {
     $("play-icon").innerHTML = on ? '<path d="M7 5h4v14H7zM13 5h4v14h-4z"/>' : '<path d="M8 5v14l11-7z"/>';
     $("play").setAttribute("aria-label", on ? "Pause" : "Play");
@@ -866,6 +960,8 @@ function wire() {
   $("s-src-path").onkeydown = (e) => { if (e.key === "Enter") addSource(); };
   $("file").onchange = () => { openFile($("file").files[0]); $("file").value = ""; };
   $("s-engine").onchange = () => { store.set("engine", $("s-engine").value); swapVoice(); fillVoices(); };
+  $("s-words").checked = store.get("words", true);
+  $("s-words").onchange = () => { store.set("words", $("s-words").checked); if (!$("s-words").checked) ui.unmark(); ui.said = null; };
   $("s-voice").onchange = () => { store.set(`voice.${store.get("engine", "browser")}`, $("s-voice").value); swapVoice(); };
   $("s-change").onclick = async () => { if (reader) reader.stop(); repo = library = reader = null; $("sheet").classList.add("hidden"); location.hash = "#/"; await pickRepo(); };
   $("s-disconnect").onclick = () => { if (reader) reader.stop(); ["repo", "token", "auth", "signin"].forEach(store.del); auth = repo = library = reader = null; $("sheet").classList.add("hidden"); location.hash = "#/"; route(); };
