@@ -43,7 +43,7 @@
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.6 var(--sans);
-  padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+  padding-bottom: calc(120px + env(safe-area-inset-bottom)); }
 a { color: var(--accent); }
 button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
 button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -123,16 +123,21 @@ article .l { color: var(--accent); text-decoration: underline; text-decoration-c
 .prompt, .context { color: var(--muted); }
 .end { text-align: center; color: var(--muted); padding: 30px 0; }
 
-/* ---- player */
+/* ---- player: everything between the arrows is play/pause, so a thumb finds it without looking */
 .player { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--card); border-top: 1px solid var(--line);
-  padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); }
-.player .inner { max-width: 760px; margin: 0 auto; display: flex; align-items: center; gap: 6px; }
-.player .status { flex: 1; min-width: 0; font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.player .play { width: 52px; height: 52px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; flex: none; }
-.player .play svg { width: 24px; height: 24px; fill: currentColor; }
-.player .speed { font-variant-numeric: tabular-nums; font-size: 14px; padding: 6px 10px; border-radius: 8px; color: var(--muted); }
+  padding: 0 0 env(safe-area-inset-bottom); }
+.player .inner { max-width: 760px; margin: 0 auto; display: flex; align-items: stretch; min-height: 88px; }
+.player .icon { width: 56px; height: auto; border-radius: 0; flex: none; }
+.player .play { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 12px; color: var(--accent);
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.player .play:active, .player .icon:active, .player .speed:active { background: var(--bg-alt); }
+.player .play svg { width: 34px; height: 34px; fill: currentColor; flex: none; }
+.player .play .label { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; line-height: 1.25; }
+.player .play b { font-size: 15px; }
+.player .status { max-width: 100%; font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.player .speed { font-variant-numeric: tabular-nums; font-size: 14px; padding: 0 14px 0 10px; color: var(--muted); flex: none; }
 .player .speed:hover { background: var(--bg-alt); color: var(--text); }
-.progress { height: 3px; background: var(--line); margin: 0 -16px 8px; }
+.progress { height: 3px; background: var(--line); }
 .progress i { display: block; height: 100%; background: var(--accent); width: 0; transition: width .3s; }
 
 /* ---- settings sheet */
@@ -199,9 +204,9 @@ article .l { color: var(--accent); text-decoration: underline; text-decoration-c
   <div class="progress"><i id="progress"></i></div>
   <div class="inner">
     <button class="icon" id="prev" aria-label="Previous sentence"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
-    <button class="play" id="play" aria-label="Play"><svg viewBox="0 0 24 24" id="play-icon"><path d="M8 5v14l11-7z"/></svg></button>
+    <button class="play" id="play" aria-label="Play"><svg viewBox="0 0 24 24" id="play-icon"><path d="M8 5v14l11-7z"/></svg>
+      <span class="label"><b id="play-label">Play</b><span class="status" id="status"></span></span></button>
     <button class="icon" id="next" aria-label="Next sentence"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
-    <div class="status" id="status"></div>
     <button class="speed" id="speed" aria-label="Speed">1.0×</button>
   </div>
 </div>

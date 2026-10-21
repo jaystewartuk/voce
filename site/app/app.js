@@ -16,6 +16,8 @@ const KOKORO_URL = "https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1/+esm";
 const KOKORO_MODEL = "onnx-community/Kokoro-82M-v1.0-ONNX";
 const AHEAD = 3;          // units generated ahead of the one playing
 const SAVE_EVERY = 120e3; // ms between saves while playing
+const RESUME_WITHIN = 30e3; // ms a pause can last and still pick up mid-sentence; longer, and the sentence starts again
+const REWIND = 1.2;         // seconds of listening replayed on picking up, so the cut-off word is heard whole
 const HOST = "web";
 
 const $ = (id) => document.getElementById(id);
@@ -362,8 +364,8 @@ class BrowserVoice {
     this.utterance = u;
     speechSynthesis.speak(u);
   }
-  pause() { speechSynthesis.pause(); }
-  resume() { speechSynthesis.resume(); }
+  pause() { this.stop(); } // speechSynthesis.pause() is unreliable on iOS, so a paused sentence starts again
+  resume() { return false; }
   stop() { this.utterance = null; speechSynthesis.cancel(); }
   setSpeed() {} // takes effect from the next sentence
 }
@@ -395,12 +397,12 @@ class KokoroVoice {
     return Object.entries(tts.voices || tts.list_voices?.() || {}).map(([id, v]) => ({ id, label: `${v.name || id} · ${v.language === "en-gb" ? "British" : "American"} ${v.gender || ""}`.trim() }));
   }
   async ready() { await KokoroVoice.load(this.onProgress); }
-  /** A WAV for a sentence, generated once; generation is serialised so the model is never asked twice at once. */
+  /** A WAV for a sentence and where it goes quiet, generated once; generation is serialised so the model is never asked twice at once. */
   clip(text) {
     if (!this.clips.has(text)) {
       const job = this.generating.then(async () => {
         const audio = await KokoroVoice.tts.generate(text, { voice: this.name });
-        return URL.createObjectURL(audio.toBlob());
+        return { url: URL.createObjectURL(audio.toBlob()), quiet: quietTimes(audio.audio, audio.sampling_rate) };
       });
       this.generating = job.catch(() => {});
       this.clips.set(text, job);
@@ -411,19 +413,42 @@ class KokoroVoice {
   prefetch(texts) { texts.forEach((t) => this.clip(t).catch(() => {})); }
   async speak(text, speed, onEnd, onError) {
     const token = this.token = {};
-    let url;
-    try { url = await this.clip(text); } catch (e) { if (this.token === token) onError(e.message); return; }
+    let clip;
+    try { clip = await this.clip(text); } catch (e) { if (this.token === token) onError(e.message); return; }
     if (this.token !== token) return;
-    this.audio.src = url;
+    this.current = { clip, onError };
+    this.audio.src = clip.url;
     this.audio.playbackRate = speed;
     this.audio.onended = () => { if (this.token === token) onEnd(); };
     this.audio.onerror = () => { if (this.token === token) onError("the clip wouldn't play"); };
     try { await this.audio.play(); } catch (e) { if (this.token === token) onError(e.message); }
   }
   pause() { this.audio.pause(); }
-  resume() { this.audio.play().catch(() => {}); }
-  stop() { this.token = {}; this.audio.pause(); this.audio.removeAttribute("src"); }
+  /** Pick the paused clip up `back` seconds of listening earlier, at the gap before a word. False when there's nothing left to pick up. */
+  resume(back) {
+    const { current, audio } = this;
+    if (!current || !audio.src || audio.ended) return false;
+    const target = Math.max(0, audio.currentTime - back * audio.playbackRate);
+    const gap = current.clip.quiet.findLast((t) => t <= target && t > target - 0.8);
+    audio.currentTime = gap ?? target;
+    const token = this.token;
+    audio.play().catch((e) => { if (this.token === token) current.onError(e.message); });
+    return true;
+  }
+  stop() { this.token = {}; this.current = null; this.audio.pause(); this.audio.removeAttribute("src"); }
   setSpeed(speed) { this.audio.playbackRate = speed; }
+}
+
+/** The times, in seconds, of the clip's 20 ms frames that are near silent: the gaps between words. */
+function quietTimes(samples, rate) {
+  const frame = Math.round(rate * 0.02), levels = [];
+  for (let i = 0; i + frame <= samples.length; i += frame) {
+    let sum = 0;
+    for (let j = i; j < i + frame; j++) sum += samples[j] * samples[j];
+    levels.push(Math.sqrt(sum / frame));
+  }
+  const loudest = levels.reduce((a, b) => Math.max(a, b), 1e-6);
+  return levels.flatMap((level, k) => (level < loudest * 0.05 ? [k * 0.02] : []));
 }
 
 // ---------------------------------------------------------------- the reader
@@ -432,6 +457,7 @@ class Reader {
   constructor(library, voice, ui) {
     this.library = library; this.voice = voice; this.ui = ui;
     this.doc = null; this.hash = ""; this.pos = 0; this.playing = false; this.timer = null; this.lastSave = 0;
+    this.pausedAt = 0; this.heard = false; // when play was paused, and whether the sentence had already finished
     this.speed = store.get("speed", 1.0);
   }
 
@@ -463,16 +489,22 @@ class Reader {
     if (play) this.play(); else this.stopVoice();
   }
 
+  /** Play from the current sentence, or, straight after a short pause, from just before where it stopped. */
   async play() {
     if (!this.units.length) return;
+    const recent = this.pausedAt && Date.now() - this.pausedAt < RESUME_WITHIN;
+    this.pausedAt = 0;
     this.playing = true;
     this.ui.setPlaying(true);
     try { await this.voice.ready(); } catch (e) { this.fail(`The voice couldn't load: ${e.message}`); return; }
+    if (recent && this.heard) { this.next(); return; } // paused in the silence after a sentence
+    if (recent && this.voice.resume(REWIND)) return;
     this.sayCurrent();
   }
 
   sayCurrent() {
     const unit = this.units[this.pos];
+    this.heard = false;
     this.voice.prefetch(this.units.slice(this.pos + 1, this.pos + 1 + AHEAD).map((u) => u.say));
     this.ui.status(`${this.pos + 1} of ${this.units.length}`);
     this.voice.speak(unit.say, this.speed,
@@ -483,25 +515,29 @@ class Reader {
 
   after(unit) {
     if (!this.playing) return;
+    this.heard = true;
     const wait = (unit.wait ? 2.5 : unit.pause) * 1000 / this.speed;
-    this.timer = setTimeout(() => {
-      if (!this.playing) return;
-      if (this.pos + 1 >= this.units.length) { this.finish(); return; }
-      this.pos += 1;
-      this.show();
-      this.sayCurrent();
-    }, wait);
+    this.timer = setTimeout(() => { if (this.playing) this.next(); }, wait);
   }
 
+  next() {
+    if (this.pos + 1 >= this.units.length) { this.finish(); return; }
+    this.pos += 1;
+    this.show();
+    this.sayCurrent();
+  }
+
+  /** Hold the sentence where it is, so a play soon after picks it up there; the saved place is still the sentence. */
   pause() {
     this.playing = false;
     clearTimeout(this.timer);
-    this.voice.stop();
+    this.voice.pause();
+    this.pausedAt = Date.now();
     this.ui.setPlaying(false);
     this.save();
   }
 
-  stopVoice() { clearTimeout(this.timer); this.voice.stop(); }
+  stopVoice() { clearTimeout(this.timer); this.pausedAt = 0; this.voice.stop(); }
 
   stop() {
     if (this.doc && (this.playing || this.pos)) this.save();
@@ -622,12 +658,13 @@ const ui = {
     document.querySelectorAll("[data-unit].now").forEach((el) => el.classList.remove("now"));
     const els = document.querySelectorAll(`[data-unit="${i}"]`);
     els.forEach((el) => el.classList.add("now"));
-    if (els[0]) { const r = els[0].getBoundingClientRect(); if (r.top < 80 || r.bottom > innerHeight - 140) els[0].scrollIntoView({ block: "center", behavior: "smooth" }); }
+    if (els[0]) { const r = els[0].getBoundingClientRect(); if (r.top < 80 || r.bottom > innerHeight - 160) els[0].scrollIntoView({ block: "center", behavior: "smooth" }); }
     $("progress").style.width = `${100 * (i + 1) / Math.max(1, total)}%`;
   },
   setPlaying(on) {
     $("play-icon").innerHTML = on ? '<path d="M7 5h4v14H7zM13 5h4v14h-4z"/>' : '<path d="M8 5v14l11-7z"/>';
     $("play").setAttribute("aria-label", on ? "Pause" : "Play");
+    $("play-label").textContent = on ? "Pause" : "Play";
     if ("mediaSession" in navigator) navigator.mediaSession.playbackState = on ? "playing" : "paused";
   },
   status(text) { $("status").textContent = text; },
@@ -836,7 +873,12 @@ function wire() {
   $("prev").onclick = () => reader && reader.go(reader.pos - 1);
   $("next").onclick = () => reader && reader.go(reader.pos + 1);
   $("speed").onclick = () => { if (!reader) return; const steps = [0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0]; reader.setSpeed(steps[(steps.findIndex((s) => s >= reader.speed - 0.01) + 1) % steps.length]); };
-  $("article").onclick = (e) => { const el = e.target.closest("[data-unit]"); if (el && reader) reader.go(+el.dataset.unit); };
+  // A tap on the sentence being read plays or pauses it; a tap on any other sentence goes there.
+  $("article").onclick = (e) => {
+    const el = e.target.closest("[data-unit]");
+    if (!el || !reader) return;
+    if (+el.dataset.unit === reader.pos) $("play").click(); else reader.go(+el.dataset.unit);
+  };
   document.addEventListener("keydown", (e) => {
     if (!reader || $("reader").classList.contains("hidden") || e.target.tagName === "INPUT") return;
     if (e.key === " ") { e.preventDefault(); $("play").click(); }

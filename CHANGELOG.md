@@ -33,6 +33,11 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ### Changed
 
+- **Pausing in the web app holds your place in the sentence.** With the Kokoro voice, playing again within half a
+  minute picks up about a second before where you stopped, at the gap before a word, so the cut-off word is heard
+  whole. After a longer pause, or with the device's own voice, the sentence starts again as before.
+- **The web app's play button is the whole player bar** between the previous and next arrows, so you can pause
+  without looking. Tapping the sentence being read plays or pauses too; tapping any other sentence still goes there.
 - **State is laid out for syncing.** Your place in each document is its own small file under
   `~/.local/state/voce/places/`, named by a hash of the document's text rather than its path, so the same file
   resumes on any machine however it got there. Settings and the month's character counts have their own files.
