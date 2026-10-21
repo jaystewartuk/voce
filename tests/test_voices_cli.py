@@ -134,3 +134,12 @@ def test_help_and_version(capsys):
     with pytest.raises(SystemExit):
         cli.main(["--version"])
     assert "voce " in capsys.readouterr().out
+
+
+def test_kokoro_fetches_the_small_model_but_keeps_using_a_full_one_already_there(tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path))
+    folder = tmp_path / "voce" / "kokoro"
+    assert [p.name for p in Kokoro.files()] == ["kokoro-v1.0.int8.onnx", "voices-v1.0.bin"]
+    folder.mkdir(parents=True)
+    (folder / "kokoro-v1.0.onnx").write_bytes(b"")
+    assert [p.name for p in Kokoro.files()] == ["kokoro-v1.0.onnx", "voices-v1.0.bin"]

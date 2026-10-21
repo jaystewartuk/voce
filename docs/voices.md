@@ -44,7 +44,7 @@ A plain word such as `Daniel` is a Mac voice, unless ElevenLabs is the engine in
 ## Kokoro
 
 Kokoro is an 82-million-parameter open voice model (Apache 2.0), run here with `kokoro-onnx`. The first time it
-speaks, voce downloads the model and its voices (350 MB) from the kokoro-onnx releases on GitHub into
+speaks, voce downloads the model and its voices (120 MB) from the kokoro-onnx releases on GitHub into
 `~/.cache/voce/kokoro`, and says so. That is the only thing Kokoro ever fetches. A sentence takes about a quarter
 of its length to make on an Apple silicon Mac, and voce makes eight sentences ahead, so it keeps up.
 

@@ -5,6 +5,11 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+### Changed
+
+- **A smaller Kokoro download: 120 MB, down from 350 MB.** voce now fetches the int8 build of the same model, which
+  sounds the same. If you already have the full model, voce keeps using it and downloads nothing.
+
 ### Fixed
 
 - **Kokoro on Python 3.14.** Installing voce with Python 3.14, Homebrew's default, now includes Kokoro. Before,

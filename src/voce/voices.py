@@ -1,7 +1,7 @@
 """Voices: six engines that turn a sentence into audio, and the cache that keeps every sentence once it is said.
 
 * Kokoro      a small open model that runs on this computer. Free, offline and the default: there is nothing to
-              set up. The model (350 MB) is downloaded once, into the cache.
+              set up. The model (120 MB) is downloaded once, into the cache.
 * Mac         the Mac's own voices, through ``say``. Used when Kokoro can't run, and as the last resort. macOS only.
 * Google      Chirp 3 HD. ``VOCE_GOOGLE_API_KEY``, or the ``gcloud`` CLI signed in, with the project to bill from
               ``VOCE_GOOGLE_PROJECT``, ``voce --google-project``, or ``gcloud config get-value project``.
@@ -149,11 +149,12 @@ class Kokoro(Engine):
     voices = ("af_heart", "af_bella", "am_michael", "am_fenrir", "bf_emma", "bm_george", "bm_fable", "af_nicole")
     default = "af_heart"
     setup = "Kokoro needs Python 3.10 to 3.14. Reinstall voce with one: uv tool install --python 3.13 voce"
-    FILES: ClassVar[dict[str, str]] = {"kokoro-v1.0.onnx": "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/"
-                                 "kokoro-v1.0.onnx",
-             "voices-v1.0.bin": "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/"
-                                "voices-v1.0.bin"}
-    SIZE_MB = 350
+    RELEASE = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/"
+    # The int8 model sounds the same as the full one to the ear, at a third of the download.
+    FILES: ClassVar[dict[str, str]] = {"kokoro-v1.0.int8.onnx": RELEASE + "kokoro-v1.0.int8.onnx",
+                                       "voices-v1.0.bin": RELEASE + "voices-v1.0.bin"}
+    FULL = "kokoro-v1.0.onnx"  # what 0.2.0 downloaded: kept and used where it is already there
+    SIZE_MB = 120
     LANGS: ClassVar[dict[str, str]] = {"a": "en-us", "b": "en-gb", "e": "es", "f": "fr-fr", "h": "hi", "i": "it",
                                        "j": "ja", "p": "pt-br", "z": "cmn"}
     _model = None
@@ -173,7 +174,9 @@ class Kokoro(Engine):
 
     @staticmethod
     def files() -> list[Path]:
-        return [paths.cache_dir() / "kokoro" / name for name in Kokoro.FILES]
+        folder = paths.cache_dir() / "kokoro"
+        full = folder / Kokoro.FULL
+        return [full if full.exists() and name.endswith(".onnx") else folder / name for name in Kokoro.FILES]
 
     def ready(self) -> bool:
         return Kokoro._model is not None or all(p.exists() for p in self.files())
