@@ -5,8 +5,16 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-21
+
 ### Added
 
+- **Linux.** voce runs on Linux as well as macOS. It plays audio with mpv or ffplay, or with `pw-play`,
+  `paplay` or `aplay` at one speed, and uses `wl-clipboard`, `xclip` or `xsel` for the clipboard. Kokoro is the
+  voice there too. On Windows it runs in WSL. `--plain-player` is the new name for `--afplay`, which still works.
+- **On PyPI.** `pipx install voce` or `uv tool install voce`.
+- **Built to be extended with a coding agent.** `AGENTS.md` (and `CLAUDE.md`, which points to it) tells Claude
+  Code, Codex or Cursor how voce is laid out, how to test it and what to keep stable.
 - **Voices that work out of the box.** Kokoro, a small open voice model, runs on the Mac: free, offline, no key.
   The model (350 MB) is downloaded once. It is the voice when no cloud engine is set up; on Python 3.9, where
   Kokoro can't run, the Mac's voices are used as before.
@@ -15,7 +23,6 @@ and versions follow [Semantic Versioning](https://semver.org).
   the month's characters counted against each one's free allowance, and a fallback to Kokoro when one fails.
   `--engine` picks one; `--voice` picks a voice and the engine follows from the name; `voce --voices` shows what
   is set up. <kbd>V</kbd> in the reader moves to the next engine, and <kbd>v</kbd> now cycles the Mac's voices too.
-
 - **Pick up on another device.** `voce --sync OWNER/REPO` keeps your places, settings and a prepared copy of each
   document in a private git repository, made on GitHub for you when `gh` is signed in; any git URL works too.
   Every run pulls first and pushes when you stop. A prepared copy (`prepared/<hash>.json`) is the document as voce
@@ -30,25 +37,12 @@ and versions follow [Semantic Versioning](https://semver.org).
   playlist README straight from any repository voce can reach, or a Markdown file from the device, and read it
   with nothing prepared on a Mac first. Prepared copies carry a stamp of the reading code and are made again
   when it changes, so a better way of saying something reaches every device.
-
-### Changed
-
-- **Pausing in the web app holds your place in the sentence.** With the Kokoro voice, playing again within half a
-  minute picks up about a second before where you stopped, at the gap before a word, so the cut-off word is heard
-  whole. After a longer pause, or with the device's own voice, the sentence starts again as before.
-- **The web app's play button is the whole player bar** between the previous and next arrows, so you can pause
-  without looking. Tapping the sentence being read plays or pauses too; tapping any other sentence still goes there.
-- **The web app marks the word being read** inside the highlighted sentence, from how long Kokoro makes each
-  sound (or from the device's own voice, where it reports words). A line of code said differently from how it's
-  shown keeps only its line marked. It can be turned off in settings. Kokoro now downloads the timestamped copy of
-  the same model, once.
-- **State is laid out for syncing.** Your place in each document is its own small file under
-  `~/.local/state/voce/places/`, named by a hash of the document's text rather than its path, so the same file
-  resumes on any machine however it got there. Settings and the month's character counts have their own files.
-  Point `VOCE_STATE` at a synced folder to pick up on another Mac where you left off. An existing `state.json` is
-  migrated once and kept as `state-v1.json`.
-- The usage file counts characters per engine. Existing counts are kept as Google's.
-
+- `c` copies the sentence being read and `C` its paragraph; a click on a code block copies the code. Shift-drag
+  still selects text the terminal's own way.
+- Inline code is read the same way: `array_values` in a sentence is "array values", and `===` on its own is
+  "identical". Before, the voice got the raw text, so study notes had to spell names out in prose.
+- `docs/hearing/check.py` fetches tricky phrases from the real voice, transcribes them with whisper.cpp and
+  checks what was heard. It is how rewrites for the voice are verified and new ones found.
 - **Diffs.** A fenced `diff` block in any Markdown is highlighted with added lines in the file's
   syntax, removed lines in red and context dimmed, and read as above. Name the file's language after the word
   diff (```` ```diff python ````) to have the added lines highlighted and read in that language.
@@ -80,22 +74,32 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ### Changed
 
+- **Pausing in the web app holds your place in the sentence.** With the Kokoro voice, playing again within half a
+  minute picks up about a second before where you stopped, at the gap before a word, so the cut-off word is heard
+  whole. After a longer pause, or with the device's own voice, the sentence starts again as before.
+- **The web app's play button is the whole player bar** between the previous and next arrows, so you can pause
+  without looking. Tapping the sentence being read plays or pauses too; tapping any other sentence still goes there.
+- **The web app marks the word being read** inside the highlighted sentence, from how long Kokoro makes each
+  sound (or from the device's own voice, where it reports words). A line of code said differently from how it's
+  shown keeps only its line marked. It can be turned off in settings. Kokoro now downloads the timestamped copy of
+  the same model, once.
+- **State is laid out for syncing.** Your place in each document is its own small file under
+  `~/.local/state/voce/places/`, named by a hash of the document's text rather than its path, so the same file
+  resumes on any machine however it got there. Settings and the month's character counts have their own files.
+  Point `VOCE_STATE` at a synced folder to pick up on another Mac where you left off. An existing `state.json` is
+  migrated once and kept as `state-v1.json`.
+- The usage file counts characters per engine. Existing counts are kept as Google's.
 - The code is arranged for people who want to extend it: `markdown/` (inline, blocks, tables), `speech/`
   (sentences, prose, code, the word tables), `sources/` (Claude's reply, the clipboard), `commands.py`
   for the printing commands, `ui/session.py` for the curses session and `ui/view.py` for where things sit on
   the screen, leaving `ui/reader.py` to what happens in time. Every source raises one `SourceError`.
 - The text sent to the voice changes for inline code with a slash, a file name or an operator in it, and for
   text with a middle dot or a diff count such as "(+12 −3)", so those sentences are fetched again once.
-
 - Drag across any text to copy it, without moving the voice. The text holds still while the button is down,
   the selection shows as you drag, and it is on the clipboard when you let go. Whole blocks come out as they
   are in the document, so a drag down a code block copies real lines.
-
 - The title bar fills from the left as the file is read, and the status bar says how far through you are as a
   percentage, in place of the sentence count.
-
-### Changed
-
 - The sentence being read stays on one row, two fifths of the way down, and the text glides up to meet it a
   line or so a frame instead of jumping when it drifted too far. Clicking a sentence or carrying on after a
   pause brings it to the same row, and the end of a file rises to it too, so the eye never has to drop.
@@ -116,15 +120,6 @@ and versions follow [Semantic Versioning](https://semver.org).
   wheel-down differently.
 - Pausing just as a sentence ends, in the short silence after it, no longer plays that sentence again when you
   carry on: the reader moves to the next one.
-
-### Added
-
-- `c` copies the sentence being read and `C` its paragraph; a click on a code block copies the code. Shift-drag
-  still selects text the terminal's own way.
-- Inline code is read the same way: `array_values` in a sentence is "array values", and `===` on its own is
-  "identical". Before, the voice got the raw text, so study notes had to spell names out in prose.
-- `docs/hearing/check.py` fetches tricky phrases from the real voice, transcribes them with whisper.cpp and
-  checks what was heard. It is how rewrites for the voice are verified and new ones found.
 
 ## [0.1.0] - 2026-10-17
 
@@ -150,4 +145,6 @@ The first public release.
   durations current.
 - A click on a sentence jumps to it. The mouse wheel scrolls.
 
+[Unreleased]: https://github.com/jaystewartuk/voce/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/jaystewartuk/voce/releases/tag/v0.2.0
 [0.1.0]: https://github.com/jaystewartuk/voce/releases/tag/v0.1.0

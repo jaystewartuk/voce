@@ -45,7 +45,7 @@ Changelog = "https://github.com/jaystewartuk/voce/blob/main/CHANGELOG.md"
 path = "src/voce/__init__.py"
 
 [tool.hatch.build.targets.sdist]
-exclude = ["/.github", "/docs/assets/*.gif"]
+exclude = ["/.github", "/docs/assets", "/docs/demo", "/site", "/relay"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

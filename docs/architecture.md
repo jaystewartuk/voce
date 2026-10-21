@@ -1,7 +1,8 @@
 # How voce works
 
-voce is a small Python package with one runtime dependency, Pygments. Audio is played by a Swift program that
-voce compiles on first use.
+voce is a small Python package with one runtime dependency, Pygments, plus Kokoro for the local voice. On macOS
+audio is played by a Swift program that voce compiles on first use; on Linux, by mpv, ffplay or the system's own
+player.
 
 ```
 src/voce/
@@ -23,7 +24,7 @@ src/voce/
   document.py       a file as Blocks to show and Units to say: sentences, code lines, diff hunks, quiz pairing
   playlist.py       "Listen in this order" READMEs
   voices.py         the six voice engines (Kokoro, Mac, Google, Azure, ElevenLabs, OpenAI), the cache, fetching ahead
-  player.py         the native player (player.swift) and the afplay fallback
+  player.py         the native player (player.swift), and one process per sentence: afplay, mpv, ffplay...
   export.py         one MP3 from many sentences, with ffmpeg
   state.py          your place in each document, settings and usage, as small JSON files
   prepared.py       a document as another device plays it: blocks and units as one JSON file, and the index

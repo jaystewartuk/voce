@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/wordmark-dark.svg">
-    <img src="docs/assets/wordmark-light.svg" alt="voce" width="300">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/jaystewartuk/voce/main/docs/assets/wordmark-dark.svg">
+    <img src="https://raw.githubusercontent.com/jaystewartuk/voce/main/docs/assets/wordmark-light.svg" alt="voce" width="300">
   </picture>
 </p>
 
@@ -13,9 +13,10 @@
 
 <p align="center">
   <a href="https://github.com/jaystewartuk/voce/actions/workflows/ci.yml"><img src="https://github.com/jaystewartuk/voce/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://pypi.org/project/voce/"><img src="https://img.shields.io/pypi/v/voce?color=2f6feb" alt="PyPI"></a>
   <img src="https://img.shields.io/badge/python-3.9%2B-2f6feb" alt="Python 3.9+">
-  <img src="https://img.shields.io/badge/platform-macOS-2f6feb" alt="macOS">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-2f6feb" alt="MIT licence"></a>
+  <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux-2f6feb" alt="macOS and Linux">
+  <a href="https://github.com/jaystewartuk/voce/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-2f6feb" alt="MIT licence"></a>
 </p>
 
 <p align="center">
@@ -23,11 +24,11 @@
   <a href="#install">Install</a> ·
   <a href="#use-it-with-claude-code">Claude Code</a> ·
   <a href="#voices">Voices</a> ·
-  <a href="docs/playlists.md">Playlists</a>
+  <a href="https://github.com/jaystewartuk/voce/blob/main/docs/playlists.md">Playlists</a>
 </p>
 
 <p align="center">
-  <img src="docs/assets/demo.gif" alt="voce reading a Claude Code reply: the sentence being read is on a pale blue band, the word being spoken on a dark blue one, code is syntax highlighted and the table is lined up" width="860">
+  <img src="https://raw.githubusercontent.com/jaystewartuk/voce/main/docs/assets/demo.gif" alt="voce reading a Claude Code reply: the sentence being read is on a pale blue band, the word being spoken on a dark blue one, code is syntax highlighted and the table is lined up" width="860">
 </p>
 
 voce (Italian for "voice", said *VOH-chay*) reads Markdown to you in the terminal. It shows the page as it should
@@ -35,7 +36,9 @@ look, with headings, bold, links, highlighted code and lined-up tables, and read
 prose as prose, and the code the way a pairing partner says it out loud. You can look away, follow along, or
 jump around with the keyboard or the mouse.
 
-It was built to listen to long Claude Code replies and study notes, but it reads any Markdown.
+Coding agents write a lot worth knowing: explanations of a codebase, walkthroughs of a pull request, lessons on
+a language or a framework. voce lets you listen to it instead of reading it, away from the screen if you like.
+Ask Claude Code, Codex or any agent to write you something, and press play. It reads any Markdown.
 
 - **Reads code like a pairing partner.** `'1' === 1` is heard as "the string 1 is identical to 1", and
   `$totals[$channel] ??= 0;` as "totals channel null coalescing assignment zero". Operators get their manual's
@@ -47,19 +50,19 @@ It was built to listen to long Claude Code replies and study notes, but it reads
 - **Knows Claude Code.** `voce -r` reads Claude's latest reply in the folder you are in, with no copying.
 - **Keeps your place.** Quit at any point and it starts from the same sentence next time, even if the file has
   changed. It also reloads a file when it changes on disk.
-- **Sounds good, costs nothing.** Kokoro, a small open voice, runs on your Mac out of the box: no account, no key,
+- **Sounds good, costs nothing.** Kokoro, a small open voice, runs on your computer out of the box: no account, no key,
   nothing sent anywhere. Google's Chirp 3 HD, Azure, ElevenLabs and OpenAI voices are there when you set a key.
   Every sentence is fetched once and cached, so listening again is free and works offline.
 - **Goes with you.** `--export` turns files into one MP3 with the same voice and pauses, for a walk or a drive.
 
 ## Install
 
-You need macOS and Python 3.9 or newer.
+You need macOS or Linux, and Python 3.10 or newer for the voice that works out of the box.
 
 ```bash
-uv tool install git+https://github.com/jaystewartuk/voce
+uv tool install voce
 # or
-pipx install git+https://github.com/jaystewartuk/voce
+pipx install voce
 ```
 
 Then try it:
@@ -75,6 +78,15 @@ Two optional extras make it better:
   stays in time. Without them it falls back to `afplay`.
 - **ffmpeg** (`brew install ffmpeg`) is needed for `--export`.
 
+On **Linux**, voce plays audio with mpv or ffplay if one is installed, else with `pw-play`, `paplay` or `aplay`,
+which play at one speed only. For the clipboard it uses `wl-clipboard` on Wayland, or `xclip` or `xsel` on X11:
+
+```bash
+sudo apt install mpv wl-clipboard      # or: sudo dnf install mpv wl-clipboard
+```
+
+On **Windows**, run it in [WSL](https://learn.microsoft.com/windows/wsl/install), where it is Linux.
+
 ## Use it
 
 ```bash
@@ -82,7 +94,7 @@ voce notes.md              # read a file, from where you left off
 voce a.md b.md             # read several files in a row
 voce -r                    # read Claude Code's latest reply in this folder
 voce -c                    # read what is on the clipboard
-pbpaste | voce -           # read standard input
+cat notes.md | voce -      # read standard input
 voce                       # carry on with whatever you were last reading
 voce --start notes.md      # start again from the top
 voce notes.md --export notes.mp3   # one MP3 to take with you
@@ -143,14 +155,14 @@ is read by its contents, so `''` is "the empty string" and `','` is "a comma". A
 prose. Inline code in a sentence is read the same way.
 
 Because the names are the real ones, you learn them as you listen. After a few sessions, "identical",
-"null coalescing assignment" and "spaceship" come out of your mouth as easily as "equals", which is exactly what you want in a
-pair-programming interview or a code review.
+"null coalescing assignment" and "spaceship" come out of your mouth as easily as "equals", which is exactly what you want when
+you pair or review code with someone.
 
 The rules were written for PHP and Laravel first, read right through laravel/framework with
-[docs/hearing/corpus.py](docs/hearing/corpus.py) to find what came out odd, and checked by ear against the real
-voice with [docs/hearing/check.py](docs/hearing/check.py). A doc comment is read as a person reads it: `@param
+[docs/hearing/corpus.py](https://github.com/jaystewartuk/voce/blob/main/docs/hearing/corpus.py) to find what came out odd, and checked by ear against the real
+voice with [docs/hearing/check.py](https://github.com/jaystewartuk/voce/blob/main/docs/hearing/check.py). A doc comment is read as a person reads it: `@param
 array|string $columns` is "parameter array or string, columns". Each language then has its own words on top of what is common
-to all of them, in [`speech/words.py`](src/voce/speech/words.py): a Python line says "returns" for `->`, "floor
+to all of them, in [`speech/words.py`](https://github.com/jaystewartuk/voce/blob/main/src/voce/speech/words.py): a Python line says "returns" for `->`, "floor
 divided by" for `//` and "dunder init" for `__init__`; a JavaScript line says "is strictly equal to" for `===`
 and "optional chaining" for `?.`, which are MDN's names; shell says "pipe" and "and then"; SQL says "is not
 equal to" for `<>`. A fenced block is read in the language on its fence, a diff in the language of its file,
@@ -175,9 +187,9 @@ You can also `/copy` the reply and run `voce -c`, which works in any terminal an
 
 ## Voices
 
-**Kokoro** works out of the box. It is a small open voice model that runs on your Mac, so it is free, needs no
+**Kokoro** works out of the box. It is a small open voice model that runs on your computer, so it is free, needs no
 account and sends nothing anywhere. The first time it speaks, voce downloads the model (350 MB) into its cache.
-It needs Python 3.10 or newer; on 3.9, voce uses the Mac's own voices instead.
+It needs Python 3.10 or newer; on 3.9, voce uses the Mac's own voices instead (on Linux, install a newer Python).
 
 **Four cloud engines** are used as soon as their key is set, and `voce --voices` shows which are:
 
@@ -192,14 +204,14 @@ Google is the best value and is used first when more than one is set up. Azure n
 is the most expressive. OpenAI is told to read every word as written. voce counts the characters it sends to
 each, and the playlist menu shows the month's count against the free amount.
 
-**The Mac's voices** are always there: `voce --mac`, or `voce --mac --voice Daniel` to pick one. Add better ones in
-System Settings, under Accessibility, Spoken Content, System voice, Manage voices.
+**The Mac's voices** are always there on macOS: `voce --mac`, or `voce --mac --voice Daniel` to pick one. Add
+better ones in System Settings, under Accessibility, Spoken Content, System voice, Manage voices.
 
 Press <kbd>v</kbd> to move through an engine's voices and <kbd>V</kbd> to move to the next engine; both are
 remembered. Or name a voice and the engine follows: `--voice bm_george` (Kokoro), `--voice en-GB-Chirp3-HD-Leda`
 (Google), `--voice en-GB-RyanNeural` (Azure), `--voice ash` (OpenAI), or `--engine elevenlabs --voice Alice`.
 `--engine` picks an engine outright. If an engine fails part-way through, voce reads that sentence with Kokoro
-and tells you why. The full guide, with Google's setup steps, is in [docs/voices.md](docs/voices.md).
+and tells you why. The full guide, with Google's setup steps, is in [docs/voices.md](https://github.com/jaystewartuk/voce/blob/main/docs/voices.md).
 
 ## Playlists and quizzes
 
@@ -209,8 +221,8 @@ A playlist is a README with a `## Listen in this order` section that lists Markd
 ## Listen in this order
 
 ### Part 1. The basics
-1. [Getting started](basics/start.md) · 12 min
-2. [Core ideas](basics/ideas.md) · 9 min
+1. [Getting started](https://github.com/jaystewartuk/voce/blob/main/basics/start.md) · 12 min
+2. [Core ideas](https://github.com/jaystewartuk/voce/blob/main/basics/ideas.md) · 9 min
 ```
 
 Run `voce --playlist path/to/folder` once. After that, `voce` works through the files in order, `voce --menu` lets
@@ -219,7 +231,7 @@ time, and `voce --minutes` updates the "· N min" figures.
 
 A file with a numbered list under `## Quiz` and the same number of answers under `## Answers` becomes a quiz. voce
 reads a question, waits while you answer out loud, and reads the answer when you press space. `voce --quiz` runs
-just the quizzes. See [docs/playlists.md](docs/playlists.md).
+just the quizzes. See [docs/playlists.md](https://github.com/jaystewartuk/voce/blob/main/docs/playlists.md).
 
 ## What it understands
 
@@ -240,46 +252,16 @@ diff, as in ```` ```diff python ````, to have the added lines highlighted and re
 
 ## Pick up on another device
 
-```sh
-voce --sync you/voce
-```
-
-makes a private repository on GitHub (with `gh`, if it is signed in; or give any git URL), and keeps your
-places, settings and a prepared copy of every document in your playlist there. From then on voce pulls when it
-starts and pushes when you stop, so a second Mac carries on where the first left off. `voce --sync` on its own
-prepares and pushes the playlist again.
-
-A prepared copy (`prepared/<hash>.json`) is the document as voce shows and says it: the blocks, and each
-sentence or line of code as words. Another device needs only that and a voice; it does none of the reading work.
-Everything you open in the reader gets one. `prepared/index.json` lists them in playlist order.
-
-The repository is yours, on any git host. There is no voce service, and nothing is sent anywhere else.
-
-### On your phone, or any browser
-
-[jaystewartuk.github.io/voce/app](https://jaystewartuk.github.io/voce/app/) is the same library in a web page.
-Sign in with GitHub, choose the repository `voce --sync` made, and the page reads it through GitHub's API, plays
-each document with a voice in the page, and writes your place back. It is static files on GitHub Pages. Add it to
-the home screen and it opens like an app.
-
-The page can also read for itself. voce's own reading code runs in the browser (Python compiled to WebAssembly,
-loaded once), so in settings you can point it at a playlist README in any repository voce can reach, such as the
-notes you study from, and it reads the files straight from there with nothing prepared on a Mac first. "Open a
-Markdown file" reads a file from the device the same way. Places are kept by the text's hash, so the Mac and the
-phone agree on where you are whichever one did the reading.
-
-Two voices: the device's own, instantly, or Kokoro, the open voice model, which the browser downloads once
-(about 90 MB, 330 MB with WebGPU) and runs on the device. Nothing is sent anywhere but GitHub. Signing in goes
-through the voce GitHub App, which can reach only the repositories you install it on, and a tiny relay
-([relay/](relay/)) that swaps GitHub's sign-in code for a token and keeps nothing; the library never passes
-through it. The token stays in that browser; disconnecting in settings forgets it, and removing the app on GitHub
-signs out every device. A fine-grained token for the one repository can be pasted instead.
+`voce --sync you/voce` keeps your places, settings and a prepared copy of each document in a private git
+repository of your own, so a second computer carries on where the first left off. A
+[web app](https://jaystewartuk.github.io/voce/app/) reads the same repository on a phone or in any browser, with
+a voice that runs in the page. There is no voce service: the repository is yours. See [docs/sync.md](https://github.com/jaystewartuk/voce/blob/main/docs/sync.md).
 
 ## Privacy
 
 voce has no telemetry and makes no network calls of its own. With Kokoro or the Mac's voices nothing leaves your
-Mac but the one-time download of the Kokoro model from GitHub. With a cloud engine, the text of each sentence goes
-to that engine's speech API and nowhere else. Everything else stays on your Mac:
+computer but the one-time download of the Kokoro model from GitHub. With a cloud engine, the text of each sentence goes
+to that engine's speech API and nowhere else. Everything else stays on your computer:
 
 | What | Where |
 | --- | --- |
@@ -294,22 +276,28 @@ voce respects `XDG_STATE_HOME` and `XDG_CACHE_HOME`. The cache is safe to delete
 
 A place is named by a hash of the document's text, not its path, so the same file resumes wherever it is. With
 `--sync` the state directory is a git repository; without it, `VOCE_STATE` can point it at a folder that iCloud
-Drive, Dropbox or Syncthing carries between Macs. Two machines reading different documents never touch the same
+Drive, Dropbox or Syncthing carries between computers. Two machines reading different documents never touch the same
 file, and the month's character counts stay on the machine that spent them.
 
 ## How it works
 
 voce parses Markdown into blocks of plain text, keeping bold, code and the rest as styled spans over that text.
 The screen draws the spans, and the voice reads the plain text a sentence at a time. Audio is fetched up to eight
-sentences ahead on a small thread pool and played by a tiny Swift program over a pipe. That program reports its
-position every 50 milliseconds, and voce uses it to time the word highlight. The interface is plain `curses`,
-redrawn 25 times a second. [docs/architecture.md](docs/architecture.md) has the details.
+sentences ahead on a small thread pool. On macOS a tiny Swift program plays it over a pipe, gapless, and reports
+its position every 50 milliseconds to time the word highlight; on Linux each sentence is handed to mpv or
+ffplay. The interface is plain `curses`,
+redrawn 25 times a second. [docs/architecture.md](https://github.com/jaystewartuk/voce/blob/main/docs/architecture.md) has the details.
 
 ## Contributing
 
-Issues and pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) explains how to set up, test and
-re-record the demo.
+Issues and pull requests are welcome, and so is a coding agent doing the work. The repository is set up for one:
+[AGENTS.md](https://github.com/jaystewartuk/voce/blob/main/AGENTS.md) tells Claude Code, Codex or Cursor how voce is laid out, how to test it and what to keep
+stable, so you can ask for the feature you want and review what comes back.
+
+The easiest place to start is a new language for [Code, read aloud](#code-read-aloud): Ruby, Go, Rust, Java, C#
+and Swift are all read with the common words today, and each needs only a few lines of data in
+[`speech/words.py`](https://github.com/jaystewartuk/voce/blob/main/src/voce/speech/words.py). [CONTRIBUTING.md](https://github.com/jaystewartuk/voce/blob/main/CONTRIBUTING.md) has the details.
 
 ## Licence
 
-[MIT](LICENSE)
+[MIT](https://github.com/jaystewartuk/voce/blob/main/LICENSE)

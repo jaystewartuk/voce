@@ -1,6 +1,7 @@
 # Contributing to voce
 
-Thank you for helping. Bug reports, ideas and pull requests are all welcome.
+Thank you for helping. Bug reports, ideas and pull requests are all welcome, including ones written with a coding
+agent: point it at [AGENTS.md](AGENTS.md) first.
 
 ## Set up
 
@@ -86,6 +87,7 @@ It is published to GitHub Pages by `.github/workflows/pages.yml` on every push t
 
 ## Releasing
 
-1. Update `__version__` in `src/voce/__init__.py` and add a section to `CHANGELOG.md`.
-2. Commit, then tag: `git tag v0.2.0 && git push --tags`.
-3. Create a GitHub release from the tag with the changelog section as its notes.
+1. Update `__version__` in `src/voce/__init__.py` and move `CHANGELOG.md`'s Unreleased section under the version.
+2. Commit, then tag and push: `git tag v0.2.0 && git push origin main v0.2.0`.
+3. The `release` workflow builds the package, checks the tag matches the version, publishes to PyPI with
+   trusted publishing (no token is stored anywhere) and makes the GitHub release from the changelog section.
