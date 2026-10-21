@@ -466,10 +466,13 @@ class Reader:
         self.term.put(0, 0, top[:fill], self.theme.progress)
         self.term.put(0, fill, top[fill:], self.theme.bar)
         status = f" {STATUS.get(self.mode, self.mode)}"
-        if self.message:
+        downloading = self.voice.downloading() if self.mode == "loading" else ""
+        if downloading:
+            status = f" … {downloading}"  # it takes the room of the reading progress, which isn't moving
+        elif self.message:
             status += f"   {self.message}"
         where = ""
-        if self.units:
+        if self.units and not downloading:
             words = self.words()
             left_minutes = minutes(words[-1] - words[self.pos], self.speed)
             where = f"{done:.0%} · " + \

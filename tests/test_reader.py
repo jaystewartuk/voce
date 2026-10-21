@@ -54,8 +54,9 @@ class FakePlayer:
 
 
 class FakeVoice:
-    label, kind, name, warning = "Test", "mac", "", ""
+    label, kind, name, warning, progress = "Test", "mac", "", "", ""
     def usage(self): return ""
+    def downloading(self): return self.progress
     def want(self, text):
         f = concurrent.futures.Future()
         f.set_result((Path(f"/audio/{text}"), 1.0))
@@ -348,3 +349,13 @@ def test_the_title_bar_fills_as_the_file_is_read(tmp_path):
     assert r.progress() == 0.5
     play_through(r)
     assert r.mode == "end" and r.progress() == 1.0
+
+
+def test_the_status_bar_shows_how_far_a_voice_download_has_got(tmp_path):
+    r = reader(tmp_path, {"a.md": "One. Two."})
+    r.future = concurrent.futures.Future()  # the first sentence waits on the download
+    r.voice.progress = "Downloading the Kokoro voice, once: 45 of 120 MB"
+    r.tick()
+    r.draw()
+    assert r.mode == "loading"
+    assert any("45 of 120 MB" in text for y, x, text in r.term.drawn if y == r.term.h - 2)

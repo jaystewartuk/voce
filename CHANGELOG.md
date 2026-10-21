@@ -9,6 +9,8 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 - **A smaller Kokoro download: 120 MB, down from 350 MB.** voce now fetches the int8 build of the same model, which
   sounds the same. If you already have the full model, voce keeps using it and downloads nothing.
+- **You can see the voice download.** The reader's status bar shows how far it has got, such as "45 of 120 MB",
+  and the command line shows one line of progress for it rather than one per file.
 
 ### Fixed
 

@@ -102,6 +102,10 @@ class Engine:
     def prepare(self, say: Callable[[str], None] | None = None) -> None:
         """One-time setup, reporting progress through say."""
 
+    def downloading(self) -> str:
+        """While a one-time download runs, how far it has got; otherwise empty."""
+        return ""
+
     def synthesize(self, text: str, out: Path) -> None:
         raise NotImplementedError
 
@@ -159,6 +163,7 @@ class Kokoro(Engine):
                                        "j": "ja", "p": "pt-br", "z": "cmn"}
     _model = None
     _lock = threading.Lock()
+    _got: int | None = None  # bytes downloaded so far, while a download runs
 
     @classmethod
     def configured(cls, state) -> bool:
@@ -182,30 +187,41 @@ class Kokoro(Engine):
         return Kokoro._model is not None or all(p.exists() for p in self.files())
 
     def prepare(self, say: Callable[[str], None] | None = None) -> None:
-        """Download the model files that are missing, once."""
-        for path in self.files():
-            if path.exists():
-                continue
-            path.parent.mkdir(parents=True, exist_ok=True)
-            tmp = path.with_name(path.name + ".tmp")
+        """Download the model files that are missing, once, showing one line of progress for them all."""
+        missing = [path for path in self.files() if not path.exists()]
+        if not missing:
+            return
+        missing[0].parent.mkdir(parents=True, exist_ok=True)
+        if say:
+            say(f"Downloading the Kokoro voice ({self.SIZE_MB} MB), once, to {missing[0].parent}")
+        Kokoro._got, shown = 0, -1
+        try:
+            for path in missing:
+                tmp = path.with_name(path.name + ".tmp")
+                try:
+                    with urllib.request.urlopen(self.FILES[path.name], timeout=60) as r, tmp.open("wb") as f:
+                        while chunk := r.read(1 << 20):
+                            f.write(chunk)
+                            Kokoro._got += len(chunk)
+                            if say and self.mb() != shown:
+                                shown = self.mb()
+                                print(f"\r  {shown} of {self.SIZE_MB} MB", end="", flush=True)
+                except Exception as e:
+                    tmp.unlink(missing_ok=True)
+                    raise RuntimeError(f"Couldn't download the Kokoro voice: {str(e)[:80]}") from e
+                tmp.replace(path)
             if say:
-                say(f"Downloading the Kokoro voice ({self.SIZE_MB} MB), once, to {path.parent}")
-            try:
-                with urllib.request.urlopen(self.FILES[path.name], timeout=60) as r, tmp.open("wb") as f:
-                    total, got, shown = int(r.headers.get("Content-Length") or 0), 0, -1
-                    while chunk := r.read(1 << 20):
-                        f.write(chunk)
-                        got += len(chunk)
-                        if say and total and got * 20 // total != shown:
-                            shown = got * 20 // total
-                            print(f"\r  {path.name}: {got // 1_000_000} of {total // 1_000_000} MB", end="",
-                                  flush=True)
-                if say and total:
-                    print()
-            except Exception as e:
-                tmp.unlink(missing_ok=True)
-                raise RuntimeError(f"Couldn't download the Kokoro voice: {str(e)[:80]}") from e
-            tmp.replace(path)
+                print()
+        finally:
+            Kokoro._got = None
+
+    def mb(self) -> int:
+        return min((Kokoro._got or 0) // 1_000_000, self.SIZE_MB)
+
+    def downloading(self) -> str:
+        if Kokoro._got is None:
+            return ""
+        return f"Downloading the Kokoro voice, once: {self.mb()} of {self.SIZE_MB} MB"
 
     def _load(self):
         with Kokoro._lock:
@@ -607,6 +623,9 @@ class Voice:
         """Whether sentences are sent to a service that counts them."""
         return not self.engine.local
 
+    def downloading(self) -> str:
+        return self.engine.downloading()
+
     def usage(self) -> str:
         """A line for the metered engines: the characters sent this month, and the free allowance if there is one."""
         if not self.metered:
@@ -639,8 +658,6 @@ class Voice:
             return self._fallback(text)
         path.parent.mkdir(parents=True, exist_ok=True)
         tmp = path.with_name(f"{path.name}.{threading.get_ident()}.tmp")
-        if not self.engine.ready():
-            self.warning = f"Downloading the {self.engine.title} voice ({Kokoro.SIZE_MB} MB), once."
         try:
             self.engine.synthesize(text, tmp)
             with self.lock:

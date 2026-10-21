@@ -143,3 +143,28 @@ def test_kokoro_fetches_the_small_model_but_keeps_using_a_full_one_already_there
     folder.mkdir(parents=True)
     (folder / "kokoro-v1.0.onnx").write_bytes(b"")
     assert [p.name for p in Kokoro.files()] == ["kokoro-v1.0.onnx", "voices-v1.0.bin"]
+
+
+def test_kokoro_downloads_the_missing_files_on_one_line_of_progress(tmp_path, monkeypatch, capsys):
+    import io
+
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path))
+    seen = []
+
+    class Response(io.BytesIO):
+        def __enter__(self): return self
+        def __exit__(self, *_): pass
+
+    def urlopen(url, timeout):
+        seen.append(Kokoro().downloading())
+        return Response(b"x" * 3_000_000)
+
+    monkeypatch.setattr(voices.urllib.request, "urlopen", urlopen)
+    said = []
+    Kokoro().prepare(said.append)
+    assert len(said) == 1 and "Downloading the Kokoro voice (120 MB), once" in said[0]
+    assert [s.split(": ")[1] for s in seen] == ["0 of 120 MB", "3 of 120 MB"]
+    assert capsys.readouterr().out.endswith("\r  6 of 120 MB\n")
+    assert Kokoro().ready() and Kokoro().downloading() == ""
+    Kokoro().prepare(said.append)  # nothing missing: nothing said
+    assert len(said) == 1
