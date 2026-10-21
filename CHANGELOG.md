@@ -14,6 +14,9 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ### Fixed
 
+- **The web app keeps your place.** It could say "Couldn't save your place after three tries" when you paused or
+  switched tabs soon after it had saved. It now saves one at a time, and checks GitHub's own copy when a save is
+  turned away.
 - **Kokoro on Python 3.14.** Installing voce with Python 3.14, Homebrew's default, now includes Kokoro. Before,
   it was left out and voce said to reinstall with a newer Python.
 

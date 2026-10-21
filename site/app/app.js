@@ -142,6 +142,14 @@ class Repo {
     return Object.fromEntries(d.tree.filter((e) => e.type === "blob").map((e) => [e.path, e.sha]));
   }
 
+  /** A file's sha and text as they are now; the browser may keep API answers for a minute, so not from its cache. */
+  async file(path) {
+    const r = await this.api(`/repos/${this.name}/contents/${path}`, { cache: "no-store" });
+    if (r.status === 404) return null;
+    const d = await r.json();
+    return { sha: d.sha, text: decodeURIComponent(escape(atob(d.content.replace(/\n/g, "")))) };
+  }
+
   /** A blob's text, cached by its sha so an unchanged file is never fetched twice. */
   async blob(sha) {
     const cache = await caches.open("voce-blobs").catch(() => null);
@@ -325,8 +333,15 @@ class Library {
     return { text: `${Math.floor(100 * ratio)}%`, ratio };
   }
 
-  /** Save a place, keeping the newer one when another device wrote meanwhile. */
-  async save(hash, title, fields) {
+  /** Save a place, keeping the newer one when another device wrote meanwhile. One save at a time: two at once
+      would both replace the same version, and GitHub turns the second away. */
+  save(hash, title, fields) {
+    const write = () => this.write(hash, title, fields);
+    this.saving = (this.saving || Promise.resolve()).then(write, write);
+    return this.saving;
+  }
+
+  async write(hash, title, fields) {
     const current = this.places[hash] || {};
     const place = { ...current, ...fields, updated: now(), paths: { ...(current.paths || {}), [HOST]: title } };
     this.places[hash] = place;
@@ -334,11 +349,10 @@ class Library {
       const sha = await this.repo.put(`places/${hash}.json`, JSON.stringify(place, null, 1), this.placeShas[`${hash}.json`],
                                       `web: ${title.slice(0, 60)}`);
       if (sha) { this.placeShas[`${hash}.json`] = sha; return place; }
-      const fresh = await this.repo.tree("places");
-      const theirSha = fresh[`${hash}.json`];
-      this.placeShas[`${hash}.json`] = theirSha;
-      if (theirSha) {
-        const theirs = JSON.parse(await this.repo.blob(theirSha));
+      const file = await this.repo.file(`places/${hash}.json`);
+      this.placeShas[`${hash}.json`] = file?.sha;
+      if (file) {
+        const theirs = JSON.parse(file.text);
         if ((theirs.updated || "") > place.updated) { this.places[hash] = theirs; return theirs; }
       }
     }
