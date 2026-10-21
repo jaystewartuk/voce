@@ -1,8 +1,9 @@
-"""Audio playback on macOS.
+"""Audio playback.
 
-The native player is a small Swift program (player.swift, compiled once with the Xcode command line tools). It
-plays sentences back to back with no gap, pauses mid-word, changes speed without changing pitch, and reports the
-exact position so the word highlight keeps time. Without swiftc, voce falls back to one ``afplay`` per sentence.
+On macOS the native player is a small Swift program (player.swift, compiled once with the Xcode command line
+tools). It plays sentences back to back with no gap, pauses mid-word, changes speed without changing pitch, and
+reports the exact position so the word highlight keeps time. Without swiftc, and on Linux, voce plays one sentence
+at a time with the first player it finds: afplay on macOS; mpv, ffplay, pw-play, paplay or aplay on Linux.
 """
 
 from __future__ import annotations
@@ -10,10 +11,12 @@ from __future__ import annotations
 import hashlib
 import shutil
 import subprocess
+import sys
 import threading
 import time
 from importlib import resources
 from pathlib import Path
+from typing import Callable
 
 from voce import paths
 
@@ -35,7 +38,7 @@ def build_player(cache: Path | None = None, quiet: bool = False) -> Path | None:
     result = subprocess.run(["swiftc", "-O", "-o", str(binary), str(swift)], capture_output=True, text=True)
     if result.returncode != 0:
         if not quiet:
-            print("Couldn't build it, so using afplay instead:", result.stderr.strip()[:200])
+            print("Couldn't build it, so playing one sentence at a time instead:", result.stderr.strip()[:200])
         return None
     return binary
 
@@ -122,27 +125,75 @@ class NativePlayer:
             self.proc.kill()
 
 
-class AfplayPlayer:
-    """One afplay per sentence: a short gap between sentences, and pausing restarts the sentence."""
+def _afplay(path: Path, speed: float) -> list[str]:
+    return ["afplay", "-q", "1", "-r", f"{speed:.2f}", str(path)]
+
+
+def _mpv(path: Path, speed: float) -> list[str]:
+    return ["mpv", "--no-video", "--no-terminal", "--really-quiet", f"--speed={speed:.2f}", str(path)]
+
+
+def _ffplay(path: Path, speed: float) -> list[str]:
+    return ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", "-af", f"atempo={speed:.2f}", str(path)]
+
+
+# The players tried, in order: whether each changes speed, what it plays, and how it is started. pw-play, paplay
+# and aplay come with PipeWire, PulseAudio and ALSA, and play WAV (Kokoro's audio) at one speed only.
+PLAYERS: dict[str, tuple[bool, tuple[str, ...], Callable[[Path, float], list[str]]]] = {
+    "afplay": (True, (), _afplay),
+    "mpv": (True, (), _mpv),
+    "ffplay": (True, (), _ffplay),
+    "pw-play": (False, ("wav",), lambda path, speed: ["pw-play", str(path)]),
+    "paplay": (False, ("wav",), lambda path, speed: ["paplay", str(path)]),
+    "aplay": (False, ("wav",), lambda path, speed: ["aplay", "-q", str(path)]),
+}
+
+
+def find_players() -> list[str]:
+    """The players installed here, best first."""
+    names = ["afplay"] if sys.platform == "darwin" else [n for n in PLAYERS if n != "afplay"]
+    return [n for n in names if shutil.which(n)]
+
+
+class CommandPlayer:
+    """One player process per sentence: a short gap between sentences, and pausing restarts the sentence."""
 
     can_pause = False
 
-    def __init__(self, mute: bool = False) -> None:
+    def __init__(self, mute: bool = False, names: list[str] | None = None) -> None:
         self.mute = mute
+        self.names = find_players() if names is None else names
         self.proc: subprocess.Popen | None = None
         self.started, self.length, self.speed = 0.0, 0.0, 1.0
+        self.fixed = False  # the player in use plays at one speed
         self.error = ""
+
+    def command(self, path: Path, speed: float) -> list[str] | None:
+        """The first player that can play this file, at this speed if it can."""
+        for name in self.names:
+            _, kinds, build = PLAYERS[name]
+            if not kinds or path.suffix.lstrip(".") in kinds:
+                return build(path, speed)
+        return None
 
     def play(self, path: Path, duration: float, speed: float) -> None:
         self.stop()
         self.length, self.speed = duration, speed
         self.started = time.monotonic()
-        if not self.mute:
-            self.proc = subprocess.Popen(["afplay", "-q", "1", "-r", f"{speed:.2f}", str(path)],
-                                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if self.mute:
+            return
+        command = self.command(path, speed)
+        if command is None:
+            self.error = f"No player here plays {path.suffix} files: install mpv or ffmpeg."
+            return
+        self.fixed = not PLAYERS[command[0]][0]
+        if self.fixed:
+            self.speed = 1.0  # the highlight keeps to the speed actually heard
+        self.proc = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     def set_rate(self, speed: float) -> None:
-        self.speed = speed
+        if not self.fixed:
+            self.speed = speed
 
     def position(self) -> float:
         lag = 0.0 if self.mute else 0.3
@@ -172,12 +223,12 @@ class AfplayPlayer:
         self.stop()
 
 
-def make_player(mute: bool = False, afplay: bool = False):
-    if not mute and not afplay:
+def make_player(mute: bool = False, plain: bool = False):
+    if not mute and not plain and sys.platform == "darwin":
         binary = build_player()
         if binary:
             try:
                 return NativePlayer(binary)
             except OSError:
                 pass
-    return AfplayPlayer(mute=mute)
+    return CommandPlayer(mute=mute)

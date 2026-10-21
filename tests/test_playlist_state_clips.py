@@ -1,4 +1,5 @@
 import json
+import os
 
 import pytest
 
@@ -105,6 +106,8 @@ def test_only_what_changed_is_written(tmp_path):
     state.place(a, load(a).units, 1), state.place(b, load(b).units, 1)
     state.save(force=True)
     places = tmp_path / "state" / "places"
+    for f in places.glob("*.json"):
+        os.utime(f, ns=(0, 0))  # back-dated, so a rewrite shows even where file times are coarse
     before = {f.name: f.stat().st_mtime_ns for f in places.glob("*.json")}
     assert len(before) == 2
     state.done(b)

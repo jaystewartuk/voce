@@ -1,8 +1,8 @@
 """Voices: six engines that turn a sentence into audio, and the cache that keeps every sentence once it is said.
 
-* Kokoro      a small open model that runs on the Mac. Free, offline and the default: there is nothing to set up.
-              The model (350 MB) is downloaded once, into the cache.
-* Mac         the Mac's own voices, through ``say``. Used when Kokoro can't run, and as the last resort.
+* Kokoro      a small open model that runs on this computer. Free, offline and the default: there is nothing to
+              set up. The model (350 MB) is downloaded once, into the cache.
+* Mac         the Mac's own voices, through ``say``. Used when Kokoro can't run, and as the last resort. macOS only.
 * Google      Chirp 3 HD. ``VOCE_GOOGLE_API_KEY``, or the ``gcloud`` CLI signed in, with the project to bill from
               ``VOCE_GOOGLE_PROJECT``, ``voce --google-project``, or ``gcloud config get-value project``.
 * Azure       Neural voices. ``VOCE_AZURE_KEY`` and ``VOCE_AZURE_REGION`` (or ``AZURE_SPEECH_KEY`` / ``_REGION``).
@@ -31,6 +31,7 @@ import sys
 import threading
 import time
 import urllib.request
+import wave
 from pathlib import Path
 from typing import Callable, ClassVar
 from urllib.parse import quote
@@ -56,7 +57,7 @@ class Engine:
     title = ""           # the word used in messages
     ext = "mp3"          # what its audio files are
     rate = 24000         # their sample rate
-    local = False        # runs on this Mac: nothing is sent anywhere and nothing is counted
+    local = False        # runs on this computer: nothing is sent anywhere and nothing is counted
     free_chars = 0       # the characters a month that cost nothing, for the metered engines
     voices: tuple[str, ...] = ()   # the voices the v key cycles through
     default = ""
@@ -108,8 +109,13 @@ class Engine:
 class Mac(Engine):
     kind, title, ext, rate, local = "mac", "Mac", "aiff", 22050, True
     takes_names = True
-    setup = "The Mac's voices are always there; add better ones in System Settings, Accessibility, Spoken Content."
+    setup = "The Mac's voices need macOS; there, add better ones in System Settings, Accessibility, Spoken Content."
     _voices: ClassVar[list[str] | None] = None
+
+    @classmethod
+    def configured(cls, state) -> bool:
+        return sys.platform == "darwin" and shutil.which("say") is not None
+
     NOVELTY: ClassVar[set[str]] = {"Albert", "Bad News", "Bahh", "Bells", "Boing", "Bubbles", "Cellos", "Wobble",
                                    "Good News", "Jester", "Organ", "Superstar", "Trinoids", "Whisper", "Zarvox",
                                    "Junior", "Ralph", "Kathy", "Fred", "Eddy", "Flo", "Grandma", "Grandpa", "Reed",
@@ -215,8 +221,6 @@ class Kokoro(Engine):
             return Kokoro._model
 
     def synthesize(self, text: str, out: Path) -> None:
-        import wave
-
         import numpy as np
 
         model = self._load()
@@ -520,7 +524,7 @@ def default_engine(state) -> str:
     for kind in CLOUD:
         if kind in kinds:
             return kind
-    return "kokoro" if "kokoro" in kinds else "mac"
+    return "mac" if "mac" in kinds and "kokoro" not in kinds else "kokoro"
 
 
 def engine_for(name: str, state) -> str:
@@ -553,12 +557,13 @@ def make(kind: str, name: str, state, cache: Path | None = None) -> Voice:
 
 
 def backup_for(engine: Engine, state) -> Engine | None:
-    """What says a sentence when engine can't: Kokoro for the cloud engines, the Mac for Kokoro, nothing for the Mac."""
+    """What says a sentence when engine can't: Kokoro for the cloud engines, the Mac for Kokoro, nothing for the Mac.
+    Off a Mac there are no Mac voices, so Kokoro has no backup."""
     if engine.kind == "mac":
         return None
     if engine.kind != "kokoro" and Kokoro.configured(state) and Kokoro().ready():
         return Kokoro()
-    return Mac()
+    return Mac() if Mac.configured(state) else None
 
 
 # ---------------------------------------------------------------- the cache and the fetching
@@ -656,7 +661,7 @@ class Voice:
 
     def _backup_title(self) -> str:
         backup = backup_for(self.engine, self.state)
-        return backup.title if backup else "Mac"
+        return backup.title if backup else "backup"
 
     def _fallback(self, text: str, warning: str = "") -> Path:
         if self.backup is None:
@@ -675,9 +680,7 @@ class Voice:
     def duration(self, path: Path) -> float:
         d = self.durations.get(path)
         if d is None:
-            out = subprocess.run(["afinfo", str(path)], capture_output=True, text=True).stdout
-            m = re.search(r"estimated duration: ([\d.]+)", out)
-            d = self.durations[path] = float(m.group(1)) if m else 3.0
+            d = self.durations[path] = audio_seconds(path) or 3.0
         return d
 
     def get(self, text: str) -> tuple[Path, float]:
@@ -696,6 +699,61 @@ class Voice:
         self.pool.shutdown(wait=False, cancel_futures=True)
         if self.backup is not None:
             self.backup.close()
+
+
+# ---------------------------------------------------------------- how long a file plays
+
+def audio_seconds(path: Path) -> float | None:
+    """How long an audio file plays: WAV and MP3 are read here, anything else is asked of afinfo or ffprobe."""
+    try:
+        if path.suffix == ".wav":
+            with wave.open(str(path), "rb") as w:
+                return w.getnframes() / w.getframerate()
+        if path.suffix == ".mp3":
+            return mp3_seconds(path.read_bytes())
+    except (OSError, EOFError, wave.Error):
+        pass
+    if shutil.which("afinfo"):
+        out = subprocess.run(["afinfo", str(path)], capture_output=True, text=True).stdout
+        m = re.search(r"estimated duration: ([\d.]+)", out)
+        return float(m.group(1)) if m else None
+    if shutil.which("ffprobe"):
+        out = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0",
+                              str(path)], capture_output=True, text=True).stdout
+        try:
+            return float(out)
+        except ValueError:
+            return None
+    return None
+
+
+_MP3_KBPS = {  # bitrates by index, for MPEG-1 and for MPEG-2 and 2.5, layer III
+    1: (0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320),
+    2: (0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160),
+}
+_MP3_RATES = {3: (44100, 48000, 32000), 2: (22050, 24000, 16000), 0: (11025, 12000, 8000)}
+
+
+def mp3_seconds(data: bytes) -> float | None:
+    """The length of an MP3, by walking its frames, so variable bitrates come out right too."""
+    i = 0
+    if data[:3] == b"ID3" and len(data) >= 10:
+        i = 10 + ((data[6] & 0x7F) << 21 | (data[7] & 0x7F) << 14 | (data[8] & 0x7F) << 7 | (data[9] & 0x7F))
+    seconds, frames = 0.0, 0
+    while i + 4 <= len(data):
+        b1, b2 = data[i + 1], data[i + 2]
+        version, layer = (b1 >> 3) & 3, (b1 >> 1) & 3
+        bitrate, rate = b2 >> 4, (b2 >> 2) & 3
+        if data[i] != 0xFF or b1 & 0xE0 != 0xE0 or version == 1 or layer != 1 or bitrate in (0, 15) or rate == 3:
+            i += 1  # not a layer III frame header: look further on
+            continue
+        hz = _MP3_RATES[version][rate]
+        kbps = _MP3_KBPS[1 if version == 3 else 2][bitrate]
+        samples = 1152 if version == 3 else 576
+        i += samples // 8 * kbps * 1000 // hz + ((b2 >> 1) & 1)
+        seconds += samples / hz
+        frames += 1
+    return seconds if frames else None
 
 
 def _error_message(data: bytes) -> str:

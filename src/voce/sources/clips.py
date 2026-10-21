@@ -38,16 +38,28 @@ def save_clip(text: str, source: str, folder: Path | None = None) -> Path:
     return path
 
 
+# The clipboard tools tried, in order: macOS's own, then Wayland's, then the two common ones for X11.
+PASTE = (["pbpaste"], ["wl-paste", "--no-newline"], ["xclip", "-selection", "clipboard", "-o"], ["xsel", "-bo"])
+COPY = (["pbcopy"], ["wl-copy"], ["xclip", "-selection", "clipboard"], ["xsel", "-bi"])
+NO_CLIPBOARD = "No clipboard tool found: install wl-clipboard (Wayland) or xclip (X11)."
+
+
+def _tool(tools: tuple[list[str], ...]) -> list[str]:
+    for command in tools:
+        if command[0].startswith("wl-") and not os.environ.get("WAYLAND_DISPLAY"):
+            continue
+        if shutil.which(command[0]):
+            return command
+    raise ClipError(NO_CLIPBOARD)
+
+
 def read_clipboard() -> str:
-    if not shutil.which("pbpaste"):
-        raise ClipError("pbpaste not found: reading the clipboard needs macOS.")
-    return subprocess.run(["pbpaste"], capture_output=True, text=True).stdout
+    return subprocess.run(_tool(PASTE), capture_output=True, text=True).stdout
 
 
 def write_clipboard(text: str) -> None:
-    if not shutil.which("pbcopy"):
-        raise ClipError("pbcopy not found: copying needs macOS.")
-    subprocess.run(["pbcopy"], input=text, text=True, check=False)
+    subprocess.run(_tool(COPY), input=text, text=True, check=False, stdout=subprocess.DEVNULL,
+                   stderr=subprocess.DEVNULL)
 
 
 def read_stdin() -> str:

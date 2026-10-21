@@ -8,14 +8,13 @@
 from __future__ import annotations
 
 import argparse
-import shutil
 import sys
 from pathlib import Path
 
 from voce import __version__, commands, sources, sync, voices
 from voce.document import load
 from voce.export import ExportError
-from voce.player import make_player
+from voce.player import find_players, make_player
 from voce.playlist import Entry, PlaylistError, find_playlist, part_matches, read_playlist
 from voce.state import State
 from voce.voices import ENGINES, Voice
@@ -25,7 +24,7 @@ examples:
   voce notes.md            read a Markdown file, from where you left off
   voce -r                  read Claude Code's latest reply in this folder (run it in another terminal)
   voce -c                  read what's on the clipboard
-  pbpaste | voce -         read standard input
+  cat notes.md | voce -    read standard input
   voce a.md b.md --export walk.mp3   one MP3 for a walk, with the same voice and pauses
   voce                     carry on where you left off: your playlist, or the last thing you read
   voce --playlist DIR      use DIR/README.md's "Listen in this order" list from now on
@@ -38,7 +37,7 @@ keys:
   click a sentence or a line of code to jump to it · drag to copy · the wheel scrolls
 
 voices:
-  Kokoro, a small open voice that runs on the Mac, works out of the box and costs nothing. Google (Chirp 3 HD),
+  Kokoro, a small open voice that runs on your computer, works out of the box and costs nothing. Google (Chirp 3 HD),
   Azure, ElevenLabs and OpenAI are used when their keys are set: VOCE_GOOGLE_API_KEY (or gcloud, signed in,
   with --google-project once), VOCE_AZURE_KEY and VOCE_AZURE_REGION, VOCE_ELEVENLABS_API_KEY,
   VOCE_OPENAI_API_KEY. voce --voices shows what is set up. Every sentence is fetched once and kept.
@@ -98,7 +97,8 @@ def parser() -> argparse.ArgumentParser:
     tools.add_argument("--sync", nargs="?", const="", metavar="REPO",
                        help="push your places and prepared documents to a git repository and pull the other "
                             "devices'; give OWNER/REPO or a git URL the first time")
-    tools.add_argument("--afplay", action="store_true", help="play with afplay instead of the built-in player")
+    tools.add_argument("--plain-player", "--afplay", dest="plain", action="store_true",
+                       help="play one sentence at a time with afplay, mpv or ffplay, not the built-in player")
     tools.add_argument("--mute", action="store_true", help=argparse.SUPPRESS)
     tools.add_argument("--version", action="version", version=f"voce {__version__}")
     return ap
@@ -180,14 +180,12 @@ def pick_voice(args, state: State) -> Voice:
     return voice
 
 
-def needs_mac(args) -> None:
-    if args.mute:
+def needs_player(args) -> None:
+    if args.mute or find_players():
         return
-    if sys.platform != "darwin":
-        sys.exit("voce plays audio with macOS's own tools, so it needs a Mac for now.")
-    for tool in ("afinfo", "say"):
-        if not shutil.which(tool):
-            sys.exit(f"{tool} not found: voce needs macOS.")
+    if sys.platform == "darwin":
+        sys.exit("afplay not found: voce plays audio with macOS's own tools.")
+    sys.exit("No audio player found. Install mpv (or ffmpeg, for ffplay), for example: sudo apt install mpv")
 
 
 # ---------------------------------------------------------------- syncing
@@ -283,10 +281,12 @@ def main(argv: list[str] | None = None) -> None:
         push_places(state)
         return
 
-    needs_mac(args)
+    needs_player(args)
     try:
         voice.engine.prepare(print)
     except RuntimeError as e:
+        if not ENGINES["mac"].configured(state):
+            sys.exit(str(e))
         print(f"{e}. Using the Mac voice for now.")
         voice = voices.make("mac", "", state)
     if args.quiz is not None:
@@ -313,7 +313,7 @@ def main(argv: list[str] | None = None) -> None:
         kind = kinds[(kinds.index(current.kind) + 1) % len(kinds)] if current.kind in kinds else kinds[0]
         return None if kind == current.kind else voices.make(kind, "", state)
 
-    player = make_player(mute=args.mute, afplay=args.afplay)
+    player = make_player(mute=args.mute, plain=args.plain)
     play(playlist, start, options, state, voice, switch, player, show_menu=args.menu)
     print("Your place is saved." + (f" {voice.usage()}." if voice.usage() else ""))
     push_places(state)

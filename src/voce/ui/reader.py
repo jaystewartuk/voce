@@ -213,7 +213,7 @@ class Reader:
                 return
             self.player.play(path, duration, self.speed)
             self.mode = "playing"
-            self.deadline = now + duration / self.speed + STALL_SECONDS
+            self.deadline = now + duration / min(self.speed, 1.0) + STALL_SECONDS  # some players keep to 1×
             if self.player.error:
                 self.say(self.player.error)
                 self.player.error = ""

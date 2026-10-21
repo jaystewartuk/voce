@@ -64,6 +64,9 @@ def test_the_default_engine_prefers_a_cloud_one_then_kokoro_then_the_mac(tmp_pat
         monkeypatch.delenv(var, raising=False)
     monkeypatch.setattr("shutil.which", lambda name: None)
     monkeypatch.setattr(Kokoro, "configured", classmethod(lambda cls, state: False))
+    monkeypatch.setattr(Mac, "configured", classmethod(lambda cls, state: False))
+    assert voices.default_engine(state) == "kokoro"  # off a Mac: asked for, so its setup message is shown
+    monkeypatch.setattr(Mac, "configured", classmethod(lambda cls, state: True))
     assert voices.default_engine(state) == "mac"
     monkeypatch.setattr(Kokoro, "configured", classmethod(lambda cls, state: True))
     assert voices.default_engine(state) == "kokoro"

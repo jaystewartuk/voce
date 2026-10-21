@@ -5,6 +5,7 @@ from __future__ import annotations
 import concurrent.futures
 import shutil
 import subprocess
+import sys
 import tempfile
 from collections.abc import Iterable
 from pathlib import Path
@@ -41,7 +42,8 @@ def _ffmpeg(*args: str) -> None:
 def export_mp3(docs: list[Doc], out: Path, voice: Voice, state, say: Callable[[str], None] = print) -> Path:
     """Fetch any missing audio, then stitch it into one MP3 at out. Returns the path written."""
     if not shutil.which("ffmpeg"):
-        raise ExportError("ffmpeg not found. Install it with: brew install ffmpeg")
+        how = "brew install ffmpeg" if sys.platform == "darwin" else "sudo apt install ffmpeg, or your system's own"
+        raise ExportError(f"ffmpeg not found. Install it with {how}.")
     units = spoken(docs)
     todo = [t for t in dict.fromkeys(u.say for u in units) if not voice.path(t).exists()]
     chars = sum(len(t) for t in todo)

@@ -5,19 +5,20 @@ build-backend = "hatchling.build"
 [project]
 name = "voce"
 dynamic = ["version"]
-description = "Read Markdown aloud in your terminal, highlighting each sentence and word as it is spoken."
+description = "Read Markdown aloud in your terminal, highlighting each sentence and word as it is spoken. Reads code the way a pairing partner says it."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.9"
 authors = [{ name = "Jay Stewart" }]
-keywords = ["text-to-speech", "tts", "markdown", "terminal", "read-aloud", "curses", "claude-code", "macos"]
+keywords = ["text-to-speech", "tts", "markdown", "terminal", "read-aloud", "curses", "claude-code", "macos", "linux"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console :: Curses",
     "Intended Audience :: Developers",
     "Intended Audience :: Education",
     "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
     "Topic :: Multimedia :: Sound/Audio :: Speech",
