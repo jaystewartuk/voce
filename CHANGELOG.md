@@ -5,6 +5,11 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Kokoro on Python 3.14.** Installing voce with Python 3.14, Homebrew's default, now includes Kokoro. Before,
+  it was left out and voce said to reinstall with a newer Python.
+
 ## [0.2.0] - 2026-10-21
 
 ### Added

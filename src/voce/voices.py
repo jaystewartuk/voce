@@ -148,7 +148,7 @@ class Kokoro(Engine):
     kind, title, ext, local = "kokoro", "Kokoro", "wav", True
     voices = ("af_heart", "af_bella", "am_michael", "am_fenrir", "bf_emma", "bm_george", "bm_fable", "af_nicole")
     default = "af_heart"
-    setup = "Kokoro needs Python 3.10 or newer; reinstall voce with one and it is there."
+    setup = "Kokoro needs Python 3.10 to 3.14. Reinstall voce with one: uv tool install --python 3.13 voce"
     FILES: ClassVar[dict[str, str]] = {"kokoro-v1.0.onnx": "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/"
                                  "kokoro-v1.0.onnx",
              "voices-v1.0.bin": "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/"

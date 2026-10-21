@@ -57,7 +57,7 @@ Ask Claude Code, Codex or any agent to write you something, and press play. It r
 
 ## Install
 
-You need macOS or Linux, and Python 3.10 or newer for the voice that works out of the box.
+You need macOS or Linux, and Python 3.10 to 3.14 for the voice that works out of the box.
 
 ```bash
 uv tool install voce
@@ -189,7 +189,7 @@ You can also `/copy` the reply and run `voce -c`, which works in any terminal an
 
 **Kokoro** works out of the box. It is a small open voice model that runs on your computer, so it is free, needs no
 account and sends nothing anywhere. The first time it speaks, voce downloads the model (350 MB) into its cache.
-It needs Python 3.10 or newer; on 3.9, voce uses the Mac's own voices instead (on Linux, install a newer Python).
+It needs Python 3.10 to 3.14; on 3.9, voce uses the Mac's own voices instead (on Linux, install a newer Python).
 
 **Four cloud engines** are used as soon as their key is set, and `voce --voices` shows which are:
 
