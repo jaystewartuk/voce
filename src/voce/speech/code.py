@@ -106,23 +106,56 @@ def spoken_code(code: str, lang: str | Language = GENERIC) -> str:
 # ---------------------------------------------------------------- a line of code
 
 _COMMENT_STARTS = {"//": r"//.*", "#": r"\#.*", "/*": r"/\*.*?(?:\*/|$)", "--": r"--.*", ";": r";.*"}
+# The operators every language shares, longest first. A language can name more in its own table: those are added
+# for that language only, so a new operator never changes how another language reads.
+_BASE_OPS = ("<=>", "===", "!==", "??=", "**=", "<<<", "?->", "->", "=>", "::", "==", "!=", ">=", "<=", "<>", "??",
+             "?:", "?.", ":=", "&&", "||", "++", "--", "+=", "-=", "*=", "/=", ".=", "**", "//", ">>", "...", "[]")
+_SINGLE_OPS = r"[-+*/%.<>!:|@^~\\(){}\[\];,=&?$]"
 _TOKENS = r"""(?P<space>\s+)
       | (?P<comment>COMMENTS)
-      | (?P<string>'(?:[^'\\]|\\.)*'?|"(?:[^"\\]|\\.)*"?|`(?:[^`\\]|\\.)*`?)
-      | (?P<number>\d+(?:\.\d+)?)
+      | LIFETIME(?P<string>TRIPLE'(?:[^'\\]|\\.)*'?|"(?:[^"\\]|\\.)*"?|`(?:[^`\\]|\\.)*`?)
+      | (?P<number>0[xX][0-9A-Fa-f_]+|0[bB][01_]+|\d+(?:\.\d+)?)
       | (?P<var>\$+[A-Za-z_][A-Za-z0-9_]*)
-      | (?P<name>[A-Za-z_][A-Za-z0-9_]*)
-      | (?P<op><=>|===|!==|\?\?=|\*\*=|<<<|\?->|->|=>|::|==|!=|>=|<=|<>|\?\?|\?:|\?\.|:=|&&|\|\||\+\+|--|\+=|-=
-            |\*=|/=|\.=|\*\*|//|>>|\.\.\.|\[\]|[-+*/%.<>!:|@^~\\(){}\[\];,=&?$])
+      | (?P<name>[A-Za-z_][A-Za-z0-9_]*NAMEEND)
+      | (?P<op>OPS)
       | (?P<other>.)"""
+_TRIPLE = r"""\"\"\"(?:[^"\\]|\\.|"(?!""))*(?:\"\"\")?|'''(?:[^'\\]|\\.|'(?!''))*(?:\'\'\')?|"""
+
+
+def extra_operators(lang: Language) -> tuple:
+    """The operators a language names that the shared pattern lacks, longest first: ``<<=`` for Java, ``&mut`` for
+    Rust. A name must be symbols, with letters only at the end (``-eq``, ``!is``)."""
+    found = (k for k in lang.operators if len(k) > 1 and k not in _BASE_OPS and re.fullmatch(r"[^\w\s]+[a-z]*", k))
+    return tuple(sorted(found, key=len, reverse=True))
+
+
+def _op_pattern(extra: tuple) -> str:
+    def literal(k: str) -> str:
+        return re.escape(k) + (r"(?!\w)" if k[-1].isalpha() else "")
+    # an extra that starts a longer shared operator (.. in ...) must come after it, or it would cut it short
+    after = [k for k in extra if any(b.startswith(k) for b in _BASE_OPS)]
+    before = [k for k in extra if k not in after]
+    return "|".join([*map(literal, before), *map(re.escape, _BASE_OPS), *map(literal, after), _SINGLE_OPS])
 
 
 @cache
-def _tokens(comments: tuple) -> re.Pattern:
-    """The tokeniser for a language, which differs only in how a comment starts: // is a comment in PHP and
-    floor division in Python."""
+def _tokens(comments: tuple, extra: tuple = (), flavour: str = "") -> re.Pattern:
+    """The tokeniser for a language, which differs in how a comment starts (// is a comment in PHP and floor
+    division in Python), the operators it names, and a few things that are one language's own: Python's triple
+    quotes, Rust's lifetimes, Ruby's ``empty?`` and ``save!``."""
     starts = "|".join(_COMMENT_STARTS[c] for c in comments) or "(?!x)x"
-    return re.compile(_TOKENS.replace("COMMENTS", starts), re.X)
+    text = _TOKENS.replace("COMMENTS", starts).replace("OPS", _op_pattern(extra))
+    text = text.replace("TRIPLE", _TRIPLE if flavour == "python" else "")
+    text = text.replace("LIFETIME", "(?P<lifetime>'[A-Za-z_]\\w*(?!'))\n      | " if flavour == "rust" else "")
+    text = text.replace("NAMEEND", r"(?:[?!](?![=~\w]))?" if flavour == "ruby" else "")
+    return re.compile(text, re.X)
+
+
+def tokens_for(lang: Language) -> re.Pattern:
+    """The tokeniser for one language."""
+    return _tokens(lang.comments, extra_operators(lang), lang.name if lang.name in ("python", "rust", "ruby") else "")
+
+
 _CAST = re.compile(r"\((" + "|".join(CAST_TYPES) + r")\)")
 _PHP_TAGS = re.compile(r"<\?php\b|<\?=|\?>")
 _PHP_TAGS_SAID = {"<?php": "P H P open tag", "<?=": "P H P echo tag", "?>": "P H P close tag"}
@@ -135,8 +168,9 @@ _WHERE = re.compile(r"\b(where|orWhere|whereNot|orWhereNot|having|orHaving)\(\s*
 _PROSE_LINE = re.compile(r"^[\w\s,.;:!?'\"-]+$")
 
 
-# "{$this->name}" and "$name" inside a double-quoted string are code: read them as code.
-_INTERPOLATED = re.compile(r"\{\$([^}]*)\}|\$([A-Za-z_]\w*(?:->[A-Za-z_]\w*|\[[^\]]*\])*)")
+# "{$this->name}", "$name", "${name}" and "#{name}" inside a string are code: read them as code.
+_INTERPOLATED = re.compile(r"\{\$([^}]*)\}|\$\{([^}]*)\}|#\{([^}]*)\}"
+                           r"|\$([A-Za-z_]\w*(?:->[A-Za-z_]\w*|\[[^\]]*\])*)")
 # A line of a doc comment: its opening, its closing, or a continuation starting with a star.
 _DOC_LINE = re.compile(r"^\s*(?:/\*\*?|\*/|\*)(?!\s*[\w$(]*\s*[*=;)])\s?(.*?)\s*(?:\*/)?\s*$")
 _DOC_TAGS = {"return": "returns", "inheritdoc": "inherit doc", "var": "var", "param": "parameter"}
@@ -207,7 +241,12 @@ def _spoken_doc(text: str, lang: Language) -> str:
 
 
 def _spoken_string(raw: str, lang: Language = GENERIC) -> str:
-    body = raw[1:-1] if len(raw) > 1 and raw[-1] == raw[0] else raw[1:]
+    if raw[:3] in ('"""', "\'\'\'"):  # Python's: a docstring's quotes are not said, only what is inside
+        body = raw[3:-3] if len(raw) >= 6 and raw.endswith(raw[:3]) else raw[3:]
+        if not body.strip():
+            return ""
+    else:
+        body = raw[1:-1] if len(raw) > 1 and raw[-1] == raw[0] else raw[1:]
     if body in STRING_WORDS:
         return STRING_WORDS[body]
     if body in CODE_OPERATORS:
@@ -219,7 +258,7 @@ def _spoken_string(raw: str, lang: Language = GENERIC) -> str:
     if _PATH.fullmatch(body):
         return spoken_path(body)  # 'routes/web.php' is "routes slash web dot P H P"
     body = re.sub(r"\\n", " new line ", body)
-    body = _INTERPOLATED.sub(lambda m: " " + spoken_code(m.group(1) or m.group(2), lang) + " ", body)
+    body = _INTERPOLATED.sub(lambda m: " " + spoken_code(next(g for g in m.groups() if g), lang) + " ", body)
     body = body.replace("?->", " nullsafe arrow ").replace("->", " arrow ")
     body = re.sub(r"[{}$\[\]]", " ", body)
     body = re.sub(r"(?<=\w)_+(?=\w)", " ", body)
@@ -242,6 +281,8 @@ def _spoken_operator(tok: str, line: str, end: int, after_value: bool, lang: Lan
     nxt = line[end:end + 1]
     if tok in ("*", "**") and not after_value:
         return "star" if tok == "*" else "double star"  # *args and **kwargs
+    if after_value and tok in lang.after_value:
+        return lang.after_value[tok]
     if tok in lang.operators:
         return lang.operators[tok]
     if tok == "[]":
@@ -261,17 +302,29 @@ def _spoken_operator(tok: str, line: str, end: int, after_value: bool, lang: Lan
     return LINE_OPERATORS.get(tok, tok)
 
 
-def is_prose_line(line: str) -> bool:
+# A line that starts the way only Python code does (from x import a, b), or a SQL line (WHERE a ? 'b'): code that
+# only looks like a sentence.
+_CODE_LINES = {"python": re.compile(r"\s*(?:from\s+\S+\s+import|import|elif|def|class|except|for\s.+\sin)\b"),
+               "sql": re.compile(r"\s*[A-Z]{2,}\b|(?:.*\b[A-Z]{2,}\b){2}")}
+
+
+def is_prose_line(line: str, lang: Language = GENERIC) -> bool:
     """Four or more words, a sentence's punctuation and nothing that only code has, such as a camelCase or a
     snake_case name."""
+    if lang.name in _CODE_LINES and _CODE_LINES[lang.name].match(line):
+        return False
     return bool(_PROSE_LINE.match(line) and len(line.split()) >= 4 and re.search(r"[.,;:!?](\s|$)", line.strip())
                 and not re.search(r"[a-z][A-Z]|\w_\w|^\s*_|_\s*$", line))
+
+
+# Languages whose Name<Type> is a type with arguments, not a comparison: List<String> is "List of String".
+_GENERICS = ("java", "kotlin", "csharp", "typescript", "rust", "swift")
 
 
 def spoken_line(line: str, lang: str | Language = GENERIC) -> str:
     """One line of code, the way a person reads it aloud, in the language's own words if it is given."""
     lang = language(lang) if isinstance(lang, str) else lang
-    if is_prose_line(line):
+    if is_prose_line(line, lang):
         return line.strip().rstrip(".")
     if "/*" in lang.comments:
         doc = _DOC_LINE.match(line)
@@ -281,18 +334,19 @@ def spoken_line(line: str, lang: str | Language = GENERIC) -> str:
     previous = ""  # the kind of the last token that was not space, for [ and ...
     ternaries = 0  # a ? waiting for its :
     depth, arrows = 0, []  # open brackets, and the depth at each fn whose => is still to come
+    types, last = 0, ""  # open Name<...> type arguments, and the last name or operator said
     if lang is GENERIC or lang.name == "php":
         line = _CAST.sub(lambda m: f"cast to {m.group(1)} ", line)
         line = re.sub(r"^(\s*)#\[", r"\1attribute [", line)  # #[AsCommand] is an attribute, not a comment
         line = _PHP_TAGS.sub(lambda m: f" {_PHP_TAGS_SAID[m.group()]} ", line)
         line = _WHERE.sub(r"\1(\2 == \3)", line)  # where('id', 1) and where('id', '=', 1) are both where id = 1
-    for m in _tokens(lang.comments).finditer(line):
+    for m in tokens_for(lang).finditer(line):
         kind = m.lastgroup
         tok = m.group()
         if kind == "space" or (tok == "." and m.end() == len(line.rstrip())):
             continue  # a full stop ending the line is prose's, not code's
         if kind == "comment":
-            text = re.sub(r"^(//|#|/\*|--|;)\s*|\s*\*/$", "", tok).strip()
+            text = re.sub(r"^(//[/!]?|#|/\*|--|;)\s*|\s*\*/$", "", tok).strip()
             if text:
                 text = "and so on" if text in ("...", "…") else _spoken_comment(text)
                 if words and not words[-1].endswith((".", ",")):
@@ -301,8 +355,11 @@ def spoken_line(line: str, lang: str | Language = GENERIC) -> str:
             break
         if kind == "string":
             words.append(_spoken_string(tok, lang))
+        elif kind == "lifetime":
+            words.append("lifetime " + spoken_code(tok[1:], lang))  # Rust's 'a and 'static
         elif kind == "number":
-            words.append(tok)
+            words.append("hex " + tok[2:] if tok[:2] in ("0x", "0X") else
+                         "binary " + tok[2:] if tok[:2] in ("0b", "0B") else tok)
         elif kind == "var":
             words.append(spoken_code(tok.lstrip("$"), lang))
         elif kind == "name":
@@ -310,15 +367,31 @@ def spoken_line(line: str, lang: str | Language = GENERIC) -> str:
                 arrows.append(depth)
             if tok in STRING_PREFIXES and line[m.end():m.end() + 1] in ("'", '"'):
                 words.append(STRING_PREFIXES[tok])  # f"..." in Python is "f string ..."
+            elif lang.name == "ruby" and tok[-1] in "?!":  # empty? and save!: the mark is part of the name
+                words.append(spoken_code(tok[:-1], lang) + (" question mark" if tok[-1] == "?" else " bang"))
             else:
                 words.append(spoken_code(tok, lang))
         elif kind == "op":
             after_value = previous in ("var", "name", "string", "number", "close")
-            if tok == "=" and words and words[-1] == "square brackets":
+            if tok == "=" and words and words[-1] == "square brackets" \
+                    and (lang is GENERIC or lang.name == "php"):
                 words[-1] = "append"  # $list[] = $item: the manual's "append"
                 continue
             depth += (tok == "(") - (tok == ")")
             said = _spoken_operator(tok, line, m.end(), after_value, lang)
+            if lang.name in _GENERICS:
+                if tok == "<" and previous == "name" and last[:1].isupper() and line[m.start() - 1:m.start()].isalnum():
+                    said, types = "of", types + 1  # List<String>: a type with arguments, not a comparison
+                elif tok == "::<":
+                    types += 1  # Rust's s.parse::<i32>()
+                elif tok in (">", ">>", ">>>") and types:
+                    said, types, kind = "", max(types - len(tok), 0), "close"  # its closing, or two at once
+                elif tok == "?" and types:
+                    said = "wildcard"  # Java's List<? extends T>
+            if lang.name == "rust" and tok == "!" and previous == "name" and line[m.end():m.end() + 1] in "([{":
+                said = ""  # println!(...): the bang is part of the macro's name
+            elif lang.name == "sql" and tok == "*" and last.lower() in ("select", "distinct", ",", "("):
+                said = "star"  # SELECT * and count(*)
             if tok == "=>" and arrows and depth == arrows[-1] and lang.name in ("php", "code"):
                 arrows.pop()
                 said = "returns"  # the => of fn ($x) => $x * 2: the arrow function returns its expression
@@ -334,7 +407,7 @@ def spoken_line(line: str, lang: str | Language = GENERIC) -> str:
                 kind = "close"
         else:
             words.append(tok)
-        previous = kind
+        previous, last = kind, tok
     s = " ".join(w for w in words if w)
     s = re.sub(r"\s+([,.])", r"\1", s)
     s = re.sub(r"[,.](\s*[,.])+", lambda m: m.group()[-1], s)
