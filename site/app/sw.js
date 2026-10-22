@@ -1,8 +1,8 @@
 /* The app's own files, kept so the page opens offline. The repository, Pyodide and the voice model are never cached
    here: GitHub is asked each time, and the browser keeps the model and the Python runtime itself. voce's wheel in
    py/ is cached on first use like any other file of the page. */
-const SHELL = "voce-app-v3";
-const FILES = ["./", "index.html", "app.js", "py.js", "manifest.json", "../assets/logo.svg"];
+const SHELL = "voce-app-v4";
+const FILES = ["./", "index.html", "app.js", "py.js", "manifest.json", "../assets/logo.svg", "../assets/icon-192.png", "../assets/icon-512.png"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(SHELL).then((c) => c.addAll(FILES)).then(() => self.skipWaiting()));

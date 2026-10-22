@@ -181,6 +181,15 @@ place that hash has. Opening one prepares it in the worker and keeps the result 
 and the reading code's stamp from `py/manifest.json`, so a document is read once per version of voce. The Mac's
 prepared copies and files opened on the device are listed after the playlists, each once by hash.
 
+Without signing in, the page is a `Library` with no repository: it lists only what was opened on the device, and
+keeps places in `localStorage` instead of `places/`. Anything opened (a file, a web page, text shared to the app)
+is prepared in the worker and kept in the Cache API under its hash, the newest 30. A web page is fetched straight
+from the site where its CORS headers allow that, and otherwise through the relay's `/page`, which fetches the
+address and returns the text and its type. Readability takes the article out of the page and Turndown writes it as
+Markdown, both loaded from jsDelivr on first use, and from there it is any other Markdown. The manifest's
+`share_target` makes the installed app a target of Android's share sheet: a shared address or text arrives as
+query parameters and is opened the same way.
+
 A place is written with the Contents API on pause, finish, leaving the page and every two minutes while playing.
 The write carries the blob's sha; a 409 means another device wrote first, so the page re-reads that place and
 keeps whichever `updated` is newer, the same rule as `sync.py`. The service worker caches the app's own files

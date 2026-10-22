@@ -7,13 +7,17 @@
    library itself never leaves GitHub and this device. A fine-grained token pasted by hand works the same way.
 
    The page also carries voce's own reading code (py.js: Python in the browser), so it can read a playlist straight
-   from a repository, or a file from this device, with nothing prepared on a Mac first. */
+   from a repository, or a file or web page from this device, with nothing prepared on a Mac first. Without
+   signing in, it works on this device alone: what was opened and the places in it stay in this browser. */
 
 const API = "https://api.github.com";
 // The GitHub App and its relay. With no client ID, the connect screen offers only the token form.
 const GITHUB_APP = { client: "Iv23liKDXAS67GVEUEA6", slug: "voce-reader", relay: "https://voce-relay.jay73x.workers.dev" };
 const KOKORO_URL = "https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1/+esm";
 const KOKORO_MODEL = "onnx-community/Kokoro-82M-v1.0-ONNX-timestamped"; // the same model, also saying how long each sound lasts
+const READABILITY_URL = "https://cdn.jsdelivr.net/npm/@mozilla/readability@0.5.0/+esm"; // finds the article in a web page
+const TURNDOWN_URL = "https://cdn.jsdelivr.net/npm/turndown@7.2.0/+esm";                 // and turns it into Markdown
+const LOCAL_KEEP = 30;    // documents opened on this device that are kept, newest first
 const AHEAD = 3;          // units generated ahead of the one playing
 const SAVE_EVERY = 120e3; // ms between saves while playing
 const RESUME_WITHIN = 30e3; // ms a pause can last and still pick up mid-sentence; longer, and the sentence starts again
@@ -57,10 +61,10 @@ class Auth {
 }
 
 async function relay(step, body) {
-  if (!GITHUB_APP.relay) throw new Error("Signing in isn't set up on this copy of the app.");
+  if (!GITHUB_APP.relay) throw new Error("The relay isn't set up on this copy of the app.");
   let r;
   try { r = await fetch(`${GITHUB_APP.relay}/${step}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); }
-  catch { throw new Error("Couldn't reach the sign-in relay. Check the connection and try again."); }
+  catch { throw new Error("Couldn't reach voce's relay. Check the connection and try again."); }
   const d = await r.json().catch(() => ({}));
   if (!r.ok || d.error) throw new Error(d.error_description || d.error || `The sign-in relay said ${r.status}.`);
   return d;
@@ -242,17 +246,59 @@ function under(rel) {
   return out.join("/");
 }
 
+// ---------------------------------------------------------------- web pages
+
+/** A web page's article as Markdown: Readability finds it, without the menus and footers, and Turndown writes it
+    in the Markdown voce reads. Pictures and players have nothing to say, so they go. */
+async function pageToMarkdown(html, url) {
+  const [{ Readability }, { default: Turndown }] = await Promise.all([import(READABILITY_URL), import(TURNDOWN_URL)]);
+  const dom = new DOMParser().parseFromString(html, "text/html");
+  if (url) { const base = dom.createElement("base"); base.href = url; dom.head.prepend(base); }
+  const article = new Readability(dom).parse();
+  if (!article || !article.content) throw new Error("there's no article on that page to read");
+  const td = new Turndown({ headingStyle: "atx", codeBlockStyle: "fenced", bulletListMarker: "-", emDelimiter: "*" });
+  td.remove(["img", "picture", "svg", "video", "audio", "iframe", "button", "form"]);
+  const md = td.turndown(article.content).trim();
+  return /^# /.test(md) || !article.title ? md : `# ${article.title.trim()}\n\n${md}`;
+}
+
+/** A page's text and type. Straight from the site where it allows that; otherwise through the relay, which
+    fetches it and hands it back, keeping nothing, because most sites won't let another site's page read them. */
+async function fetchPage(address) {
+  let r = null;
+  try { r = await fetch(address, { headers: { Accept: "text/markdown, text/html;q=0.9, text/plain;q=0.8" } }); }
+  catch { /* the site doesn't let other pages read it */ }
+  if (!r) return relay("page", { url: address });
+  if (!r.ok) throw new Error(`that page answered ${r.status}`);
+  return { url: r.url || address, type: r.headers.get("Content-Type") || "", text: await r.text() };
+}
+
+/** What was typed or shared, as a web address: https:// is added when it's left off. Null when it isn't one. */
+function address(text) {
+  const s = (text || "").trim();
+  const found = /https?:\/\/\S+/.exec(s);
+  if (found) return found[0];
+  return /^[\w-]+(\.[\w-]+)+(\/\S*)?$/.test(s) ? `https://${s}` : null;
+}
+
 // ---------------------------------------------------------------- the library and places
 
 /** The documents to listen to: playlists read straight from repositories, then the Mac's prepared copies, then
-    files opened on this device. Each is named by the hash of its text, which is what names its place too. */
+    files and pages opened on this device. Each is named by the hash of its text, which is what names its place too.
+    With no repository, it is this device's alone: the places are kept in this browser. */
 class Library {
   constructor(repo, auth) {
     this.repo = repo; this.auth = auth;
-    this.docs = []; this.places = {}; this.placeShas = {}; this.local = {}; this.notes = [];
+    this.docs = []; this.places = {}; this.placeShas = {}; this.local = {}; this.notes = []; this.prepared = {};
   }
 
   async load() {
+    if (!this.repo) {
+      this.places = store.get("places", {});
+      this.docs = store.get("local", []).map((d) => ({ ...d, part: "On this device" }));
+      this.notes = [];
+      return;
+    }
     const [prepared, places] = await Promise.all([this.repo.tree("prepared"), this.repo.tree("places")]);
     this.prepared = prepared;
     this.placeShas = places;
@@ -269,7 +315,7 @@ class Library {
     }
     const fresh = new Set(docs.map((d) => d.name));              // a Mac copy of a playlist file is its past: skip it
     index.documents.filter((d) => prepared[`${d.hash}.json`] && !fresh.has(d.file)).forEach(add);
-    Object.values(this.local).forEach((d) => add({ hash: d.hash, title: d.title, part: "On this device", minutes: d.minutes }));
+    store.get("local", []).forEach((d) => add({ ...d, part: "On this device" }));
     this.docs = docs;
     this.notes = notes;
   }
@@ -298,6 +344,8 @@ class Library {
 
   async doc(hash) {
     if (this.local[hash]) return this.local[hash];
+    const kept = await caches.open("voce-local").then((c) => c.match(`${API}/local/${hash}`)).catch(() => null);
+    if (kept) return (this.local[hash] = await kept.json());
     const d = this.docs.find((x) => x.hash === hash);
     if (d && d.sha) return this.prepareFrom(d);
     if (this.prepared[`${hash}.json`]) return JSON.parse(await this.repo.blob(this.prepared[`${hash}.json`]));
@@ -316,10 +364,16 @@ class Library {
     return out;
   }
 
-  /** A file from this device, read now and listed under "On this device" until the page is closed. */
+  /** A file or page from this device, read now and kept in this browser, listed under "On this device". The
+      newest LOCAL_KEEP are kept. */
   async open(text, name) {
     const out = await py.prepare(text, name);
     this.local[out.hash] = out;
+    const cache = await caches.open("voce-local").catch(() => null);
+    if (cache) await cache.put(`${API}/local/${out.hash}`, new Response(JSON.stringify(out))).catch(() => {});
+    const kept = [{ hash: out.hash, title: out.title, minutes: out.minutes }, ...store.get("local", []).filter((d) => d.hash !== out.hash)];
+    kept.slice(LOCAL_KEEP).forEach((d) => cache && cache.delete(`${API}/local/${d.hash}`).catch(() => {}));
+    store.set("local", kept.slice(0, LOCAL_KEEP));
     if (!this.docs.some((d) => d.hash === out.hash)) this.docs.push({ hash: out.hash, title: out.title, part: "On this device", minutes: out.minutes });
     return out.hash;
   }
@@ -345,6 +399,7 @@ class Library {
     const current = this.places[hash] || {};
     const place = { ...current, ...fields, updated: now(), paths: { ...(current.paths || {}), [HOST]: title } };
     this.places[hash] = place;
+    if (!this.repo) { store.set("places", { ...store.get("places", {}), [hash]: place }); return place; }
     for (let attempt = 0; attempt < 3; attempt++) {
       const sha = await this.repo.put(`places/${hash}.json`, JSON.stringify(place, null, 1), this.placeShas[`${hash}.json`],
                                       `web: ${title.slice(0, 60)}`);
@@ -523,6 +578,7 @@ class Reader {
     this.hash = hash;
     this.doc = await this.library.doc(hash);
     this.units = this.doc.units;
+    this.measure();
     this.pos = this.resume();
     this.ui.render(this.doc, this.units);
     this.show();
@@ -538,7 +594,30 @@ class Reader {
     return i >= 0 ? i : Math.max(0, Math.min(p.pos || 0, this.units.length - 1));
   }
 
-  show() { this.ui.highlight(this.pos, this.units.length); }
+  /** For saying where the reader is: the characters left from each unit on, how long one takes to say at 1×
+      (from the document's own minutes), and the heading each block sits under. */
+  measure() {
+    this.left = [];
+    let sum = 0;
+    for (let i = this.units.length - 1; i >= 0; i--) { sum += this.units[i].say.length; this.left[i] = sum; }
+    this.perChar = this.doc.minutes && sum ? this.doc.minutes * 60 / sum : 1 / 15;
+    let heading = "";
+    this.headings = this.doc.blocks.map((b) => {
+      if (/^h[1-6]$/.test(b.kind) && b.text.trim() !== this.doc.title) heading = b.text.trim();
+      return heading;
+    });
+  }
+
+  /** "8 min left · Setup": the time left at this speed, then the heading the sentence is under. */
+  where() {
+    const mins = Math.round((this.left[this.pos] || 0) * this.perChar / this.speed / 60);
+    const left = mins < 1 ? "Under a minute left" : mins < 60 ? `${mins} min left` : `${Math.floor(mins / 60)} h ${mins % 60} min left`;
+    const unit = this.units[this.pos];
+    const heading = unit && unit.block >= 0 ? this.headings[unit.block] : "";
+    return heading ? `${left} · ${heading}` : left;
+  }
+
+  show() { this.ui.highlight(this.pos, this.units.length); this.ui.status(this.where()); }
 
   go(i, play = this.playing) {
     this.pos = Math.max(0, Math.min(i, this.units.length - 1));
@@ -563,7 +642,6 @@ class Reader {
     const unit = this.units[this.pos];
     this.heard = false;
     this.voice.prefetch(this.units.slice(this.pos + 1, this.pos + 1 + AHEAD).map((u) => u.say));
-    this.ui.status(`${this.pos + 1} of ${this.units.length}`);
     this.ui.words(this.pos, unit.say);
     this.voice.speak(unit.say, this.speed,
       () => this.after(unit),
@@ -636,6 +714,7 @@ class Reader {
     store.set("speed", x);
     this.voice.setSpeed(x);
     this.ui.speed(x);
+    if (this.doc) this.ui.status(this.where());
   }
 
   save(fields) {
@@ -725,14 +804,34 @@ function grouped(spans) {
 }
 
 const ui = {
-  render(doc, units) { renderBlocks(doc, units); $("title").textContent = doc.title; },
+  free: false, // scrolled away from the voice: the page stops following it until they come back
+  render(doc, units) { renderBlocks(doc, units); $("title").textContent = doc.title; this.free = false; },
   highlight(i, total) {
     this.unmark();
     document.querySelectorAll("[data-unit].now").forEach((el) => el.classList.remove("now"));
     const els = document.querySelectorAll(`[data-unit="${i}"]`);
     els.forEach((el) => el.classList.add("now"));
-    if (els[0]) { const r = els[0].getBoundingClientRect(); if (r.top < 80 || r.bottom > innerHeight - 160) els[0].scrollIntoView({ block: "center", behavior: "smooth" }); }
-    $("progress").style.width = `${100 * (i + 1) / Math.max(1, total)}%`;
+    if (els[0] && !this.free) { const r = els[0].getBoundingClientRect(); if (r.top < 80 || r.bottom > innerHeight - 160) els[0].scrollIntoView({ block: "center", behavior: "smooth" }); }
+    this.progress((i + 1) / Math.max(1, total));
+    this.placeBack();
+  },
+  progress(ratio) {
+    $("progress").style.width = `${100 * ratio}%`;
+    $("seek").setAttribute("aria-valuenow", Math.round(100 * ratio));
+  },
+  /** Offer the way back to the sentence being read while it is off screen; once it is in view, follow it again. */
+  placeBack() {
+    const el = document.querySelector("[data-unit].now");
+    const r = el && !$("reader").classList.contains("hidden") ? el.getBoundingClientRect() : null;
+    const above = r && r.bottom < 60, below = r && r.top > innerHeight - 120;
+    $("back").classList.toggle("hidden", !(above || below));
+    $("back").classList.toggle("up", !!above);
+    if (r && !above && !below) this.free = false;
+  },
+  back() {
+    this.free = false;
+    const el = document.querySelector("[data-unit].now");
+    if (el) el.scrollIntoView({ block: "center", behavior: "smooth" });
   },
   /** Line the sentence's spoken words up with the words on screen, so the one being said can be marked. A line
       of code said differently from how it's shown keeps only its line marked. */
@@ -788,6 +887,7 @@ let auth, repo, library, reader, voice;
 function show(view) {
   ["connect", "library", "reader"].forEach((v) => $(v).classList.toggle("hidden", v !== view));
   $("player").classList.toggle("hidden", view !== "reader");
+  if (view !== "reader") $("back").classList.add("hidden");
   $("refresh").classList.toggle("hidden", view === "connect");
   if (view !== "reader") $("title").textContent = "";
 }
@@ -832,7 +932,17 @@ async function connect(name, with_) {
   auth = with_;
   auth.save();
   store.set("repo", name);
-  library = new Library(repo, auth);
+  start(new Library(repo, auth));
+}
+
+/** No sign-in: this device alone, for files and web pages, with the places kept in this browser. */
+function onDevice() {
+  repo = null;
+  start(new Library(null, null));
+}
+
+function start(lib) {
+  library = lib;
   voice = makeVoice();
   reader = new Reader(library, voice, ui);
   ui.speed(reader.speed);
@@ -862,8 +972,17 @@ async function showLibrary() {
   try { await library.load(); } catch (e) { el.innerHTML = `<p class="error">${e.message}</p>`; return; }
   el.replaceChildren();
   for (const n of library.notes) { const p = document.createElement("p"); p.className = "error"; p.textContent = `Couldn't read ${n}`; el.append(p); }
-  if (!library.docs.length) {
-    el.insertAdjacentHTML("beforeend", '<h1 class="page">Nothing here yet</h1><p class="lead">In settings, add a playlist from a repository voce can reach, or open a Markdown file below. On the Mac, <code>voce --sync</code> sends your playlist here too.</p>');
+  const open = document.createElement("div"); open.className = "open";
+  open.innerHTML = `<form class="open-url" id="open-url"><input id="url" type="url" inputmode="url" placeholder="A web page to read: https://…"
+      autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Web page address"><button class="btn">Read</button></form>
+    <div class="actions"><button class="btn quiet" id="open-file">Open a file</button><span class="note busy" id="open-note"></span></div>`;
+  if (!library.repo) {
+    el.insertAdjacentHTML("beforeend", `<h1 class="page">Read something</h1><p class="lead">A web page or a Markdown file, read aloud with
+      each sentence and word marked as it is said. It stays on this device: <a href="../privacy.html">what goes where</a>.
+      Have a voce library? <a href="#/" id="signin-link">Sign in with GitHub</a>.</p>`);
+    el.append(open);
+  } else if (!library.docs.length) {
+    el.insertAdjacentHTML("beforeend", '<h1 class="page">Nothing here yet</h1><p class="lead">In settings, add a playlist from a repository voce can reach, or open a web page or a file below. On the Mac, <code>voce --sync</code> sends your playlist here too.</p>');
   }
   let part;
   for (const d of library.docs) {
@@ -876,19 +995,58 @@ async function showLibrary() {
     b.onclick = () => { location.hash = `#/doc/${d.hash}`; };
     el.append(b);
   }
-  const open = document.createElement("div"); open.className = "actions open-file";
-  open.innerHTML = '<button class="btn quiet" id="open-file">Open a Markdown file</button><span class="note busy" id="open-note"></span>';
-  el.append(open);
+  if (library.repo) { open.classList.add("below"); el.append(open); }
   $("open-file").onclick = () => $("file").click();
+  if ($("signin-link")) $("signin-link").onclick = (e) => { e.preventDefault(); if (reader) reader.stop(); signInView(); };
+  $("open-url").onsubmit = (e) => { e.preventDefault(); openPage($("url").value); };
 }
 
-async function openFile(file) {
-  if (!file || !library) return;
-  $("open-note").textContent = "Reading…";
+/** Read something new and go to it, saying how it's going under the open buttons. */
+async function openDoc(doing, get) {
+  if (!library) return;
+  const note = (text) => { const n = $("open-note"); if (n) n.textContent = text; };
+  note(doing);
   try {
-    const hash = await library.open(await file.text(), file.name);
-    location.hash = `#/doc/${hash}`;
-  } catch (e) { $("open-note").textContent = `Couldn't read it: ${e.message}`; }
+    const { text, name } = await get(note);
+    location.hash = `#/doc/${await library.open(text, name)}`;
+  } catch (e) { note(`Couldn't read it: ${e.message}`); }
+}
+
+const isHtml = (name) => /\.x?html?$/i.test(name);
+
+function openFile(file) {
+  if (!file) return;
+  return openDoc("Reading…", async () => {
+    const text = await file.text();
+    return isHtml(file.name) ? { text: await pageToMarkdown(text), name: file.name.replace(/\.\w+$/, ".md") } : { text, name: file.name };
+  });
+}
+
+function openPage(typed) {
+  const url = address(typed);
+  if (!url) { $("open-note").textContent = "That isn't a web address. Try one like https://example.com/post."; return; }
+  return openDoc("Fetching the page…", async (note) => {
+    const page = await fetchPage(url);
+    note("Reading…");
+    const name = `${new URL(page.url).hostname}.md`;
+    return /html|xml/.test(page.type) ? { text: await pageToMarkdown(page.text, page.url), name } : { text: page.text, name };
+  });
+}
+
+/** Something shared to voce from another app (Android's share sheet): a page's address, or text to read as it is. */
+let shared = null;
+function takeShare() {
+  const q = new URLSearchParams(location.search);
+  if (!["url", "text", "title"].some((k) => q.has(k))) return;
+  history.replaceState(null, "", location.pathname + location.hash);
+  shared = { url: q.get("url") || "", text: q.get("text") || "", title: q.get("title") || "" };
+}
+
+function openShared(s) {
+  const url = address(s.url) || address(s.text);
+  if (url) return openPage(url);
+  if (!s.text.trim()) return;
+  return openDoc("Reading…", async () => ({ text: s.title ? `# ${s.title}\n\n${s.text}` : s.text, name: "shared.md" }));
 }
 
 function esc(s) { return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
@@ -899,16 +1057,22 @@ async function showDoc(hash) {
   try {
     if (!library.docs.length) await library.load();
     await reader.open(hash);
-    ui.status(`${reader.pos + 1} of ${reader.units.length}`);
-    if ("mediaSession" in navigator) navigator.mediaSession.metadata = new MediaMetadata({ title: reader.doc.title, artist: "voce" });
+    if ("mediaSession" in navigator) {
+      const art = (n) => ({ src: new URL(`../assets/icon-${n}.png`, location.href).href, sizes: `${n}x${n}`, type: "image/png" });
+      navigator.mediaSession.metadata = new MediaMetadata({ title: reader.doc.title, artist: "voce", artwork: [art(192), art(512)] });
+    }
   } catch (e) { $("article").innerHTML = `<p class="error">${esc(e.message)}</p>`; }
 }
 
 async function route() {
-  if (!repo) { show("connect"); return; }
+  if (!library) { show("connect"); return; }
   const m = location.hash.match(/^#\/doc\/([0-9a-f]{64})$/);
   if (m) await showDoc(m[1]);
-  else { if (reader) reader.stop(); await showLibrary(); }
+  else {
+    if (reader) reader.stop();
+    await showLibrary();
+    if (shared) { const s = shared; shared = null; await openShared(s); }
+  }
 }
 
 function fillVoices() {
@@ -967,7 +1131,14 @@ function wire() {
     finally { $("connect-go").disabled = false; $("connect-status").textContent = ""; }
   };
   $("refresh").onclick = async () => { if (reader) reader.stop(); if (library) { library.docs = []; await caches.delete("voce-blobs").catch(() => {}); } await route(); };
-  $("settings").onclick = () => { $("s-repo").textContent = repo ? repo.name : "not connected"; $("s-change").classList.toggle("hidden", !auth || auth.manual); fillVoices(); $("sheet").classList.remove("hidden"); };
+  $("settings").onclick = () => {
+    $("s-repo").textContent = repo ? repo.name : "none: this device only";
+    $("s-change").classList.toggle("hidden", !repo || !auth || auth.manual);
+    $("s-sources-box").classList.toggle("hidden", !repo);
+    $("s-disconnect").textContent = repo ? "Disconnect this device" : "Sign in to your library";
+    fillVoices();
+    $("sheet").classList.remove("hidden");
+  };
   $("s-close").onclick = () => $("sheet").classList.add("hidden");
   $("sheet").onclick = (e) => { if (e.target === $("sheet")) $("sheet").classList.add("hidden"); };
   $("s-src-add").onclick = addSource;
@@ -978,7 +1149,22 @@ function wire() {
   $("s-words").onchange = () => { store.set("words", $("s-words").checked); if (!$("s-words").checked) ui.unmark(); ui.said = null; };
   $("s-voice").onchange = () => { store.set(`voice.${store.get("engine", "browser")}`, $("s-voice").value); swapVoice(); };
   $("s-change").onclick = async () => { if (reader) reader.stop(); repo = library = reader = null; $("sheet").classList.add("hidden"); location.hash = "#/"; await pickRepo(); };
-  $("s-disconnect").onclick = () => { if (reader) reader.stop(); ["repo", "token", "auth", "signin"].forEach(store.del); auth = repo = library = reader = null; $("sheet").classList.add("hidden"); location.hash = "#/"; route(); };
+  $("s-disconnect").onclick = () => {
+    if (reader) reader.stop();
+    $("sheet").classList.add("hidden");
+    if (!repo) { signInView(); return; }
+    ["repo", "token", "auth", "signin"].forEach(store.del);
+    auth = repo = null; onDevice(); location.hash = "#/"; route();
+  };
+  $("device-go").onclick = () => { onDevice(); location.hash = "#/"; route(); };
+  $("back").onclick = () => ui.back();
+  // Scrolling the page by hand lets go of the voice; the player itself never scrolls the page.
+  const letGo = (e) => { if (!e.target.closest || !e.target.closest("#player")) ui.free = true; };
+  addEventListener("wheel", letGo, { passive: true });
+  addEventListener("touchmove", letGo, { passive: true });
+  addEventListener("scroll", () => ui.placeBack(), { passive: true });
+  addEventListener("resize", () => ui.placeBack());
+  wireSeek();
   $("play").onclick = () => { if (!reader) return; reader.playing ? reader.pause() : reader.play(); };
   $("prev").onclick = () => reader && reader.go(reader.pos - 1);
   $("next").onclick = () => reader && reader.go(reader.pos + 1);
@@ -992,6 +1178,7 @@ function wire() {
   document.addEventListener("keydown", (e) => {
     if (!reader || $("reader").classList.contains("hidden") || e.target.tagName === "INPUT") return;
     if (e.key === " ") { e.preventDefault(); $("play").click(); }
+    else if (["PageUp", "PageDown", "Home", "End", "ArrowUp", "ArrowDown"].includes(e.key)) ui.free = true;
     else if (e.key === "ArrowLeft") reader.go(reader.pos - 1);
     else if (e.key === "ArrowRight") reader.go(reader.pos + 1);
     else if (e.key === "+" || e.key === "=") $("speed").click();
@@ -1008,6 +1195,27 @@ function wire() {
   if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
 }
 
+/** The progress bar is a place to go: drag along it to see where, and let go to read from there. */
+function wireSeek() {
+  const bar = $("seek");
+  const at = (e) => {
+    const r = bar.getBoundingClientRect();
+    return Math.min(reader.units.length - 1, Math.floor(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * reader.units.length));
+  };
+  const ready = () => reader && reader.units && reader.units.length;
+  bar.onpointerdown = (e) => { if (!ready()) return; bar.setPointerCapture(e.pointerId); ui.progress((at(e) + 1) / reader.units.length); };
+  bar.onpointermove = (e) => { if (ready() && bar.hasPointerCapture(e.pointerId)) ui.progress((at(e) + 1) / reader.units.length); };
+  bar.onpointerup = (e) => { if (!ready()) return; ui.free = false; reader.go(at(e)); };
+  bar.onpointercancel = () => ready() && reader.show();
+}
+
+/** The sign-in screen, from reading on this device alone. */
+function signInView() {
+  library = reader = null;
+  location.hash = "#/";
+  connectView("signin");
+}
+
 function swapVoice() {
   if (!reader) return;
   const wasPlaying = reader.playing;
@@ -1019,6 +1227,7 @@ function swapVoice() {
 
 (async () => {
   wire();
+  takeShare();
   try { if (await finishSignIn()) return pickRepo(); }
   catch (e) { connectView("signin"); fail(e.message); return; }
   auth = Auth.saved();
@@ -1034,6 +1243,8 @@ function swapVoice() {
     }
   } else if (auth && !auth.manual) {
     return pickRepo();
+  } else if (!auth) {
+    onDevice();
   }
   await route();
 })();

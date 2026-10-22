@@ -26,6 +26,11 @@ passes through it. If it is ever down, devices already signed in carry on; only 
 3. **Tell the web app** in `site/app/app.js`, at the top: the client ID, the slug and the worker's URL in `GITHUB_APP`.
    While `client` is empty, the app shows only the token form, so the site works before this is done.
 
+It also fetches web pages for the app (`/page`): most sites won't let a page on another site read them, so the
+app asks the relay for the address it was given, and the relay returns the page's text, its type and its final
+address. It sends nothing of the user's with the request, keeps nothing and answers only `ORIGIN`. Redeploy with
+`npx wrangler deploy` after changing `worker.js`.
+
 That is the whole server: one stateless function. Anyone running their own copy of the site registers their own
 app and worker the same way, or leaves `GITHUB_APP.client` empty and keeps the token form.
 

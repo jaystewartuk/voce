@@ -84,7 +84,13 @@ details summary { cursor: pointer; margin-top: 14px; }
 .kv.source .icon { width: 28px; height: 28px; font-size: 18px; }
 .add-source { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; margin-top: 8px; }
 @media (max-width: 480px) { .add-source { grid-template-columns: 1fr; } }
-.open-file { margin: 28px 0 10px; }
+.open { margin: 8px 0 10px; }
+.open.below { margin-top: 28px; }
+.open .actions { margin-top: 10px; }
+.open-url { display: flex; gap: 8px; }
+.open-url input { flex: 1; min-width: 0; }
+button.link { padding: 0; color: var(--accent); text-decoration: underline; font-size: inherit; }
+.note.device { margin: 18px 4px; }
 #choose h2 { margin: 0 0 6px; font-size: 20px; }
 
 /* ---- library */
@@ -127,8 +133,9 @@ article .l { color: var(--accent); text-decoration: underline; text-decoration-c
 .end { text-align: center; color: var(--muted); padding: 30px 0; }
 
 /* ---- player: everything between the arrows is play/pause, so a thumb finds it without looking */
+/* touch-action: a swipe that starts on the player is not a scroll of the page behind it */
 .player { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--card); border-top: 1px solid var(--line);
-  padding: 0 0 env(safe-area-inset-bottom); }
+  padding: 0 0 env(safe-area-inset-bottom); touch-action: none; overscroll-behavior: contain; }
 .player .inner { max-width: 760px; margin: 0 auto; display: flex; align-items: stretch; min-height: 88px; }
 .player .icon { width: 56px; height: auto; border-radius: 0; flex: none; }
 .player .play { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 12px; color: var(--accent);
@@ -140,8 +147,16 @@ article .l { color: var(--accent); text-decoration: underline; text-decoration-c
 .player .status { max-width: 100%; font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .player .speed { font-variant-numeric: tabular-nums; font-size: 14px; padding: 0 14px 0 10px; color: var(--muted); flex: none; }
 .player .speed:hover { background: var(--bg-alt); color: var(--text); }
-.progress { height: 3px; background: var(--line); }
+/* the bar is thin, but the strip it sits in is tall enough to put a finger on */
+.progress { height: 16px; cursor: pointer; touch-action: none; }
+.progress .track { display: block; height: 3px; background: var(--line); }
 .progress i { display: block; height: 100%; background: var(--accent); width: 0; transition: width .3s; }
+.progress:hover .track { height: 5px; }
+.back { position: fixed; left: 50%; transform: translateX(-50%); z-index: 6; bottom: calc(120px + env(safe-area-inset-bottom));
+  display: flex; align-items: center; gap: 6px; padding: 8px 14px 8px 10px; border-radius: 999px; font-size: 14px; font-weight: 600;
+  background: var(--accent); color: #fff; box-shadow: 0 4px 16px rgba(0,0,0,.18); }
+.back svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.back.up svg { transform: rotate(180deg); }
 
 /* ---- settings sheet */
 .sheet { position: fixed; inset: 0; z-index: 10; background: rgba(0,0,0,.35); display: grid; align-items: end; }
@@ -189,6 +204,8 @@ article .l { color: var(--accent); text-decoration: underline; text-decoration-c
       </details>
       <div class="error hidden" id="connect-error"></div>
     </div>
+    <p class="note device"><button class="link" id="device-go">Or read without signing in</button>: web pages and files, on
+      this device alone. <a href="../privacy.html">What goes where</a>.</p>
     <div class="card hidden" id="choose">
       <h2 id="choose-title"></h2>
       <p class="note" id="choose-lead"></p>
@@ -198,13 +215,15 @@ article .l { color: var(--accent); text-decoration: underline; text-decoration-c
   </section>
 
   <section id="library" class="hidden"></section>
-  <input type="file" id="file" accept=".md,.markdown,.txt,text/markdown,text/plain" class="hidden">
+  <input type="file" id="file" accept=".md,.markdown,.txt,.html,.htm,text/markdown,text/plain,text/html" class="hidden">
 
   <section id="reader" class="hidden"><article id="article"></article></section>
 </main>
 
+<button class="back hidden" id="back"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg>Back to the voice</button>
+
 <div class="player hidden" id="player">
-  <div class="progress"><i id="progress"></i></div>
+  <div class="progress" id="seek" role="slider" aria-label="Where in the document" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span class="track"><i id="progress"></i></span></div>
   <div class="inner">
     <button class="icon" id="prev" aria-label="Previous sentence"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
     <button class="play" id="play" aria-label="Play"><svg viewBox="0 0 24 24" id="play-icon"><path d="M8 5v14l11-7z"/></svg>
@@ -218,6 +237,7 @@ article .l { color: var(--accent); text-decoration: underline; text-decoration-c
   <div class="card">
     <h2>Settings</h2>
     <div class="kv"><span>Repository</span><b id="s-repo"></b></div>
+    <div id="s-sources-box">
     <label>Playlists read straight from GitHub</label>
     <div id="s-sources"></div>
     <div class="add-source">
@@ -228,6 +248,7 @@ article .l { color: var(--accent); text-decoration: underline; text-decoration-c
     </div>
     <p class="note" id="s-src-note">The page reads the README's "## Listen in this order" and the files it links, with voce's own
       reading code running in the page. Not there? Give voce access to that repository on GitHub first.</p>
+    </div>
     <label for="s-engine">Voice</label>
     <select id="s-engine">
       <option value="browser">This device's voice (instant)</option>
@@ -242,6 +263,7 @@ article .l { color: var(--accent); text-decoration: underline; text-decoration-c
       <button class="btn quiet" id="s-change">Change repository</button>
       <button class="btn quiet" id="s-disconnect">Disconnect this device</button>
     </div>
+    <p class="note"><a href="../privacy.html">What goes where</a>: what voce keeps, and what it sends to whom.</p>
   </div>
 </div>
 

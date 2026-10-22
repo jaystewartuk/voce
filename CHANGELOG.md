@@ -5,6 +5,17 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+### Added
+
+- **The web app reads web pages.** Paste an address, or share a page to voce from another app on Android, and it
+  reads the article aloud without the menus and footers. You can open `.html` files too.
+- **The web app works without signing in.** Open a web page or a file and listen. What you open, and your place in
+  it, stays in your browser. Signing in with GitHub is still there for your voce library.
+- **What goes where.** A new page on the website lists everything voce keeps and sends, and to whom.
+- **Time left.** The web app's player shows the time left at your speed and the heading you are under, such as
+  "8 min left · Setup", instead of a sentence count. Tap or drag the progress bar to go anywhere in the document.
+- **Back to the voice.** Scroll away while it reads and the page stops following the voice. A button takes you back.
+
 ### Removed
 
 - **The cloud voices: Google, Azure, ElevenLabs and OpenAI.** voce is now free for good and fully local: its
@@ -21,6 +32,9 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ### Fixed
 
+- **A swipe on the web app's player no longer scrolls the page behind it.**
+- **A sharp picture in Android's media controls.** The web app now has 192 and 512 pixel icons, and gives them to
+  the lock screen and notification player.
 - **The web app keeps your place.** It could say "Couldn't save your place after three tries" when you paused or
   switched tabs soon after it had saved. It now saves one at a time, and checks GitHub's own copy when a save is
   turned away.

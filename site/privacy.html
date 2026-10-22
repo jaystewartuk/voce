@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>voce · What goes where</title>
+<meta name="description" content="What voce keeps, where it keeps it, and what it sends to whom: the terminal app and the web app.">
+<meta name="theme-color" content="#0E1116">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<style>
+:root {
+  --bg: #FBFAF7; --text: #14181F; --muted: #5B6470; --line: #E1DDD5; --accent: #2F6FEB; --code-bg: #F1EEE8;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0B0E13; --text: #E6EDF3; --muted: #9AA4B0; --line: #222934; --accent: #6CA4F8; --code-bg: #10141B; color-scheme: dark; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.65 var(--sans); }
+main { max-width: 720px; margin: 0 auto; padding: 32px 16px 64px; }
+a { color: var(--accent); }
+.brand { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; color: var(--text); text-decoration: none; }
+.brand img { width: 24px; height: 24px; }
+h1 { font-size: 32px; line-height: 1.2; margin: 28px 0 8px; }
+h2 { font-size: 21px; margin: 36px 0 8px; padding-top: 20px; border-top: 1px solid var(--line); }
+.lead { color: var(--muted); font-size: 18px; }
+code { font-family: var(--mono); font-size: .9em; background: var(--code-bg); border-radius: 4px; padding: 0 .3em; }
+li { margin: .35em 0; }
+.small { color: var(--muted); font-size: 15px; }
+</style>
+</head>
+<body>
+<main>
+  <a class="brand" href="./"><img src="assets/logo.svg" alt="">voce</a>
+  <h1>What goes where</h1>
+  <p class="lead">voce has no accounts, no analytics and no cookies, and there is no voce server holding anything of
+    yours. This page lists every place your text or your data can go, so you can check it.</p>
+
+  <h2>The terminal app</h2>
+  <ul>
+    <li>voce makes no network calls of its own. There is no telemetry.</li>
+    <li>Your place and settings are one JSON file in <code>~/.local/state/voce</code>. Audio is cached in
+      <code>~/.cache/voce</code>, and you can delete it at any time.</li>
+    <li>Every voice runs on your computer: Kokoro, whose model is downloaded once from Hugging Face, and the Mac's
+      own voices. What you read is never sent anywhere to be spoken.</li>
+    <li>With <code>voce --sync</code>, your places go to a private GitHub repository of yours, through your own
+      <code>git</code>.</li>
+  </ul>
+
+  <h2>The web app, without signing in</h2>
+  <ul>
+    <li>What you open, and your place in it, is kept in this browser and nowhere else. Clearing the site's data in
+      your browser removes it.</li>
+    <li>A file you open is read in the page. It is not uploaded anywhere.</li>
+    <li>A web page you ask for is fetched by your browser where the site allows that. Most sites don't let one
+      page read another, so then voce's relay fetches it instead: a small function on Cloudflare Workers that fetches
+      the address, hands the page back and keeps nothing. It writes no log. The site sees the relay, not you. The
+      relay's code is <a href="https://github.com/jaystewartuk/voce/blob/main/relay/worker.js">in the repository</a>.</li>
+  </ul>
+
+  <h2>The web app, signed in with GitHub</h2>
+  <ul>
+    <li>Signing in uses the voce GitHub App. It can read and write only the repositories you install it on, and
+      only their files. You choose which.</li>
+    <li>GitHub sends the page a sign-in code, and the relay swaps it for a token, because that step needs a secret a
+      web page can't hold. The token comes back to this browser and is kept there. From then on, the page talks
+      to GitHub directly.</li>
+    <li>Your library and your places go only between this browser and your repository. They never pass through
+      the relay.</li>
+    <li>"Disconnect this device" in settings forgets the token. To cut off every device at once, remove voce at
+      <a href="https://github.com/settings/installations">github.com/settings/installations</a>.</li>
+  </ul>
+
+  <h2>The voices in the web app</h2>
+  <ul>
+    <li>Kokoro runs in the page, on your device. Its model is downloaded once from Hugging Face and kept by the
+      browser. Nothing you read is sent anywhere.</li>
+    <li>"This device's voice" is whatever your browser or system provides. Most run on the device, but some are
+      online voices: in Chrome, the ones named "Google …", and in Edge, the ones marked "Online", send the text to
+      Google or Microsoft to be spoken. Choose Kokoro or an offline voice if that matters to you.</li>
+  </ul>
+
+  <h2>Who else sees a request</h2>
+  <ul>
+    <li>GitHub Pages serves this site, and GitHub's API holds a signed-in library.</li>
+    <li>jsDelivr serves the code the web app loads on first use: Python for the browser (Pyodide), the Kokoro
+      runtime, and Readability and Turndown for web pages. Hugging Face serves the Kokoro model.</li>
+    <li>Cloudflare runs the relay.</li>
+  </ul>
+  <p>Each of them sees your IP address when your browser asks it for something, as any website does. None of them
+    gets your library or your place from voce.</p>
+
+  <p class="small">Questions or something that doesn't match? <a href="https://github.com/jaystewartuk/voce/issues">Open
+    an issue</a>. voce is open source, so all of the above can be checked in
+    <a href="https://github.com/jaystewartuk/voce">the code</a>.</p>
+</main>
+</body>
+</html>

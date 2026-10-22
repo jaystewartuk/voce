@@ -1,7 +1,7 @@
 {
   "name": "voce",
   "short_name": "voce",
-  "description": "Listen to your voce library on any device, with your place kept in your own git repository.",
+  "description": "Listen to web pages and Markdown, read aloud with each sentence and word marked, and to your voce library on any device.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
@@ -9,6 +9,14 @@
   "theme_color": "#0E1116",
   "icons": [
     { "src": "../assets/logo.svg", "sizes": "any", "type": "image/svg+xml" },
-    { "src": "../assets/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
-  ]
+    { "src": "../assets/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "../assets/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "../assets/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "../assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "share_target": {
+    "action": "./",
+    "method": "GET",
+    "params": { "title": "title", "text": "text", "url": "url" }
+  }
 }
