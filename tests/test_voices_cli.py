@@ -53,6 +53,15 @@ def test_a_saved_cloud_engine_falls_back_to_kokoro(tmp_path, monkeypatch):
     assert voice.kind == "kokoro" and voice.name == "bm_george"
 
 
+def test_without_kokoro_the_mac_voice_says_why(tmp_path, monkeypatch):
+    state = State(tmp_path / "s.json")
+    monkeypatch.setattr(Kokoro, "configured", classmethod(lambda cls, state: False))
+    monkeypatch.setattr(Mac, "configured", classmethod(lambda cls, state: True))
+    voice = cli.pick_voice(cli.parser().parse_args([]), state)
+    assert voice.kind == "mac" and "Python 3.10" in voice.warning and "uv tool install" in voice.warning
+    assert cli.pick_voice(cli.parser().parse_args(["--mac"]), state).warning == ""  # asked for: nothing to say
+
+
 def test_the_saved_voice_of_each_engine_comes_back(tmp_path):
     state = State(tmp_path / "s.json")
     voices.remember(state, Voice(Kokoro("bm_george"), state))
