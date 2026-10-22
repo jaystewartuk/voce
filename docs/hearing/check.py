@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Check by ear what the voice makes of tricky phrases: fetch each one, transcribe it, compare.
 
-Google reads "PHP 8" as "eight Philippine pesos". speech.speakable rewrites text like that before it reaches
+A voice can read "PHP 8" as "eight Philippine pesos". speech.speakable rewrites text like that before it reaches
 the voice, and this script is how those rewrites are checked and new ones are found. It runs the real voice,
-so it needs Google set up (or --mac), ffmpeg, and whisper.cpp with a model:
+so it needs Kokoro (or --mac), ffmpeg, and whisper.cpp with a model:
 
     brew install whisper-cpp ffmpeg
     curl -LO https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin
@@ -14,8 +14,7 @@ is written is Markdown, so inline code in backticks is read the way voce reads i
 line break, so a fenced code block fits on one line. A phrase is heard right when
 the transcript, lowercased and stripped of spaces and punctuation, contains one of them treated the same way.
 Pass --raw to hear the text as written, without any rewrite: that shows what the voice gets wrong on its own.
-Audio goes through the normal cache, so a phrase already heard is free to check again, and the characters sent
-to Google count towards the month like any other.
+Audio goes through the normal cache, so a phrase already heard is instant to check again.
 """
 
 from __future__ import annotations

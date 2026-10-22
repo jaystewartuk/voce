@@ -143,14 +143,3 @@ def test_a_place_removed_on_one_device_and_changed_on_another_survives(tmp_path)
     sync.run(b.root, lambda s: None)
     assert State(b.root).resume(doc_path, doc.units) == 3
     assert "rebase" not in sync.git(b.root, "status")
-
-
-@needs_git
-def test_usage_stays_on_the_device(tmp_path):
-    remote = bare(tmp_path)
-    a = device(tmp_path, "a", remote)
-    a.count("google", 5)
-    a.set("speed", 1.5)
-    a.save(force=True)
-    sync.run(a.root, lambda s: None)
-    assert "usage.json" not in sync.git(a.root, "ls-files") and "settings.json" in sync.git(a.root, "ls-files")

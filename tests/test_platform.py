@@ -1,5 +1,3 @@
-import shutil
-import subprocess
 import wave
 
 import pytest
@@ -7,7 +5,7 @@ import pytest
 from voce import player
 from voce.player import CommandPlayer
 from voce.sources import clips
-from voce.voices import audio_seconds, mp3_seconds
+from voce.voices import audio_seconds
 
 
 def test_a_wav_file_is_timed_from_its_header(tmp_path):
@@ -18,28 +16,6 @@ def test_a_wav_file_is_timed_from_its_header(tmp_path):
         w.setframerate(24000)
         w.writeframes(b"\0\0" * 36000)
     assert audio_seconds(path) == pytest.approx(1.5)
-
-
-def frame(version_bits: int, bitrate_index: int, rate_index: int, length: int) -> bytes:
-    header = bytes([0xFF, 0xE0 | version_bits << 3 | 1 << 1 | 1, bitrate_index << 4 | rate_index << 2, 0xC4])
-    return header + b"\0" * (length - 4)
-
-
-def test_an_mp3_is_timed_by_walking_its_frames():
-    # MPEG-1 at 128 kb/s and 44.1 kHz: 417-byte frames of 1152 samples each
-    data = b"ID3\x04\0\0\0\0\0\x05" + b"tags!" + frame(3, 9, 0, 417) * 100
-    assert mp3_seconds(data) == pytest.approx(100 * 1152 / 44100)
-    # MPEG-2 at 32 kb/s and 24 kHz, as Google sends: 96-byte frames of 576 samples
-    assert mp3_seconds(frame(2, 4, 1, 96) * 50) == pytest.approx(50 * 576 / 24000)
-    assert mp3_seconds(b"not audio at all") is None
-
-
-@pytest.mark.skipif(not shutil.which("ffmpeg"), reason="needs ffmpeg")
-def test_an_mp3_from_ffmpeg_is_timed_right(tmp_path):
-    path = tmp_path / "tone.mp3"
-    subprocess.run(["ffmpeg", "-loglevel", "error", "-f", "lavfi", "-i", "sine=duration=2.5:sample_rate=24000",
-                    "-c:a", "libmp3lame", "-b:a", "48k", str(path)], check=True)
-    assert mp3_seconds(path.read_bytes()) == pytest.approx(2.5, abs=0.1)
 
 
 def test_the_first_player_that_plays_the_file_is_used(tmp_path):

@@ -9,7 +9,7 @@ from voce import cli
 from voce.markdown import parse, plain
 from voce.sources.claude import last_reply
 from voce.state import State
-from voce.voices import Google, Mac, Refused, Voice
+from voce.voices import Kokoro, Mac, Voice
 
 
 def texts(md):
@@ -62,20 +62,11 @@ def test_transcripts_with_odd_lines(tmp_path):
     assert last_reply(path) == "A."
 
 
-def test_google_rests_after_outages_but_not_after_a_refused_sentence(tmp_path, monkeypatch):
+def test_kokoro_rests_after_failures_in_a_row(tmp_path, monkeypatch):
     state = State(tmp_path / "s.json")
-    voice = Voice(Google("en-US-Chirp3-HD-Kore", api_key="k"), state, cache=tmp_path)
+    voice = Voice(Kokoro(), state, cache=tmp_path)
     calls = []
     monkeypatch.setattr(voice, "_fallback", lambda text, warning="": tmp_path / "mac.aiff")
-
-    def refused(text, out):
-        calls.append(text)
-        raise Refused("refused")
-
-    monkeypatch.setattr(voice.engine, "synthesize", refused)
-    for n in range(5):
-        voice.fetch(f"r{n}")
-    assert len(calls) == 5 and voice.resting_until == 0
 
     def down(text, out):
         calls.append(text)
@@ -84,8 +75,8 @@ def test_google_rests_after_outages_but_not_after_a_refused_sentence(tmp_path, m
     monkeypatch.setattr(voice.engine, "synthesize", down)
     for n in range(5):
         voice.fetch(f"d{n}")
-    assert len(calls) == 8 and voice.resting_until > time.monotonic()
-    voice.resting_until = 0  # the rest is over: Google is tried again
+    assert len(calls) == 3 and voice.resting_until > time.monotonic()
+    voice.resting_until = 0  # the rest is over: Kokoro is tried again
     voice.fetch("again")
     assert calls[-1] == "again"
 

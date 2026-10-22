@@ -370,8 +370,7 @@ class Reader:
     def menu(self) -> None:
         self.player.stop()
         was = self.mode
-        footer = self.voice.usage()
-        choice = menu(self.term, self.theme, self.state, self.playlist, self.index, footer)
+        choice = menu(self.term, self.theme, self.state, self.playlist, self.index)
         if choice is not None:
             self.open(choice)
         else:

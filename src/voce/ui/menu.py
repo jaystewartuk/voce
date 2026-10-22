@@ -12,8 +12,7 @@ from voce.ui.theme import Theme
 ENTER = (10, 13, curses.KEY_ENTER)
 
 
-def menu(term: Terminal, theme: Theme, state: State, playlist: list[Entry], current: int,
-         footer: str = "") -> int | None:
+def menu(term: Terminal, theme: Theme, state: State, playlist: list[Entry], current: int) -> int | None:
     """The chosen file's index, or None to go back. Enter or a click plays, r restarts, q goes back."""
     sel, top = max(0, current), 0
     rows: list[tuple[str, object]] = []
@@ -44,8 +43,6 @@ def menu(term: Terminal, theme: Theme, state: State, playlist: list[Entry], curr
                 e = playlist[val]
                 mark = state.progress(e.path).replace("done", "✓")
                 term.put(row + 1, 2, f"{mark:>4}  {e.title}"[:w - 4], theme.selected if val == sel else 0)
-            if footer:
-                term.put(h - 1, 0, f" {footer}"[:w - 1], theme.dim)
             term.scr.refresh()
             k = term.read_key()
             if k in (ord("q"), ord("m"), 27):

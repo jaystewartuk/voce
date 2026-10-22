@@ -24,4 +24,4 @@ body:
     id: voice
     attributes:
       label: Voice
-      options: [Mac voice, Google with an API key, Google with gcloud]
+      options: [Kokoro, Mac voice]

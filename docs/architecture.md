@@ -23,10 +23,10 @@ src/voce/
   highlight.py      Pygments tokens reduced to a dozen roles; diffs highlighted as a reviewer reads them
   document.py       a file as Blocks to show and Units to say: sentences, code lines, diff hunks, quiz pairing
   playlist.py       "Listen in this order" READMEs
-  voices.py         the six voice engines (Kokoro, Mac, Google, Azure, ElevenLabs, OpenAI), the cache, fetching ahead
+  voices.py         the two voice engines (Kokoro, Mac), the cache, making audio ahead
   player.py         the native player (player.swift), and one process per sentence: afplay, mpv, ffplay...
   export.py         one MP3 from many sentences, with ffmpeg
-  state.py          your place in each document, settings and usage, as small JSON files
+  state.py          your place in each document and settings, as small JSON files
   prepared.py       a document as another device plays it: blocks and units as one JSON file, and the index
   sync.py           the state directory as a git repository: commit, pull with the newer place winning, push
   paths.py          where state, clips and the cache live
@@ -124,8 +124,7 @@ The state directory (`~/.local/state/voce/`, or `VOCE_STATE`) is laid out so a f
 machines without conflicts:
 
 ```
-settings.json        speed, engine, the voice chosen on each engine, playlist, Google project
-usage.json           the characters sent to each cloud engine each month
+settings.json        speed, engine, the voice chosen on each engine, playlist
 places/<hash>.json   one file per document: the index of the unit you reached, the first 80 characters of what
                      it says, when it was written, and the document's path on each machine that read it
 ```
@@ -150,8 +149,7 @@ of saying something reaches the phone on the next open or `--sync` without anyon
 `sync.py` makes the state directory a git repository (`voce --sync OWNER/REPO` creates a private one on GitHub
 through `gh`, or takes any git URL). Every run pulls first and pushes at the end; `--sync` also prepares the
 playlist. A pull is a fetch and a rebase; when both devices saved the same place, the conflicted file is settled
-by its `updated` time and the rebase continues. `usage.json` is ignored: the characters billed to a key are that
-machine's business. There is no voce server.
+by its `updated` time and the rebase continues. There is no voce server.
 
 ## The web app
 

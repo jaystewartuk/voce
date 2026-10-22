@@ -12,7 +12,7 @@ _SYMBOLS = {"→": " to ", "←": " from ", "≈": " about ", "×": " times ", "
             "▸": "", "│": ", ", "·": ", ", "☐": "", "☑": ""}
 # A diff's count of lines, as pull requests show it: "(+12 −3)" is "12 added, 3 removed".
 _DIFF_STAT = re.compile(r"\(\s*(?:\+(\d+))?\s*(?:−(\d+))?\s*\)")
-# Currency codes that mean something else in technical writing. Google reads "PHP 8" as "eight Philippine
+# Currency codes that mean something else in technical writing. A voice can read "PHP 8" as "eight Philippine
 # pesos", so before a version-like number (one or two digits, maybe dotted) these are spelled out: "P H P 8".
 # Sums of money keep their code: "PHP 500", "PHP 1,500". Checked by ear with docs/hearing/check.py.
 _VERSIONED_CODES = re.compile(r"\b(PHP|BSD|CRC|CVE)(?=\s+\d{1,2}(?:\.\d+)*(?!\d|,\d))")

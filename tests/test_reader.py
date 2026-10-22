@@ -55,7 +55,6 @@ class FakePlayer:
 
 class FakeVoice:
     label, kind, name, warning, progress = "Test", "mac", "", "", ""
-    def usage(self): return ""
     def downloading(self): return self.progress
     def want(self, text):
         f = concurrent.futures.Future()
@@ -184,12 +183,11 @@ def test_unreadable_file_is_reported_not_raised(tmp_path):
 @pytest.mark.parametrize("bad", ["[]", "3", "not json"])
 def test_odd_state_files_start_fresh(tmp_path, bad):
     (tmp_path / "settings.json").write_text(bad)
-    (tmp_path / "usage.json").write_text(bad)
     (tmp_path / "places").mkdir()
     (tmp_path / "places" / ("a" * 64 + ".json")).write_text(bad)
     (tmp_path / "places" / ("b" * 64 + " (conflicted copy).json")).write_text('{"pos": 1}')
     state = State(tmp_path)
-    assert state.settings == {} and state.places == {} and state.month_chars("google") == 0
+    assert state.settings == {} and state.places == {}
 
 
 def test_wheel_down_on_either_ncurses_mouse_version(monkeypatch):

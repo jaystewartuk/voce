@@ -5,6 +5,13 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+### Removed
+
+- **The cloud voices: Google, Azure, ElevenLabs and OpenAI.** voce is now free for good and fully local: its
+  voices run on your computer, and what you read is never sent anywhere. If you had chosen a cloud voice, voce
+  uses Kokoro instead, with the Kokoro voice you used last. `--google-project` and the monthly character counts
+  are gone with them.
+
 ### Changed
 
 - **A smaller Kokoro download: 120 MB, down from 350 MB.** voce now fetches the int8 build of the same model, which

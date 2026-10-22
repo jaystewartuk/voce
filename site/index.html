@@ -287,7 +287,7 @@ footer a:hover { color: var(--text); }
       <div class="controls">
         <button class="primary" id="hear" type="button">🔊 Hear it in your browser</button>
         <button id="toggle" type="button">Pause</button>
-        <p class="note" id="hear-note">The real thing uses Google's Chirp 3 HD voices or your Mac's own. This uses your browser's voice.</p>
+        <p class="note" id="hear-note">The real thing uses Kokoro, an open voice that runs on your computer. This uses your browser's voice.</p>
       </div>
     </div>
   </section>
@@ -376,7 +376,7 @@ footer a:hover { color: var(--text); }
       </div>
       <div>
         <div class="mini" aria-label="Claude Code in one terminal"><span class="d">~/project</span> <span class="p">❯</span> claude<br><span class="d">&gt; Why does the cache miss?</span><br><span class="d">⏺</span> The cache key ignores the query string, so…</div>
-        <div class="mini" aria-label="voce in a second terminal"><span class="d">~/project</span> <span class="p">❯</span> voce -r<br><span class="hl">The cache key ignores the <span class="hw">query</span> string, so…</span><br><span class="d">▶ reading · 2/8 · 1.1× · Charon</span></div>
+        <div class="mini" aria-label="voce in a second terminal"><span class="d">~/project</span> <span class="p">❯</span> voce -r<br><span class="hl">The cache key ignores the <span class="hw">query</span> string, so…</span><br><span class="d">▶ reading · 2/8 · 1.1× · Heart</span></div>
         <p class="small">Prefer copying? <code>/copy</code> then <code>voce -c</code> works too.</p>
       </div>
     </div>
@@ -412,17 +412,16 @@ footer a:hover { color: var(--text); }
   <section class="band" id="voices">
     <div class="wrap">
       <p class="kicker">Voices</p>
-      <h2>Good out of the box. Beautiful with Google.</h2>
-      <p class="intro">Start with your Mac's own voices, with nothing to set up. Add an API key for Google's Chirp 3 HD
-        voices, which sound close to a person reading.</p>
+      <h2>Good out of the box, and free for good.</h2>
+      <p class="intro">Every voice runs on your computer. There is no account, no API key and no bill, and what you
+        read is never sent anywhere.</p>
       <div class="voices">
-        <div class="card"><span class="pill">built in</span><h3>Mac voices</h3>
-          <p>Works the moment you install it, and offline. Pick any voice installed on your Mac with <code>--voice</code>.</p></div>
-        <div class="card"><span class="pill">recommended</span><h3>Google Chirp 3 HD</h3>
-          <p>Eight voices to cycle through with <kbd>v</kbd>, in any language Google offers. Set
-            <code>VOCE_GOOGLE_API_KEY</code>, or sign in with gcloud.</p>
-          <p>Google's free tier covered a million characters a month when this was written, about 18 hours of listening.
-            voce counts what you use. <a href="https://github.com/jaystewartuk/voce/blob/main/docs/google-voices.md">Setup guide</a></p></div>
+        <div class="card"><span class="pill">built in</span><h3>Kokoro</h3>
+          <p>A small open voice model that sounds close to a person reading. Eight voices to cycle through with
+            <kbd>v</kbd>, American and British, and 54 in all. It downloads once (120 MB) and then works offline.</p></div>
+        <div class="card"><span class="pill">macOS</span><h3>Mac voices</h3>
+          <p>The backup, and there if you prefer them. Pick any voice installed on your Mac with <code>--voice</code>.
+            <a href="https://github.com/jaystewartuk/voce/blob/main/docs/voices.md">Voices guide</a></p></div>
       </div>
     </div>
   </section>
@@ -468,7 +467,7 @@ footer a:hover { color: var(--text); }
       <h2 id="privacy-h">Your notes stay yours.</h2>
       <div class="privacy">
         <div class="card"><h3>No telemetry</h3><p>voce makes no network calls of its own. There is nothing to opt out of.</p></div>
-        <div class="card"><h3>Google only if you ask</h3><p>Text goes to Google's Text-to-Speech API only when you set up Google voices.</p></div>
+        <div class="card"><h3>Nothing leaves your computer</h3><p>The voices run locally, so what you read is never sent to a speech service.</p></div>
         <div class="card"><h3>Plain files</h3><p>Your place and settings live in one JSON file, and the audio cache is safe to delete at any time.</p></div>
       </div>
     </div>
@@ -558,7 +557,7 @@ footer a:hover { color: var(--text); }
     document.querySelectorAll("#demo .w.on").forEach(el => el.classList.remove("on"));
     const words = wordsOf[i];
     if (words[w] && playing) words[w].classList.add("on");
-    posEl.textContent = `${i + 1}/${sentences.length} · 1× · ${voiced ? "browser voice" : "Charon"}`;
+    posEl.textContent = `${i + 1}/${sentences.length} · 1× · ${voiced ? "browser voice" : "Heart"}`;
     state.textContent = playing ? "▶ reading" : "⏸ paused (space to carry on)";
     toggle.textContent = playing ? "Pause" : "Play";
   };

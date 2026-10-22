@@ -37,10 +37,8 @@ keys:
   click a sentence or a line of code to jump to it · drag to copy · the wheel scrolls
 
 voices:
-  Kokoro, a small open voice that runs on your computer, works out of the box and costs nothing. Google (Chirp 3 HD),
-  Azure, ElevenLabs and OpenAI are used when their keys are set: VOCE_GOOGLE_API_KEY (or gcloud, signed in,
-  with --google-project once), VOCE_AZURE_KEY and VOCE_AZURE_REGION, VOCE_ELEVENLABS_API_KEY,
-  VOCE_OPENAI_API_KEY. voce --voices shows what is set up. Every sentence is fetched once and kept.
+  Kokoro, a small open voice, runs on your computer, works out of the box and costs nothing. On a Mac, the
+  Mac's own voices are there too. Nothing you read is sent anywhere. Every sentence is made once and kept.
 
 https://github.com/jaystewartuk/voce
 """
@@ -79,13 +77,11 @@ def parser() -> argparse.ArgumentParser:
 
     voice = ap.add_argument_group("voices")
     voice.add_argument("--engine", choices=list(ENGINES), metavar="ENGINE",
-                       help="which voices to use: kokoro, mac, google, azure, elevenlabs or openai (saved)")
+                       help="which voices to use: kokoro or mac (saved)")
     voice.add_argument("--voice", metavar="NAME",
-                       help="a voice, such as af_heart, en-US-Chirp3-HD-Charon, en-GB-RyanNeural, George or ash; "
-                            "the engine follows from the name (saved)")
+                       help="a voice, such as af_heart, bm_george or Daniel; the engine follows from the name (saved)")
     voice.add_argument("--mac", action="store_true", help="the same as --engine mac")
     voice.add_argument("--voices", action="store_true", help="show the engines, which are set up, and their voices")
-    voice.add_argument("--google-project", metavar="ID", help="the Google Cloud project to bill (saved)")
     voice.add_argument("--prepare", nargs="*", metavar="PART",
                        help="fetch the voice ahead of time: for the files given, or the playlist (or these parts)")
 
@@ -219,11 +215,6 @@ def main(argv: list[str] | None = None) -> None:
     args = parser().parse_args(argv)
     state = State()
 
-    if args.google_project:
-        state.set("google_project", args.google_project)
-        state.save(force=True)
-        print(f"Google project: {args.google_project}")
-
     try:
         readme = playlist_path(args, state)
         source = sources.resolve(args)
@@ -315,7 +306,7 @@ def main(argv: list[str] | None = None) -> None:
 
     player = make_player(mute=args.mute, plain=args.plain)
     play(playlist, start, options, state, voice, switch, player, show_menu=args.menu)
-    print("Your place is saved." + (f" {voice.usage()}." if voice.usage() else ""))
+    print("Your place is saved.")
     push_places(state)
 
 

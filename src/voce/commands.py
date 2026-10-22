@@ -59,8 +59,6 @@ def print_list(state: State, entries: list[Entry], voice: Voice) -> None:
             part = e.part
             print(f"\n{part}" if part else "")
         print(f"  {state.progress(e.path):>5}  {e.title}")
-    if voice.usage():
-        print(f"\n{voice.usage()}.")
 
 
 def print_minutes(readme: Path) -> None:
@@ -69,7 +67,7 @@ def print_minutes(readme: Path) -> None:
 
 
 def prepare(paths: list[Path], voice: Voice, state: State, entries: list[Entry] = ()) -> None:
-    """Fetch the voice for these files ahead of time, so reading them never waits on the network, and keep a
+    """Fetch the voice for these files ahead of time, so reading them never waits for the voice, and keep a
     prepared copy of each for other devices."""
     docs = [load(p) for p in paths]
     for doc in docs:
@@ -80,8 +78,6 @@ def prepare(paths: list[Path], voice: Voice, state: State, entries: list[Entry] 
     chars = sum(len(t) for t in todo)
     print(f"{len(paths)} file{'s' * (len(paths) != 1)}, {len(texts)} sentences, {len(todo)} not yet fetched "
           f"({chars:,} characters).")
-    if voice.over_free(chars):
-        print(f"Warning: that takes this month past the {voice.engine.free_chars:,} free characters.")
     voice.engine.prepare(print)
     done = failed = 0
     try:
@@ -101,8 +97,6 @@ def prepare(paths: list[Path], voice: Voice, state: State, entries: list[Entry] 
         print(f"\n{failed} sentence{'s' * (failed != 1)} couldn't be fetched; they will be tried again when read.")
     if voice.warning:
         print(f"\n{voice.warning}")
-    if voice.usage():
-        print(f"\n{voice.usage()}.")
 
 
 def print_voices(state: State) -> None:
@@ -121,11 +115,7 @@ def print_voices(state: State) -> None:
             names = engine.voices if kind != "mac" else engine.voices[:12]
             print(f"           voices: {', '.join(names) if names else 'the system voice'}"
                   + (" and the others say -v ? lists" if kind == "mac" and names else "")
-                  + (f"; any {engine.title} voice name works with --voice" if kind not in ("mac", "kokoro") else "")
                   + (", or any of the 54 names in the model" if kind == "kokoro" else ""))
-            usage = Voice(engine, state).usage()
-            if usage:
-                print(f"           {usage}")
 
 
 def export(paths: list[Path], out: Path, voice: Voice, state: State, skip_code: bool = False) -> None:

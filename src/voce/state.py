@@ -1,11 +1,9 @@
-"""What voce remembers between runs: your place in each document, settings, and the characters sent to each voice
-engine this month.
+"""What voce remembers between runs: your place in each document, and settings.
 
 The state directory is laid out so that a folder sync (iCloud Drive, Dropbox, Syncthing, a git repo) carries it
 between machines without conflicts:
 
     settings.json       speed, voice, engine, playlist and the rest: small, rarely written
-    usage.json          characters sent to each engine each month: this machine's bill, not synced in spirit
     places/<hash>.json  one file per document, named by a hash of the document's text
 
 A place is keyed by what the document says, not where it lives, so the same file resumes on any machine however
@@ -55,14 +53,13 @@ class State:
         self.lock = threading.Lock()
         self.host = socket.gethostname() or "here"
         self.settings: dict[str, Any] = _read_json(self.root / "settings.json", {})
-        self.usage: dict[str, Any] = _read_json(self.root / "usage.json", {})
         self.places: dict[str, dict[str, Any]] = {}
         for f in sorted((self.root / "places").glob("*.json")) if (self.root / "places").is_dir() else []:
             record = _read_json(f, {})
             if record and len(f.stem) == 64:  # a sync tool's "conflicted copy" is not a place
                 self.places[f.stem] = record
         self.keys: dict[tuple[str, int, int], str] = {}  # (path, mtime, size) -> hash, so a tick doesn't rehash
-        self.dirty: set[str] = set()  # "settings", "usage" and the hashes of places changed since the last save
+        self.dirty: set[str] = set()  # "settings" and the hashes of places changed since the last save
         self.saved_at = 0.0
         self._migrate()
 
@@ -75,10 +72,6 @@ class State:
         if not self.settings:
             self.settings = {k: v for k, v in data.items() if k not in ("files", "usage")}
             self.dirty.add("settings")
-        if not self.usage and isinstance(data.get("usage"), dict):
-            for month, n in data["usage"].items():
-                self.usage[month] = {"google": n} if isinstance(n, int) else n  # the first count was Google's alone
-            self.dirty.add("usage")
         files = data.get("files") if isinstance(data.get("files"), dict) else {}
         for path, record in files.items():
             if not isinstance(record, dict) or not Path(path).is_file():
@@ -183,18 +176,6 @@ class State:
         """Back to the top, as if never started."""
         self.file(path).update(done=False, pos=0, at="", total=0)
 
-    # ---- usage
-
-    def count(self, engine: str, chars: int) -> None:
-        month = datetime.date.today().strftime("%Y-%m")
-        with self.lock:
-            this_month = self.usage.setdefault(month, {})
-            this_month[engine] = this_month.get(engine, 0) + chars
-            self.dirty.add("usage")
-
-    def month_chars(self, engine: str) -> int:
-        return self.usage.get(datetime.date.today().strftime("%Y-%m"), {}).get(engine, 0)
-
     # ---- saving
 
     def save(self, force: bool = False) -> None:
@@ -206,8 +187,6 @@ class State:
             for key in dirty:
                 if key == "settings":
                     _write_json(self.root / "settings.json", self.settings)
-                elif key == "usage":
-                    _write_json(self.root / "usage.json", self.usage)
                 elif key in self.places:
                     _write_json(self.root / "places" / f"{key}.json", self.places[key])
                 else:

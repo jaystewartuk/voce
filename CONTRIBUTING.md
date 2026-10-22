@@ -20,7 +20,7 @@ python3 -m venv .venv
 .venv/bin/pytest
 ```
 
-Both run in CI on macOS and Linux. The tests never touch your real state or cache, and never call Google.
+Both run in CI on macOS and Linux. The tests never touch your real state or cache, and never run a real voice.
 
 Some guidelines:
 
@@ -67,7 +67,7 @@ folders, so nothing from your machine appears in the recording.
 
 ## Checking what the voice says
 
-Voices misread some text: Google turns "PHP 8" into "eight Philippine pesos". `speech.speakable` rewrites such
+Voices misread some text: "PHP 8" can come out as "eight Philippine pesos". `speech.speakable` rewrites such
 text before it is spoken, and `docs/hearing/check.py` checks those rewrites by ear: it fetches each phrase in
 `docs/hearing/phrases.txt` from the real voice, transcribes it with whisper.cpp and compares.
 
@@ -78,7 +78,7 @@ curl -LO https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.
 ```
 
 Run it with `--raw` to hear the text as written, which is how to confirm a misreading before adding a rewrite.
-It uses your Google voice and counts towards your monthly characters, so it is not part of the test suite.
+It runs the real voice and takes a while, so it is not part of the test suite.
 
 ## The website
 

@@ -49,8 +49,6 @@ def export_mp3(docs: list[Doc], out: Path, voice: Voice, state, say: Callable[[s
     chars = sum(len(t) for t in todo)
     say(f"{len(docs)} file{'s' * (len(docs) != 1)}, {len(units)} sentences, {len(todo)} not yet fetched "
         f"({chars:,} characters).")
-    if voice.over_free(chars):
-        say(f"Warning: that takes this month past the {voice.engine.free_chars:,} free characters.")
     voice.engine.prepare(say)
     audio_of: dict[str, Path] = {}
     warnings: set[str] = set()
@@ -82,9 +80,7 @@ def export_mp3(docs: list[Doc], out: Path, voice: Voice, state, say: Callable[[s
             return silences[seconds]
 
         def audio(path: Path) -> Path:
-            """A 24 kHz MP3 joins as it is; anything else (a WAV, an AIFF, a 44.1 kHz MP3) is converted first."""
-            if path.suffix == ".mp3" and voice.engine.rate == SAMPLE_RATE:
-                return path
+            """Each sentence's WAV or AIFF, converted to an MP3 to join."""
             if path not in converted:
                 target = converted[path] = work / f"{len(converted)}.mp3"
                 _ffmpeg("-i", str(path), "-ar", str(SAMPLE_RATE), "-ac", "1", "-c:a", "libmp3lame", "-b:a", "48k",

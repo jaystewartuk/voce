@@ -93,7 +93,7 @@ def test_old_state_json_is_migrated_to_places(tmp_path):
     (tmp_path / "state.json").write_text(json.dumps(old))
     state = State(tmp_path)
     assert state.get("speed") == 1.4 and state.get("last") == str(path)
-    assert state.resume(path, load(path).units) == 2 and state.usage == {"2000-01": {"google": 5}}
+    assert state.resume(path, load(path).units) == 2
     assert not (tmp_path / "state.json").exists() and (tmp_path / "state-v1.json").exists()
     assert (tmp_path / "settings.json").exists() and len(list((tmp_path / "places").glob("*.json"))) == 1
     assert State(tmp_path).resume(path, load(path).units) == 2  # and loading again finds the same
@@ -114,13 +114,6 @@ def test_only_what_changed_is_written(tmp_path):
     state.save(force=True)
     after = {f.name: f.stat().st_mtime_ns for f in places.glob("*.json")}
     assert sum(before[n] != after[n] for n in before) == 1
-
-
-def test_usage_counts_by_month(tmp_path):
-    state = State(tmp_path / "s.json")
-    state.count("google", 100)
-    state.count("google", 50)
-    assert state.month_chars("google") == 150 and state.month_chars("azure") == 0
 
 
 def test_clips_are_reused_for_the_same_text(tmp_path):
