@@ -31,7 +31,7 @@ COMMON_WORDS = {
     "pkg": "package", "cmd": "command", "lib": "lib", "repo": "repo", "auth": "auth", "impl": "implementation",
     "ttl": "T T L", "ip": "I P", "pdo": "P D O", "psr": "P S R", "sqs": "S Q S", "cc": "C C", "bcc": "B C C",
     "svg": "S V G", "css": "C S S", "js": "J S", "ioc": "I O C", "dsn": "D S N", "tz": "time zone",
-    "args": "args", "func": "function", "dir": "dir", "ob": "O B", "pg": "P G", "ascii": "ascii",
+    "args": "args", "func": "function", "dir": "dir", "ob": "O B", "pg": "P G", "ascii": "ascii", "nn": "N N",
 }
 
 # A bit of inline code that is only an operator, said on its own: `===` is "identical".
@@ -61,7 +61,7 @@ LINE_OPERATORS = {
     "/=": "divided equals", ".=": "dot equals", "**": "to the power of", "=": "equals", "+": "plus", "-": "minus",
     "*": "times", "/": "divided by", "%": "modulo", ".": "dot", "<": "less than", ">": "greater than",
     "!": "not", ":": "colon", "|": "pipe", "@": "at", "&": "ampersand", "^": "caret", "~": "tilde", "\\": "",
-    "(": "", ")": "", "{": "", "}": "", "]": "", ";": ",", ",": ",",
+    "(": "", ")": "", "{": "", "}": "", "{}": "", "]": "", ";": ",", ",": ",",
 }
 
 # Strings with no letters in them, by what they hold: '' is "the empty string".

@@ -8,7 +8,10 @@ PYTHON = Language("python", comments=("#",), dunder=True, words={
     "elif": "else if", "kwargs": "keyword args", "cls": "class", "isinstance": "is instance",
     "re": "R E", "np": "numpy", "pd": "pandas", "dt": "date time", "func": "function",
     "iter": "iterator", "attr": "attribute", "getattr": "get attribute", "setattr": "set attribute",
+    "ReLU": "relu", "truediv": "true div", "rtruediv": "R true div", "radd": "R add", "rsub": "R sub",
+    "rmul": "R mul",
 }, operators={
     "->": "returns", "**": "to the power of", "//": "floor divided by", ":=": "walrus", "@": "at",
+    "[]": "empty list", "{}": "empty dict",
 }, aliases=("python", "py", "python3"),
     manual="https://docs.python.org/3/reference/expressions.html")

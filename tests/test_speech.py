@@ -90,7 +90,7 @@ def test_spoken_line_reads_code_as_a_person_would():
 
 def test_each_language_has_its_own_words():
     assert spoken_line("def f(x: int, *args, **kwargs) -> str:  # note", "python") == \
-        "def f x colon int, star args, double star keyword args returns string colon, note"
+        "def f x colon int, star args, double star keyword args returns string, note"
     assert spoken_line("total = a // b if a != b else self.__init__", "py") == \
         "total equals a floor divided by b if a is not equal to b else self dot dunder init"
     assert spoken_line("const go = (a, b) => a?.x ?? [...b];  // js", "js") == \
@@ -103,6 +103,27 @@ def test_each_language_has_its_own_words():
     assert spoken_line("$x = 1; // php", "php") == "x equals 1, php"
     assert spoken_line("$x = 1; // unknown language reads like PHP", "cobol") == \
         "x equals 1, unknown language reads like PHP"
+
+
+def test_python_reads_like_micrograd_out_loud():
+    # Lines from karpathy/micrograd's engine.py, the way a person talks through them.
+    assert spoken_line('    """ stores a single scalar value and its gradient """', "python") == \
+        "stores a single scalar value and its gradient"
+    assert spoken_line('    """', "python") == ""
+    assert spoken_line("    def __init__(self, data, _children=(), _op=''):", "python") == \
+        "def dunder init self, data, children equals empty tuple, op equals the empty string"
+    assert spoken_line("            for child in v._prev:", "python") == "for child in v dot previous"
+    assert spoken_line("if x: return 1", "python") == "if x, return 1"
+    assert spoken_line("        topo = []", "python") == "topo equals empty list"
+    assert spoken_line("seen = {}", "python") == "seen equals empty dict"
+    assert spoken_line("    def __radd__(self, other): # other + self", "python") == \
+        "def dunder R add self, other, other plus self"
+    assert spoken_line("    def __neg__(self): # -self", "python") == "def dunder neg self, minus self"
+    assert spoken_line('        return f"Value(data={self.data}, grad={self.grad})"', "python") == \
+        "return f string Value data equals self dot data, grad equals self dot grad"
+    assert spoken_code("a ** n", "python") == "a to the power of n"
+    assert spoken_code("nn.py") == "N N dot P Y"
+    assert spoken_line("d = {'a': 1}", "python") == "d equals a colon 1"  # a colon inside a line is still said
 
 
 def test_paths_and_file_names_are_said_with_their_slashes_and_letters():
