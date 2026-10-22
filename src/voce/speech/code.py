@@ -31,7 +31,7 @@ from voce.speech.words import (
 
 _CAMEL = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
 # Inline code with an operator between spaces (`$a === $b`) is read as a line of code would be.
-_EXPRESSION = re.compile(r"\s(===|!==|==|!=|<=>|<=|>=|=>|->|\?\?|&&|\|\||[-+*/<>=])\s")
+_EXPRESSION = re.compile(r"\s(===|!==|==|!=|<=>|<=|>=|=>|->|\?\?|&&|\|\||\*\*|[-+*/<>=])\s")
 # A path has a slash in it, or is a file name: a word, a dot, and an extension of letters.
 _PATH = re.compile(r"~?/?(?:[\w.-]+/)+[\w.-]*|\.?[A-Za-z_][\w-]*(?:\.[A-Za-z]\w*)+")
 
@@ -109,7 +109,8 @@ _COMMENT_STARTS = {"//": r"//.*", "#": r"\#.*", "/*": r"/\*.*?(?:\*/|$)", "--": 
 # The operators every language shares, longest first. A language can name more in its own table: those are added
 # for that language only, so a new operator never changes how another language reads.
 _BASE_OPS = ("<=>", "===", "!==", "??=", "**=", "<<<", "?->", "->", "=>", "::", "==", "!=", ">=", "<=", "<>", "??",
-             "?:", "?.", ":=", "&&", "||", "++", "--", "+=", "-=", "*=", "/=", ".=", "**", "//", ">>", "...", "[]")
+             "?:", "?.", ":=", "&&", "||", "++", "--", "+=", "-=", "*=", "/=", ".=", "**", "//", ">>", "...", "[]",
+             "{}")
 _SINGLE_OPS = r"[-+*/%.<>!:|@^~\\(){}\[\];,=&?$]"
 _TOKENS = r"""(?P<space>\s+)
       | (?P<comment>COMMENTS)
@@ -166,6 +167,12 @@ _WHERE = re.compile(r"\b(where|orWhere|whereNot|orWhereNot|having|orHaving)\(\s*
 # A line of words with a sentence's punctuation and none of code's: prose inside a string, a doc comment or a
 # heredoc, read as prose.
 _PROSE_LINE = re.compile(r"^[\w\s,.;:!?'\"-]+$")
+# A Python line that opens a block, such as `for child in v._prev:`, which can look like prose but is code.
+_PY_BLOCK = re.compile(r"\s*(if|elif|else|for|while|with|def|class|try|except|finally|async|match|case)\b[^:]*:")
+# A docstring on a line of its own, or a line with only its opening or closing quotes: read as prose.
+_DOCSTRING = re.compile(r"\s*[rRuU]?(?:\"\"\"|''')(.*?)(?:\"\"\"|''')?\s*$")
+# A comment that is only an expression, such as `# other + self` or `# -self`: read as code.
+_CODE_COMMENT = re.compile(r"-?\w+(?:\s*[-+*/]\s*-?\w+)+|-\w+")
 
 
 # "{$this->name}", "$name", "${name}" and "#{name}" inside a string are code: read them as code.
@@ -258,6 +265,9 @@ def _spoken_string(raw: str, lang: Language = GENERIC) -> str:
     if _PATH.fullmatch(body):
         return spoken_path(body)  # 'routes/web.php' is "routes slash web dot P H P"
     body = re.sub(r"\\n", " new line ", body)
+    if lang.name == "python" and "{" in body:  # an f-string's fields are code: {self.data} is "self dot data"
+        body = re.sub(r"\{([^{}]+)\}", lambda m: " " + spoken_code(m.group(1), lang) + " ", body)
+        body = body.replace("(", " ").replace(")", " ").replace("=", " equals ")
     body = _INTERPOLATED.sub(lambda m: " " + spoken_code(next(g for g in m.groups() if g), lang) + " ", body)
     body = body.replace("?->", " nullsafe arrow ").replace("->", " arrow ")
     body = re.sub(r"[{}$\[\]]", " ", body)
@@ -287,6 +297,8 @@ def _spoken_operator(tok: str, line: str, end: int, after_value: bool, lang: Lan
         return lang.operators[tok]
     if tok == "[]":
         return "square brackets" if after_value else "empty array"
+    if tok == "(" and nxt == ")" and not after_value and lang.name == "python":
+        return "empty tuple"
     if tok == "[":
         return "" if after_value else "array of"
     if tok == "...":
@@ -300,6 +312,11 @@ def _spoken_operator(tok: str, line: str, end: int, after_value: bool, lang: Lan
     if tok == "?":
         return "nullable" if nxt.isalpha() or nxt == "\\" else "question mark"
     return LINE_OPERATORS.get(tok, tok)
+
+
+def _balanced(text: str) -> bool:
+    """No square bracket or brace left open, so a colon after it is not a slice's or a dict's."""
+    return text.count("[") == text.count("]") and text.count("{") == text.count("}")
 
 
 # A line that starts the way only Python code does (from x import a, b), or a SQL line (WHERE a ? 'b'): code that
@@ -324,7 +341,12 @@ _GENERICS = ("java", "kotlin", "csharp", "typescript", "rust", "swift")
 def spoken_line(line: str, lang: str | Language = GENERIC) -> str:
     """One line of code, the way a person reads it aloud, in the language's own words if it is given."""
     lang = language(lang) if isinstance(lang, str) else lang
-    if is_prose_line(line, lang):
+    python = lang.name == "python"
+    if python:
+        doc = _DOCSTRING.match(line)
+        if doc:
+            return _spoken_comment(doc.group(1)).rstrip(".")
+    if is_prose_line(line, lang) and not (python and _PY_BLOCK.match(line)):
         return line.strip().rstrip(".")
     if "/*" in lang.comments:
         doc = _DOC_LINE.match(line)
@@ -348,7 +370,12 @@ def spoken_line(line: str, lang: str | Language = GENERIC) -> str:
         if kind == "comment":
             text = re.sub(r"^(//[/!]?|#|/\*|--|;)\s*|\s*\*/$", "", tok).strip()
             if text:
-                text = "and so on" if text in ("...", "…") else _spoken_comment(text)
+                if text in ("...", "…"):
+                    text = "and so on"
+                elif _CODE_COMMENT.fullmatch(text):
+                    text = spoken_line(text, lang)  # `# other + self` is "other plus self"
+                else:
+                    text = _spoken_comment(text)
                 if words and not words[-1].endswith((".", ",")):
                     words.append(",")  # a comma: the voice pauses for over a second at a full stop
                 words.append(text + ".")
@@ -399,6 +426,11 @@ def spoken_line(line: str, lang: str | Language = GENERIC) -> str:
                 said, ternaries = "then", ternaries + 1  # the ternary operator: a ? b : c
             elif tok == ":" and (ternaries or not previous):
                 said, ternaries = "else", max(ternaries - 1, 0)  # or a ternary's else on a line of its own
+            elif tok == ":" and python and re.match(r"\s*(#.*)?$", line[m.end():]):
+                said = ""  # the colon that opens a block is not said, as a person reading it out doesn't
+            elif tok == ":" and python and depth == 0 and _PY_BLOCK.match(line) and \
+                    not re.search(r":", line[:m.start()]) and _balanced(line[:m.start()]):
+                said = ","  # if x: return 1, with its block on the same line, is "if x, return 1"
             elif tok in ("|", "&") and previous == "name" and re.match(r"\s*[?\\A-Za-z]", line[m.end():]) \
                     and (lang is GENERIC or lang.name == "php"):
                 said = "or" if tok == "|" else "and"  # a union type, Stringable|string, or an intersection

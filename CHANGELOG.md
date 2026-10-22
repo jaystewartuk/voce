@@ -5,8 +5,14 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-22
+
 ### Added
 
+- **Hear it before you install it.** The website's demo plays Kokoro itself, recorded from voce, reading a part
+  of Karpathy's micrograd, with each word lit as it is spoken. The README links to it, and to the MP3.
+- **voce says why it is using the Mac's voice.** When Kokoro can't run, as with macOS's own Python 3.9, the
+  reader says so the first time it speaks, and how to reinstall with a Python that has it.
 - **The web app reads web pages.** Paste an address, or share a page to voce from another app on Android, and it
   reads the article aloud without the menus and footers. You can open `.html` files too.
 - **The web app works without signing in.** Open a web page or a file and listen. What you open, and your place in
@@ -32,6 +38,11 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ### Fixed
 
+- **Python reads more like a person says it.** A docstring is read as its words, not "the empty string". The
+  colon that opens a block is silent (`if x: return 1` is "if x, return 1"), `[]` is "empty list", `{}` is
+  "empty dict" and `()` is "empty tuple". An f-string's fields are read as code: `{self.data}` is "self dot data".
+  A comment that is only an expression, such as `# other + self`, is read as one. `a ** n` in a sentence is "a to
+  the power of n". Lines of Python like these will be fetched from the voice again, once.
 - **A swipe on the web app's player no longer scrolls the page behind it.**
 - **A sharp picture in Android's media controls.** The web app now has 192 and 512 pixel icons, and gives them to
   the lock screen and notification player.
@@ -181,6 +192,7 @@ The first public release.
   durations current.
 - A click on a sentence jumps to it. The mouse wheel scrolls.
 
-[Unreleased]: https://github.com/jaystewartuk/voce/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/jaystewartuk/voce/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/jaystewartuk/voce/releases/tag/v0.3.0
 [0.2.0]: https://github.com/jaystewartuk/voce/releases/tag/v0.2.0
 [0.1.0]: https://github.com/jaystewartuk/voce/releases/tag/v0.1.0

@@ -6,9 +6,9 @@
 </p>
 
 <p align="center">
-  <strong>Read Markdown aloud in your terminal.</strong><br>
-  Each sentence lights up as it is read, and each word as it is spoken.<br>
-  Code is read the way a pairing partner says it.
+  <strong>Markdown and code, read aloud, in your terminal.</strong><br>
+  Screen readers spell code out symbol by symbol. voce reads it the way the person next to you would say it,<br>
+  with each language's real operator names, and lights up each word as it is spoken.
 </p>
 
 <p align="center">
@@ -20,6 +20,7 @@
 </p>
 
 <p align="center">
+  <a href="https://jaystewartuk.github.io/voce/#listen"><strong>Hear it</strong></a> ·
   <a href="https://jaystewartuk.github.io/voce/">Website</a> ·
   <a href="#install">Install</a> ·
   <a href="#use-it-with-claude-code">Claude Code</a> ·
@@ -29,6 +30,12 @@
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/jaystewartuk/voce/main/docs/assets/demo.gif" alt="voce reading a Claude Code reply: the sentence being read is on a pale blue band, the word being spoken on a dark blue one, code is syntax highlighted and the table is lined up" width="860">
+</p>
+
+<p align="center">
+  🔊 <a href="https://jaystewartuk.github.io/voce/#listen">Hear it read</a>: 53 seconds of voce reading
+  <a href="https://github.com/karpathy/micrograd">micrograd</a>'s backward pass, with the words lit as they are spoken
+  (or <a href="https://raw.githubusercontent.com/jaystewartuk/voce/main/docs/assets/micrograd.mp3">the MP3</a>).
 </p>
 
 voce (Italian for "voice", said *VOH-chay*) reads Markdown to you in the terminal. It shows the page as it should
@@ -72,12 +79,14 @@ explanation, a pull request walkthrough, study notes on a language.
 
 ## Install
 
-You need macOS or Linux, and Python 3.10 to 3.14 for the voice that works out of the box.
+You need macOS or Linux, and **Python 3.10 to 3.14** for Kokoro, the voice that works out of the box. macOS's own
+`python3` is 3.9, which gets only the Mac's voices, so name a newer one when you install (uv fetches it if you
+don't have it):
 
 ```bash
-uv tool install voce
+uv tool install --python 3.13 voce
 # or
-pipx install voce
+pipx install --python python3.13 voce
 ```
 
 Then try it:
@@ -158,7 +167,7 @@ as it is read, with the word being spoken marked, just like a sentence of prose.
 | `if (strpos($s, 'Hi') !== false) { ... }` | if string position s, Hi is not identical to false and so on |
 | `(int) (19.99 * 100);   // 1998, a cent short` | cast to int 19.99 times 100, 1998, a cent short |
 | `Str::slug('Sea View');` | string double colon slug Sea View |
-| `def __init__(self, **kwargs) -> None:` (Python) | def dunder init self, double star keyword args returns None colon |
+| `def __init__(self, **kwargs) -> None:` (Python) | def dunder init self, double star keyword args returns None |
 | `const name = user?.name ?? 'guest';` (JavaScript) | const name equals user optional chaining name nullish coalescing guest |
 | `if err := json.Unmarshal(data, &v); err != nil {` (Go) | if error short variable declaration JSON dot Unmarshal data, address of v, error is not equal to nil |
 | `let n = reader.read(&mut buf)?;` (Rust) | let n equals reader dot read mutable borrow buffer try |

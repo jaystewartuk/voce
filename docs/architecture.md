@@ -182,8 +182,18 @@ place that hash has. Opening one prepares it in the worker and keeps the result 
 and the reading code's stamp from `py/manifest.json`, so a document is read once per version of voce. The Mac's
 prepared copies and files opened on the device are listed after the playlists, each once by hash.
 
+The library repository holds what the person chose. Its README's "## Listen in this order" is a playlist like any
+other, listed first. `items/<id>.json` is anything added from any device: a web page, a file or shared text
+(`items/<hash>.json`, its Markdown in `texts/<hash>.md`, read with voce's code in the page like a playlist file), or
+another repository's playlist (`items/<id>.json` with `kind: "playlist"`). One file per entry, so two devices
+adding things never touch the same file. A new library starts as a private copy of a template repository
+(`template/` here, published as `jaystewartuk/voce-library-template`): GitHub's new-repository page opens filled
+in, the person presses "Create repository", then installs the app on it. The app can't make the repository
+itself: that needs the administration permission and an installation that can only exist once a repository does.
+
 Without signing in, the page is a `Library` with no repository: it lists only what was opened on the device, and
-keeps places in `localStorage` instead of `places/`. Anything opened (a file, a web page, text shared to the app)
+keeps places in `localStorage` instead of `places/`. On signing in, what was opened is carried into the library,
+with its places, so nothing read before is lost. Anything opened (a file, a web page, text shared to the app)
 is prepared in the worker and kept in the Cache API under its hash, the newest 30. A web page is fetched straight
 from the site where its CORS headers allow that, and otherwise through the relay's `/page`, which fetches the
 address and returns the text and its type. Readability takes the article out of the page and Turndown writes it as

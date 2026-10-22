@@ -20,6 +20,9 @@ python3 -m venv .venv
 .venv/bin/voce --check README.md   # how a file will read, with no audio: a quick end-to-end check
 ```
 
+Changing `site/app/`? Its tests run the page in headless Chromium against a fake GitHub: see
+[tests/web/README.md](tests/web/README.md).
+
 CI runs ruff and pytest on macOS and Linux, on Python 3.9 and 3.13. Write code that runs on 3.9
 (`from __future__ import annotations` is used throughout).
 

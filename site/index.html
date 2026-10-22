@@ -103,6 +103,10 @@ h1 .said b { background: var(--blue); color: #fff; padding: 0 .08em; border-radi
 .copy { flex: none; border: 1px solid #2A313C; background: #171C24; color: var(--term-text); border-radius: 8px;
   font: 13px var(--sans); padding: 7px 10px; cursor: pointer; }
 .copy:hover { background: #1E2530; }
+.prompt { display: flex; flex-direction: column; }
+.prompt h3 { margin-top: 0; }
+.prompt p { flex: 1; margin-bottom: 16px; }
+.prompt .copy { align-self: flex-start; }
 .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 18px; border-radius: 12px; font-weight: 600;
   text-decoration: none; font-size: 16px; border: 1px solid var(--line); color: var(--text); background: var(--card); }
 .btn:hover { border-color: var(--muted); }
@@ -292,37 +296,45 @@ footer a:hover { color: var(--text); }
         <div><code>def __init__(self, **kwargs)</code><span class="to">→</span><q>def dunder init self, double star keyword args</q></div>
       </div>
       <div class="cta">
-        <div class="install"><span class="p">$</span><code id="install-cmd">uv tool install voce</code>
+        <div class="install"><span class="p">$</span><code id="install-cmd">uv tool install --python 3.13 voce</code>
           <button class="copy" data-copy="install-cmd" type="button">Copy</button></div>
+        <a class="btn" href="#listen" data-hear>🔊 Hear it read</a>
         <a class="btn" href="https://github.com/jaystewartuk/voce">View on GitHub</a>
+        <a class="btn" href="#courses">Make a course to listen to</a>
       </div>
       <p class="small">MIT licensed · no account, no API key, nothing sent anywhere</p>
     </div>
   </section>
 
-  <section class="stage" aria-label="Live demo">
+  <section class="stage" id="listen" aria-label="Live demo">
     <div class="wrap">
       <div class="term" role="img" aria-label="A terminal running voce, highlighting the sentence and word being read">
-        <div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="t">~/project — voce -r</span></div>
+        <div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="t">~/micrograd — voce -r</span></div>
         <div class="screen">
-          <div class="titlebar"><span>Why the cache misses</span><span>voce</span></div>
+          <div class="titlebar"><span>How micrograd learns</span><span>voce</span></div>
           <div class="body" id="demo">
-            <h3><span class="s" data-say="Why the cache misses">Why the cache misses</span></h3>
-            <p><span class="s">The cache key ignores the <strong>query string</strong>, so <span class="ic">/search?q=a</span> and <span class="ic">/search?q=b</span> share one entry.</span> <span class="s">Add the query to the key, and keep the TTL short while you test.</span></p>
-            <pre><span class="lang">python</span><span class="s" data-say="def cache key request colon"><span class="k">def</span> <span class="f">cache_key</span>(request):</span>
-    <span class="s" data-say="Include the query string, sorted so a equals 1 and b equals 2 matches b equals 2 and a equals 1"><span class="cm"># Include the query string, sorted so ?a=1&amp;b=2 matches ?b=2&amp;a=1</span></span>
-    <span class="s" data-say="query equals an ampersand dot join sorted request dot query dot split an ampersand">query = <span class="str">"&amp;"</span>.join(<span class="b">sorted</span>(request.query.split(<span class="str">"&amp;"</span>)))</span>
-    <span class="s" data-say="return f string request dot path question mark query"><span class="k">return</span> <span class="str">f"{request.path}?{query}"</span></span></pre>
+            <h3><span class="s">How micrograd learns</span></h3>
+            <p><span class="s">Every number is a <span class="ic">Value</span> that remembers the values it was made from, so the gradient can flow back through them.</span> <span class="s">Multiplying two of them sets up the chain rule for that one step:</span></p>
+            <pre><span class="lang">python</span><span class="s" data-say="def dunder mul self, other"><span class="k">def</span> <span class="f">__mul__</span>(self, other):</span>
+    <span class="s" data-say="other equals other if is instance other, Value else Value other">other = other <span class="k">if</span> <span class="b">isinstance</span>(other, Value) <span class="k">else</span> Value(other)</span>
+    <span class="s" data-say="out equals Value self dot data times other dot data, self, other, an asterisk">out = Value(self.data * other.data, (self, other), <span class="str">&#x27;*&#x27;</span>)</span>
+
+    <span class="s" data-say="def backward"><span class="k">def</span> <span class="f">_backward</span>():</span>
+        <span class="s" data-say="self dot grad plus equals other dot data times out dot grad">self.grad += other.data * out.grad</span>
+        <span class="s" data-say="other dot grad plus equals self dot data times out dot grad">other.grad += self.data * out.grad</span>
+    <span class="s" data-say="out dot backward equals backward">out._backward = _backward</span>
+    <span class="s" data-say="return out"><span class="k">return</span> out</span></pre>
             <table>
-              <thead><tr><th><span class="s" data-say="Request, Before, After">Request</span></th><th>Before</th><th>After</th></tr></thead>
+              <thead><tr><th><span class="s" data-say="Operation, Local gradient">Operation</span></th><th>Local gradient</th></tr></thead>
               <tbody>
-                <tr><td><span class="s" data-say="search q equals a, hit, miss"><span class="ic">/search?q=a</span></span></td><td>hit</td><td>miss</td></tr>
-                <tr><td><span class="s" data-say="search q equals b, hit, wrong, miss"><span class="ic">/search?q=b</span></span></td><td>hit (wrong)</td><td>miss</td></tr>
+                <tr><td><span class="s" data-say="a plus b, 1 for each"><span class="ic">a + b</span></span></td><td>1 for each</td></tr>
+                <tr><td><span class="s" data-say="a times b, the other value"><span class="ic">a * b</span></span></td><td>the other value</td></tr>
+                <tr><td><span class="s" data-say="a to the power of n, n times a to the power of n minus 1"><span class="ic">a ** n</span></span></td><td><span class="ic">n * a ** (n - 1)</span></td></tr>
               </tbody>
             </table>
             <ul>
-              <li><span class="chk">☑</span><span class="s">Reproduce it with two queries</span></li>
-              <li><span class="chk">☐</span><span class="s">Ship the fix behind a flag</span></li>
+              <li><span class="chk">☑</span><span class="s" data-say="Read engine dot P Y first">Read <span class="ic">engine.py</span> first</span></li>
+              <li><span class="chk">☐</span><span class="s" data-say="Then N N dot P Y, where the neurons are">Then <span class="ic">nn.py</span>, where the neurons are</span></li>
             </ul>
           </div>
           <div class="status"><span id="demo-state">▶ reading</span><span id="demo-pos">1/12 · 1× · Heart</span></div>
@@ -330,9 +342,9 @@ footer a:hover { color: var(--text); }
         </div>
       </div>
       <div class="controls">
-        <button class="primary" id="hear" type="button">🔊 Hear it in your browser</button>
+        <button class="primary" id="hear" type="button">🔊 Hear it in Kokoro's voice</button>
         <button id="toggle" type="button">Pause</button>
-        <p class="note" id="hear-note">The real thing uses Kokoro, an open voice that runs on your computer. This uses your browser's voice.</p>
+        <p class="note" id="hear-note">Recorded from voce: Kokoro, the open voice it runs on your computer. The code is from <a href="https://github.com/karpathy/micrograd">karpathy/micrograd</a> (MIT).</p>
       </div>
     </div>
   </section>
@@ -368,8 +380,8 @@ footer a:hover { color: var(--text); }
           <table class="said-table">
             <thead><tr><th scope="col">On the line</th><th scope="col">What you hear</th></tr></thead>
             <tbody>
-            <tr><td><code>while chunk := f.read(8192):</code></td><td>&quot;while chunk assignment expression f dot read 8192 colon&quot;</td></tr>
-            <tr><td><code>def __init__(self, **kwargs) -&gt; None:</code></td><td>&quot;def dunder init self, double star keyword args returns None colon&quot;</td></tr>
+            <tr><td><code>while chunk := f.read(8192):</code></td><td>&quot;while chunk assignment expression f dot read 8192&quot;</td></tr>
+            <tr><td><code>def __init__(self, **kwargs) -&gt; None:</code></td><td>&quot;def dunder init self, double star keyword args returns None&quot;</td></tr>
             <tr><td><code>value: str | None = None</code></td><td>&quot;value colon string or None equals None&quot;</td></tr>
             <tr><td><code>total //= 2</code></td><td>&quot;total floor divided equals 2&quot;</td></tr>
             </tbody>
@@ -581,7 +593,34 @@ footer a:hover { color: var(--text); }
     </div>
   </section>
 
-  <section class="band alt" id="compare">
+  <section class="band alt" id="courses">
+    <div class="wrap">
+      <p class="kicker">Courses by your coding agent</p>
+      <h2>Ask for a course. Listen to it anywhere.</h2>
+      <p class="intro">Hearing code read the way a pairing partner says it is how you learn to say it yourself, which
+        is what a live-coding interview, a pairing session or a code review asks of you. Give one of these to Claude
+        Code, Codex or Cursor in your voce library, and it writes the course as Markdown files and a playlist. Push,
+        and it is on your phone.</p>
+      <div class="grid">
+        <div class="card prompt"><h3>Pass the live-coding interview</h3><p id="prompt-1">Write me a voce course that gets me ready for a pair-programming interview in Python. Take the twelve problems interviewers ask most, and for each one walk through a solution the way I should talk through it out loud: what I'm about to write, then each line, then how I'd test it. Ten minutes a part.</p>
+          <button class="copy" data-copy="prompt-1" type="button">Copy</button></div>
+        <div class="card prompt"><h3>Talk through a new codebase</h3><p id="prompt-2">Turn this repository into a voce playlist for my first week on the team. Pick the files a new engineer has to understand, and explain each the way a senior engineer would on a call: what it's for, the important lines, and what would break if you changed them.</p>
+          <button class="copy" data-copy="prompt-2" type="button">Copy</button></div>
+        <div class="card prompt"><h3>Python for AI work</h3><p id="prompt-3">Write a voce course on the Python I need to build with LLM APIs: type hints, dataclasses, async and await, calling an API, retrying and handling errors, and testing it. Real code in every part, kept short enough to follow by ear.</p>
+          <button class="copy" data-copy="prompt-3" type="button">Copy</button></div>
+        <div class="card prompt"><h3>Review code an agent wrote</h3><p id="prompt-4">Write a voce course on reviewing code that a coding agent wrote: the mistakes agents tend to make, how to spot each one in a diff, and what to say about it in a review. Use small, real examples in TypeScript and Python.</p>
+          <button class="copy" data-copy="prompt-4" type="button">Copy</button></div>
+        <div class="card prompt"><h3>A new language, from one you know</h3><p id="prompt-5">I know JavaScript well. Write a voce course that teaches me Go by comparing the two: each part takes one idea, shows it in both, and says where Go differs. Eight parts, about eight minutes each.</p>
+          <button class="copy" data-copy="prompt-5" type="button">Copy</button></div>
+        <div class="card prompt"><h3>SQL for the screening round</h3><p id="prompt-6">Write a voce course of the fifteen SQL questions most asked in screening interviews: joins, grouping, window functions and finding duplicates. For each, say how I'd reason about it before writing the query.</p>
+          <button class="copy" data-copy="prompt-6" type="button">Copy</button></div>
+      </div>
+      <p class="small" style="margin-top: 24px">No library yet? <a href="app/">Open the web app</a>, sign in with GitHub
+        and make one in two steps. It comes with notes that tell your agent how to write for the ear.</p>
+    </div>
+  </section>
+
+  <section class="band" id="compare">
     <div class="wrap">
       <p class="kicker">How it compares</p>
       <h2>Other readers speak code. None of them say it.</h2>
@@ -611,7 +650,7 @@ footer a:hover { color: var(--text); }
     </div>
   </section>
 
-  <section class="band" id="features">
+  <section class="band alt" id="features">
     <div class="wrap">
       <p class="kicker">What it does</p>
       <h2>Reads what a person would read.</h2>
@@ -640,7 +679,7 @@ footer a:hover { color: var(--text); }
     </div>
   </section>
 
-  <section class="band alt" id="claude-code">
+  <section class="band" id="claude-code">
     <div class="wrap split">
       <div>
         <p class="kicker">Made for Claude Code</p>
@@ -661,7 +700,7 @@ footer a:hover { color: var(--text); }
     </div>
   </section>
 
-  <section class="band">
+  <section class="band alt">
     <div class="wrap">
       <p class="kicker">Written for the eye, read for the ear</p>
       <h2>What you see, and what you hear.</h2>
@@ -688,7 +727,7 @@ footer a:hover { color: var(--text); }
     </div>
   </section>
 
-  <section class="band alt" id="voices">
+  <section class="band" id="voices">
     <div class="wrap">
       <p class="kicker">Voices</p>
       <h2>Good out of the box, and free for good.</h2>
@@ -705,7 +744,7 @@ footer a:hover { color: var(--text); }
     </div>
   </section>
 
-  <section class="band" aria-labelledby="keys-h">
+  <section class="band alt" aria-labelledby="keys-h">
     <div class="wrap">
       <p class="kicker">Keys</p>
       <h2 id="keys-h">Everything is one key away.</h2>
@@ -726,21 +765,21 @@ footer a:hover { color: var(--text); }
     </div>
   </section>
 
-  <section class="band alt" id="install">
+  <section class="band" id="install">
     <div class="wrap">
       <p class="kicker">Install</p>
       <h2>Ready in a minute.</h2>
       <p class="intro">You need macOS or Linux, and Python 3.10 to 3.14 for the Kokoro voice. On a Mac, the Xcode command
         line tools give you the gapless player. On Linux, mpv plays the audio. ffmpeg is only needed for MP3 export.</p>
       <div class="install-steps">
-        <div class="mini"><span class="d"># with uv</span><br><span class="p">❯</span> uv tool install voce<br><span class="d"># or with pipx</span><br><span class="p">❯</span> pipx install voce</div>
+        <div class="mini"><span class="d"># with uv</span><br><span class="p">❯</span> uv tool install --python 3.13 voce<br><span class="d"># or with pipx</span><br><span class="p">❯</span> pipx install --python python3.13 voce</div>
         <div class="mini"><span class="p">❯</span> voce README.md <span class="d">          # any Markdown file</span><br><span class="p">❯</span> voce -r <span class="d">                 # Claude Code's latest reply</span><br><span class="p">❯</span> voce -c <span class="d">                 # the clipboard</span><br><span class="p">❯</span> voce notes.md --export notes.mp3</div>
       </div>
       <p class="small">Full documentation is in the <a href="https://github.com/jaystewartuk/voce#readme">README</a>.</p>
     </div>
   </section>
 
-  <section class="band" aria-labelledby="privacy-h">
+  <section class="band alt" aria-labelledby="privacy-h">
     <div class="wrap">
       <p class="kicker">Privacy</p>
       <h2 id="privacy-h">Your notes stay yours.</h2>
@@ -843,7 +882,6 @@ footer a:hover { color: var(--text); }
     return out;
   };
   sentences.forEach(s => wordsOf.push(wrapWords(s)));
-  const spoken = s => s.dataset.say || s.textContent;
 
   const state = document.getElementById("demo-state");
   const posEl = document.getElementById("demo-pos");
@@ -851,16 +889,20 @@ footer a:hover { color: var(--text); }
   const hear = document.getElementById("hear");
   const note = document.getElementById("hear-note");
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const synth = "speechSynthesis" in window ? window.speechSynthesis : null;
+  // The real voice: each sentence as Kokoro said it, recorded from voce, with the reader's pause after it
+  const clip = k => `assets/demo/${String(k).padStart(2, "0")}.mp3`;
+  const pauses = [0.7, 0.12, 0.4, 0.25, 0.25, 0.45, 0.25, 0.25, 0.25, 0.25, 0.5, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3];
+  const audio = new Audio();
+  audio.preload = "auto";
 
-  let i = 0, w = 0, playing = !reduced, voiced = false, timer = null;
+  let i = 0, w = 0, playing = !reduced, voiced = false, timer = null, frame = 0;
 
   const mark = () => {
     sentences.forEach((s, k) => s.classList.toggle("on", k === i));
     document.querySelectorAll("#demo .w.on").forEach(el => el.classList.remove("on"));
     const words = wordsOf[i];
     if (words[w] && playing) words[w].classList.add("on");
-    posEl.textContent = `${i + 1}/${sentences.length} · 1× · ${voiced ? "browser voice" : "Heart"}`;
+    posEl.textContent = `${i + 1}/${sentences.length} · 1× · Heart`;
     state.textContent = playing ? "▶ reading" : "⏸ paused (space to carry on)";
     toggle.textContent = playing ? "Pause" : "Play";
   };
@@ -881,52 +923,52 @@ footer a:hover { color: var(--text); }
     }, delay);
   };
 
-  // Voiced mode: the browser speaks each sentence and reports word boundaries
-  const speak = () => {
-    if (!synth || !playing) return;
-    synth.cancel();
-    const sentence = sentences[i];
-    const text = spoken(sentence);
-    const u = new SpeechSynthesisUtterance(text);
-    const english = synth.getVoices().filter(v => /^en(-|_)/i.test(v.lang));
-    const pick = english.find(v => /Daniel|Samantha|Google UK English|Serena|Karen/i.test(v.name)) || english[0];
-    if (pick) u.voice = pick;
-    u.rate = 1;
+  // Voiced mode: play the sentence's clip and move the word along by how far through it the voice is
+  const follow = () => {
+    cancelAnimationFrame(frame);
+    if (!voiced || !playing || !audio.duration) { if (voiced && playing) frame = requestAnimationFrame(follow); return; }
     const words = wordsOf[i];
-    const own = !sentence.dataset.say;
-    u.onboundary = e => {
-      if (e.name && e.name !== "word") return;
-      if (own) {
-        let at = 0, k = 0;
-        for (; k < words.length; k++) { const len = words[k].textContent.length; if (e.charIndex < at + len) break; at += len + 1; }
-        w = Math.min(k, words.length - 1);
-      } else {
-        w = Math.min(w + 1, words.length - 1);
-      }
-      mark();
-    };
-    u.onend = () => { if (!playing || !voiced) return; next(); w = 0; mark(); setTimeout(speak, 350); };
-    w = 0; mark();
-    synth.speak(u);
+    const total = words.reduce((n, el) => n + weight(el), 0);
+    let at = audio.currentTime / audio.duration * total, k = 0;
+    for (; k < words.length - 1 && at >= weight(words[k]); k++) at -= weight(words[k]);
+    if (k !== w) { w = k; mark(); }
+    frame = requestAnimationFrame(follow);
   };
+  const speak = () => {
+    clearTimeout(timer);
+    if (!playing) return;
+    w = 0; mark();
+    audio.src = clip(i);
+    audio.play().then(follow).catch(() => {
+      voiced = false; hear.textContent = "🔊 Hear it in Kokoro's voice";
+      note.textContent = "The recording couldn't play here, so the demo stays silent."; tickSilent();
+    });
+  };
+  audio.addEventListener("ended", () => {
+    cancelAnimationFrame(frame);
+    if (!playing || !voiced) return;
+    const last = i === sentences.length - 1;
+    timer = setTimeout(() => { next(); if (last) { voiced = false; hear.textContent = "🔊 Hear it in Kokoro's voice"; mark(); tickSilent(); } else speak(); }, pauses[i] * 1000);
+  });
 
-  const play = () => { playing = true; mark(); voiced ? speak() : tickSilent(); };
-  const pause = () => { playing = false; clearTimeout(timer); if (synth) synth.cancel(); mark(); };
+  const stopVoice = () => { audio.pause(); cancelAnimationFrame(frame); };
+  const play = () => { playing = true; mark(); if (voiced) { audio.src && audio.currentTime > 0 && !audio.ended ? audio.play().then(follow) : speak(); } else tickSilent(); };
+  const pause = () => { playing = false; clearTimeout(timer); stopVoice(); mark(); };
 
   toggle.addEventListener("click", () => (playing ? pause() : play()));
   hear.addEventListener("click", () => {
-    if (!synth) { note.textContent = "Your browser can't speak, so the demo stays silent."; return; }
     voiced = !voiced;
-    hear.textContent = voiced ? "🔇 Stop the voice" : "🔊 Hear it in your browser";
+    hear.textContent = voiced ? "🔇 Stop the voice" : "🔊 Hear it in Kokoro's voice";
     clearTimeout(timer);
-    if (synth) synth.cancel();
-    if (voiced) { playing = true; speak(); } else { mark(); tickSilent(); }
+    stopVoice();
+    if (voiced) { playing = true; i = 0; speak(); } else { mark(); tickSilent(); }
   });
   sentences.forEach((s, k) => {
     s.style.cursor = "pointer";
-    s.addEventListener("click", () => { i = k; w = 0; clearTimeout(timer); if (synth) synth.cancel(); playing = true; mark(); voiced ? speak() : tickSilent(); });
+    s.addEventListener("click", () => { i = k; w = 0; clearTimeout(timer); stopVoice(); playing = true; mark(); voiced ? speak() : tickSilent(); });
   });
-  document.addEventListener("visibilitychange", () => { if (document.hidden && playing && !voiced) pause(); });
+  document.addEventListener("visibilitychange", () => { if (document.hidden && playing) pause(); });
+  document.querySelectorAll("[data-hear]").forEach(a => a.addEventListener("click", () => { if (!voiced) hear.click(); }));
 
   i = 1;
   mark();

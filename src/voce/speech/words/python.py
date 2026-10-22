@@ -62,11 +62,13 @@ PYTHON = Language("python", comments=("#",), dunder=True, words={
     "simplefilter": "simple filter", "formset": "form set", "formfield": "form field", "urlconf": "URL conf",
     "argtypes": "arg types", "nodelist": "node list", "autoescape": "auto escape", "changelist": "change list",
     "fieldsets": "field sets", "savepoint": "save point", "codename": "code name", "sqlparse": "S Q L parse",
+    "ReLU": "relu", "truediv": "true div", "rtruediv": "R true div", "radd": "R add", "rsub": "R sub",
+    "rmul": "R mul",
 }, operators={
     # https://docs.python.org/3/reference/expressions.html: "->" is a return annotation, "@" is "the @ (at)
     # operator", ":=" an assignment expression (6.12), "//" floor division, "~" invert, "..." the Ellipsis.
     "->": "returns", "**": "to the power of", "//": "floor divided by", ":=": "assignment expression", "@": "at",
-    "~": "invert", "...": "ellipsis", "[]": "empty list",
+    "~": "invert", "...": "ellipsis", "[]": "empty list", "{}": "empty dict",
     # bitwise and, or and exclusive or, also set intersection and union, and | in a type: str | None.
     # https://docs.python.org/3/library/operator.html names them "Bitwise And, or Intersection" and so on.
     "&": "and", "|": "or", "^": "exclusive or", "<<": "left shift", ">>": "right shift",
