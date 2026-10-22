@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>voce · Read Markdown aloud in your terminal</title>
-<meta name="description" content="voce reads Markdown aloud in your terminal. Each sentence lights up as it is read, and each word as it is spoken. Code is read the way a pairing partner says it, operator names and all. Built for Claude Code replies and study notes.">
+<title>voce · Markdown and code, read aloud</title>
+<meta name="description" content="voce reads Markdown aloud in your terminal, and reads code the way a person says it: '1' === 1 is &quot;the string 1 is identical to 1&quot;, not &quot;quote one quote equals equals equals one&quot;. Each word lights up as it is spoken. Free, local, macOS and Linux.">
 <meta name="theme-color" content="#0E1116">
 <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <meta property="og:type" content="website">
-<meta property="og:title" content="voce · Read Markdown aloud in your terminal">
-<meta property="og:description" content="Each sentence lights up as it is read, and each word as it is spoken. Built for Claude Code replies and study notes.">
+<meta property="og:title" content="voce · Markdown and code, read aloud">
+<meta property="og:description" content="Hear code the way a person says it, with each language's real operator names. Each word lights up as it is spoken. Free, and it runs on your computer.">
 <meta property="og:image" content="https://jaystewartuk.github.io/voce/assets/og.png">
 <meta property="og:url" content="https://jaystewartuk.github.io/voce/">
 <meta name="twitter:card" content="summary_large_image">
@@ -107,6 +107,13 @@ h1 .said b { background: var(--blue); color: #fff; padding: 0 .08em; border-radi
   text-decoration: none; font-size: 16px; border: 1px solid var(--line); color: var(--text); background: var(--card); }
 .btn:hover { border-color: var(--muted); }
 .small { font-size: 14px; color: var(--muted); margin-top: 14px; }
+.heard { display: flex; flex-direction: column; gap: 8px; max-width: 34em; margin: 0 auto 30px; text-align: left; }
+.heard div { display: grid; grid-template-columns: minmax(0, 15ch) auto minmax(0, 1fr); gap: 12px; align-items: baseline;
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 16px; font-size: 16px; }
+.heard code { font-size: 15px; overflow-wrap: anywhere; }
+.heard .to { color: var(--muted); }
+.heard q { color: var(--text); }
+@media (max-width: 520px) { .heard div { grid-template-columns: 1fr; gap: 2px; } .heard .to { display: none; } }
 
 /* ---- the terminal demo */
 .stage { padding: 28px 0 80px; }
@@ -188,6 +195,16 @@ h2 { font-size: clamp(30px, 4.2vw, 46px); line-height: 1.08; letter-spacing: -0.
 .said-list li { padding: 8px 0; border-bottom: 1px dashed var(--line); font-size: 16px; }
 .said-list li:last-child { border-bottom: 0; }
 .said-list .skip-it { color: var(--muted); font-style: italic; }
+.compare-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); }
+.compare { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 16px; }
+.compare th, .compare td { text-align: left; padding: 14px 16px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.compare thead th { font: 600 13px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.compare tbody th { font-weight: 600; }
+.compare tbody th span { display: block; font-weight: 400; color: var(--muted); font-size: 14px; }
+.compare td { color: var(--muted); }
+.compare tr:last-child th, .compare tr:last-child td { border-bottom: 0; }
+.compare tr.us { background: color-mix(in srgb, var(--blue) 9%, transparent); }
+.compare tr.us td { color: var(--text); }
 
 .keys-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
 .key { display: flex; align-items: center; gap: 14px; background: var(--card); border: 1px solid var(--line);
@@ -225,8 +242,9 @@ footer a:hover { color: var(--text); }
   <div class="wrap">
     <a class="brand" href="#" aria-label="voce home"><img src="assets/logo.svg" alt="">voce</a>
     <nav aria-label="Main">
-      <a href="#features">Features</a>
       <a href="#code">Code</a>
+      <a href="#compare">Compare</a>
+      <a href="#features">Features</a>
       <a href="#claude-code">Claude Code</a>
       <a href="#voices">Voices</a>
       <a href="#install">Install</a>
@@ -242,16 +260,22 @@ footer a:hover { color: var(--text); }
 <main id="main">
   <section class="hero">
     <div class="wrap">
-      <span class="eyebrow"><b>New</b> code is read the way a pairing partner says it</span>
-      <h1>Your terminal, <span class="said">read <b>aloud</b></span>.</h1>
-      <p class="lede">voce (Italian for &ldquo;voice&rdquo;, said <em>VOH-chay</em>) reads Markdown to you in the terminal. Each sentence lights up as it is read, and each word
-        as it is spoken. Code is read the way a pairing partner says it, operator names and all. Your place is always kept.</p>
+      <span class="eyebrow"><b>Free</b> runs on your computer · macOS and Linux</span>
+      <h1>Markdown and code, <span class="said">read <b>aloud</b></span>.</h1>
+      <p class="lede">Screen readers spell code out symbol by symbol. voce (said <em>VOH-chay</em>) reads it the way the
+        person next to you would say it, with each language's real operator names. It shows your Markdown in the terminal,
+        lights up each word as it is spoken, and keeps your place.</p>
+      <div class="heard" aria-label="Examples of code and how voce reads it">
+        <div><code>'1' === 1</code><span class="to">→</span><q>the string 1 is identical to 1</q></div>
+        <div><code>user?.name ?? 'guest'</code><span class="to">→</span><q>user optional chaining name nullish coalescing guest</q></div>
+        <div><code>def __init__(self, **kwargs)</code><span class="to">→</span><q>def dunder init self, double star keyword args</q></div>
+      </div>
       <div class="cta">
-        <div class="install"><span class="p">$</span><code id="install-cmd">uv tool install git+https://github.com/jaystewartuk/voce</code>
+        <div class="install"><span class="p">$</span><code id="install-cmd">uv tool install voce</code>
           <button class="copy" data-copy="install-cmd" type="button">Copy</button></div>
         <a class="btn" href="https://github.com/jaystewartuk/voce">View on GitHub</a>
       </div>
-      <p class="small">Free and open source · macOS · Python 3.9+</p>
+      <p class="small">MIT licensed · no account, no API key, nothing sent anywhere</p>
     </div>
   </section>
 
@@ -280,7 +304,7 @@ footer a:hover { color: var(--text); }
               <li><span class="chk">☐</span><span class="s">Ship the fix behind a flag</span></li>
             </ul>
           </div>
-          <div class="status"><span id="demo-state">▶ reading</span><span id="demo-pos">1/12 · 1× · Charon</span></div>
+          <div class="status"><span id="demo-state">▶ reading</span><span id="demo-pos">1/12 · 1× · Heart</span></div>
           <div class="keys">space pause · ←→ sentence · ↑↓ paragraph · [ ] section · +- speed · v voice · c copy · q quit</div>
         </div>
       </div>
@@ -292,38 +316,9 @@ footer a:hover { color: var(--text); }
     </div>
   </section>
 
-  <section class="band alt" id="features">
-    <div class="wrap">
-      <p class="kicker">What it does</p>
-      <h2>Reads what a person would read.</h2>
-      <p class="intro">Markdown is written for the eye. voce shows it the way it should look and reads only the prose,
-        so you can listen with your eyes closed or follow every word.</p>
-      <div class="grid">
-        <div class="card"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h10M4 17h7"/><rect x="13" y="10" width="8" height="4" rx="2" fill="currentColor" stroke="none"/></svg></div>
-          <h3>Follows along</h3><p>The sentence being read sits on a pale band, the word being spoken on a darker one, timed from the audio itself.</p></div>
-        <div class="card"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/></svg></div>
-          <h3>Reads code like a pairing partner</h3><p>Highlighted in every language Pygments knows, and read line by line with the real names: "is identical to", "double arrow", "null coalescing", "spaceship".</p></div>
-        <div class="card"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 10h18M10 4v16"/></svg></div>
-          <h3>Tables that line up</h3><p>Columns are aligned on screen and read one row at a time, cell by cell.</p></div>
-        <div class="card"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-6-4-6 4z"/></svg></div>
-          <h3>Keeps your place</h3><p>Quit at any point and carry on from the same sentence, even after the file has been edited.</p></div>
-        <div class="card"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></div>
-          <h3>Free to listen again</h3><p>Every sentence is fetched once and cached, so going back or listening again costs nothing and works offline.</p></div>
-        <div class="card"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
-          <h3>Take it with you</h3><p><code>--export</code> stitches files into one MP3, with the same voice and pauses, for a walk or a drive.</p></div>
-        <div class="card"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h9"/><path d="M17 16l2 2 3-4"/></svg></div>
-          <h3>Playlists and quizzes</h3><p>Point it at a folder's README and listen through in order. Quizzes pause for your answer.</p></div>
-        <div class="card"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 15l6 6M10 17a7 7 0 1 1 0-14 7 7 0 0 1 0 14z"/></svg></div>
-          <h3>Click to jump</h3><p>Click any sentence to hear it, or use the arrows to move by sentence, paragraph or section.</p></div>
-        <div class="card"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M5 8v8M19 8v8M8.5 5.5v13M15.5 5.5v13"/></svg></div>
-          <h3>Gapless and in time</h3><p>A tiny native player keeps sentences flowing, pauses mid-word and changes speed without changing pitch.</p></div>
-      </div>
-    </div>
-  </section>
-
   <section class="band" id="code">
     <div class="wrap">
-      <p class="kicker">New</p>
+      <p class="kicker">Code, read aloud</p>
       <h2>Code, read the way a pairing partner says it.</h2>
       <p class="intro">Every reader that speaks code gets it wrong in one of two ways. Screen readers spell out the
         symbols: "dollar, totals, left bracket, dollar, channel". Text-to-speech apps read code as prose, and
@@ -356,12 +351,71 @@ footer a:hover { color: var(--text); }
       <div class="grid" style="margin-top: 18px">
         <div class="card"><h3>Real names, so you learn them</h3><p>Operators are called what they are called: arrow, double arrow, double colon, identical, equal, null coalescing, spaceship, nullable, cast, increment, by reference, unpack, variadic. They are the PHP manual's own names. After a few sessions you say them without thinking, which is what a pair-programming interview or a code review asks of you.</p></div>
         <div class="card"><h3>Names as words</h3><p><code>array_values</code> is "array values", <code>strlen</code> is "string length", <code>usort</code> is "U sort", <code>isset</code> is "is set". A variable's dollar sign, the brackets and the semicolon are silent. A string is read by its contents, and a trailing comment as prose.</p></div>
-        <div class="card"><h3>Checked by ear, and against Laravel</h3><p>Every rule is fetched from the real voice, transcribed with whisper and compared with what should be heard, and the rules were read right through laravel/framework to find what came out odd. Written for PHP and Laravel first; most rules carry to any language with the same symbols, and the rest are a line each. Hear it on <a href="https://github.com/jaystewartuk/voce/blob/main/docs/examples/laravel.md">a reservation sync in Laravel</a>, or prefer the prose alone with <code>--skip-code</code>.</p></div>
+        <div class="card"><h3>Checked by ear, in each language's words</h3><p>Every rule is fetched from the real voice, transcribed with whisper and compared with what should be heard, and the rules were read right through laravel/framework to find what came out odd. PHP, Python, JavaScript, shell and SQL each have their own words: Python's <code>-&gt;</code> is "returns", JavaScript's <code>===</code> is MDN's "is strictly equal to", and a pipe in shell is "pipe". A new language is a few lines of data. Hear it on <a href="https://github.com/jaystewartuk/voce/blob/main/docs/examples/laravel.md">a reservation sync in Laravel</a>, or prefer the prose alone with <code>--skip-code</code>.</p></div>
       </div>
     </div>
   </section>
 
-  <section class="band" id="claude-code">
+  <section class="band alt" id="compare">
+    <div class="wrap">
+      <p class="kicker">How it compares</p>
+      <h2>Other readers speak code. None of them say it.</h2>
+      <p class="intro">Text-to-speech is not new, and nor is having an agent's reply read out. What is new is hearing
+        code as a person says it, while the page follows along. Here is one line, <code>$totals[$channel] ??= 0;</code>, read four ways.</p>
+      <div class="compare-wrap">
+        <table class="compare">
+          <thead><tr><th scope="col">Reader</th><th scope="col">What you hear</th><th scope="col">On screen</th><th scope="col">Voice</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Screen readers<span>VoiceOver, NVDA, Emacspeak</span></th>
+              <td>"dollar totals left bracket dollar channel right bracket question question equals zero semicolon", or skips the symbols</td>
+              <td>Your editor, as it is</td><td>Local</td></tr>
+            <tr><th scope="row">Read-aloud apps<span>Speechify, a browser's read aloud</span></th>
+              <td>Code read as if it were prose: <code>Str::slug</code> becomes "stress log"</td>
+              <td>Their own app or page</td><td>Often the cloud, often paid</td></tr>
+            <tr><th scope="row">Agent read-aloud tools<span>hooks and plugins for coding agents</span></th>
+              <td>Usually "code omitted", or the code read as text</td>
+              <td>Nothing: audio only</td><td>Local or the cloud</td></tr>
+            <tr class="us"><th scope="row">voce</th>
+              <td>"totals channel null coalescing assignment zero"</td>
+              <td>The Markdown, styled, with each word lit as it is spoken</td><td>Kokoro, on your computer, free</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="small">voce is not a screen reader and doesn't try to be one. It is for listening to things worth taking in: an
+        agent's explanation, a pull request walkthrough, study notes on a language.</p>
+    </div>
+  </section>
+
+  <section class="band" id="features">
+    <div class="wrap">
+      <p class="kicker">What it does</p>
+      <h2>Reads what a person would read.</h2>
+      <p class="intro">Markdown is written for the eye. voce shows it the way it should look and reads only the prose,
+        so you can listen with your eyes closed or follow every word.</p>
+      <div class="grid">
+        <div class="card"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h10M4 17h7"/><rect x="13" y="10" width="8" height="4" rx="2" fill="currentColor" stroke="none"/></svg></div>
+          <h3>Follows along</h3><p>The sentence being read sits on a pale band, the word being spoken on a darker one, timed from the audio itself.</p></div>
+        <div class="card"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/></svg></div>
+          <h3>Reads code like a pairing partner</h3><p>Highlighted in every language Pygments knows, and read line by line with the real names: "is identical to", "double arrow", "null coalescing", "spaceship".</p></div>
+        <div class="card"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 10h18M10 4v16"/></svg></div>
+          <h3>Tables that line up</h3><p>Columns are aligned on screen and read one row at a time, cell by cell.</p></div>
+        <div class="card"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-6-4-6 4z"/></svg></div>
+          <h3>Keeps your place</h3><p>Quit at any point and carry on from the same sentence, even after the file has been edited.</p></div>
+        <div class="card"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></div>
+          <h3>Free to listen again</h3><p>Every sentence is fetched once and cached, so going back or listening again costs nothing and works offline.</p></div>
+        <div class="card"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
+          <h3>Take it with you</h3><p><code>--export</code> stitches files into one MP3, with the same voice and pauses, for a walk or a drive.</p></div>
+        <div class="card"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h9"/><path d="M17 16l2 2 3-4"/></svg></div>
+          <h3>Playlists and quizzes</h3><p>Point it at a folder's README and listen through in order. Quizzes pause for your answer.</p></div>
+        <div class="card"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 15l6 6M10 17a7 7 0 1 1 0-14 7 7 0 0 1 0 14z"/></svg></div>
+          <h3>Click to jump</h3><p>Click any sentence to hear it, or use the arrows to move by sentence, paragraph or section.</p></div>
+        <div class="card"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M5 8v8M19 8v8M8.5 5.5v13M15.5 5.5v13"/></svg></div>
+          <h3>Gapless and in time</h3><p>A tiny native player keeps sentences flowing, pauses mid-word and changes speed without changing pitch.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band alt" id="claude-code">
     <div class="wrap split">
       <div>
         <p class="kicker">Made for Claude Code</p>
@@ -382,7 +436,7 @@ footer a:hover { color: var(--text); }
     </div>
   </section>
 
-  <section class="band alt">
+  <section class="band">
     <div class="wrap">
       <p class="kicker">Written for the eye, read for the ear</p>
       <h2>What you see, and what you hear.</h2>
@@ -409,7 +463,7 @@ footer a:hover { color: var(--text); }
     </div>
   </section>
 
-  <section class="band" id="voices">
+  <section class="band alt" id="voices">
     <div class="wrap">
       <p class="kicker">Voices</p>
       <h2>Good out of the box, and free for good.</h2>
@@ -426,7 +480,7 @@ footer a:hover { color: var(--text); }
     </div>
   </section>
 
-  <section class="band alt" aria-labelledby="keys-h">
+  <section class="band" aria-labelledby="keys-h">
     <div class="wrap">
       <p class="kicker">Keys</p>
       <h2 id="keys-h">Everything is one key away.</h2>
@@ -447,21 +501,21 @@ footer a:hover { color: var(--text); }
     </div>
   </section>
 
-  <section class="band" id="install">
+  <section class="band alt" id="install">
     <div class="wrap">
       <p class="kicker">Install</p>
       <h2>Ready in a minute.</h2>
-      <p class="intro">You need macOS and Python 3.9 or newer. The Xcode command line tools give you the gapless player,
-        and ffmpeg is only needed for MP3 export.</p>
+      <p class="intro">You need macOS or Linux, and Python 3.10 to 3.14 for the Kokoro voice. On a Mac, the Xcode command
+        line tools give you the gapless player. On Linux, mpv plays the audio. ffmpeg is only needed for MP3 export.</p>
       <div class="install-steps">
-        <div class="mini"><span class="d"># with uv</span><br><span class="p">❯</span> uv tool install git+https://github.com/jaystewartuk/voce<br><span class="d"># or with pipx</span><br><span class="p">❯</span> pipx install git+https://github.com/jaystewartuk/voce</div>
+        <div class="mini"><span class="d"># with uv</span><br><span class="p">❯</span> uv tool install voce<br><span class="d"># or with pipx</span><br><span class="p">❯</span> pipx install voce</div>
         <div class="mini"><span class="p">❯</span> voce README.md <span class="d">          # any Markdown file</span><br><span class="p">❯</span> voce -r <span class="d">                 # Claude Code's latest reply</span><br><span class="p">❯</span> voce -c <span class="d">                 # the clipboard</span><br><span class="p">❯</span> voce notes.md --export notes.mp3</div>
       </div>
       <p class="small">Full documentation is in the <a href="https://github.com/jaystewartuk/voce#readme">README</a>.</p>
     </div>
   </section>
 
-  <section class="band alt" aria-labelledby="privacy-h">
+  <section class="band" aria-labelledby="privacy-h">
     <div class="wrap">
       <p class="kicker">Privacy</p>
       <h2 id="privacy-h">Your notes stay yours.</h2>

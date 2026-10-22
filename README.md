@@ -54,6 +54,21 @@ Ask Claude Code, Codex or any agent to write you something, and press play. It r
   nothing sent anywhere. Every sentence is made once and cached, so listening again is instant.
 - **Goes with you.** `--export` turns files into one MP3 with the same voice and pauses, for a walk or a drive.
 
+### How it compares
+
+Text-to-speech isn't new, and nor is having an agent's reply read out. What voce adds is code heard the way a person
+says it, with the page following along. Here is one line, `$totals[$channel] ??= 0;`, read four ways:
+
+| Reader | What you hear | On screen |
+| --- | --- | --- |
+| Screen readers (VoiceOver, NVDA, Emacspeak) | "dollar totals left bracket dollar channel right bracket question question equals zero semicolon", or the symbols skipped | your editor, as it is |
+| Read-aloud apps (Speechify, a browser's read aloud) | the code read as prose, so `Str::slug` becomes "stress log" | their own app |
+| Agent read-aloud hooks and plugins | usually "code omitted" | nothing: audio only |
+| **voce** | "totals channel null coalescing assignment zero" | the Markdown, styled, each word lit as it is spoken |
+
+voce is not a screen reader, and doesn't try to be one. It is for listening to things worth taking in: an agent's
+explanation, a pull request walkthrough, study notes on a language.
+
 ## Install
 
 You need macOS or Linux, and Python 3.10 to 3.14 for the voice that works out of the box.
@@ -142,6 +157,9 @@ as it is read, with the word being spoken marked, just like a sentence of prose.
 | `if (strpos($s, 'Hi') !== false) { ... }` | if string position s, Hi is not identical to false and so on |
 | `(int) (19.99 * 100);   // 1998, a cent short` | cast to int 19.99 times 100, 1998, a cent short |
 | `Str::slug('Sea View');` | string double colon slug Sea View |
+| `def __init__(self, **kwargs) -> None:` (Python) | def dunder init self, double star keyword args returns None colon |
+| `const name = user?.name ?? 'guest';` (JavaScript) | const name equals user optional chaining name nullish coalescing guest |
+| `grep -r TODO src \| wc -l && echo done` (shell) | grep minus r TODO source pipe wc minus l and then echo done |
 
 The rules are the ones a person uses without thinking. Names are said as words: `array_values` is "array
 values", `strlen` is "string length", `mb_strlen` is "M B string length", `usort` is "U sort", `isset` is "is
