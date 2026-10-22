@@ -1,0 +1,32 @@
+name: Live
+
+# Once a week, the pieces of the web app that live outside this code: the starter library's template, the sign-in
+# relay and the published app. Catches one being renamed, switched off or left behind by a deploy.
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      APP: https://jaystewartuk.github.io/voce/app/
+    steps:
+      - name: The starter library is a public template
+        run: |
+          test "$(gh api repos/jaystewartuk/voce-library-template --jq '[.is_template, .visibility] | join(" ")')" = "true public"
+          gh api repos/jaystewartuk/voce-library-template/contents/README.md --jq .content | base64 -d | grep -q "## Listen in this order"
+      - name: The relay answers
+        run: curl -fsS https://voce-relay.jay73x.workers.dev/ | grep -q "voce's relay"
+      - name: The app is published, with its copy of voce
+        run: |
+          curl -fsS "$APP" | grep -q 'src="app.js"'
+          curl -fsS "${APP}app.js" | grep -q voce-library-template
+          wheel=$(curl -fsS "${APP}py/manifest.json" | python3 -c "import json, sys; print(json.load(sys.stdin)['wheel'])")
+          curl -fsSI "${APP}py/$wheel" | head -1 | grep -q 200
