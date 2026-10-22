@@ -33,15 +33,18 @@ Some guidelines:
 
 ## Adding a language
 
-How code is read is data in `src/voce/speech/words.py`. A language is a `Language` with the words it says
-differently from the common ones, its operator names, and how its comments start:
+How code is read is data in `src/voce/speech/words/`: `common.py` holds what every language shares, and each
+language has a file of its own. A language is a `Language` with the words it says differently from the common
+ones, its operator names, how its comments start, its fence labels and Pygments aliases, and the manual its
+names come from. Put it in `words/ruby.py`:
 
 ```python
 RUBY = Language("ruby", comments=("#",), words={"attr_accessor": "attribute accessor", "puts": "puts"},
-                operators={"=>": "hash rocket", "<=>": "spaceship", "&.": "safe navigation"})
+                operators={"=>": "hash rocket", "<=>": "spaceship", "&.": "safe navigation"},
+                aliases=("ruby", "rb"), manual="https://docs.ruby-lang.org/en/master/syntax/operators_rdoc.html")
 ```
 
-Then add its fence labels and Pygments aliases to `LANGUAGES` (`"ruby": RUBY, "rb": RUBY`). Code fences, diffs
+Then add it to `ALL` in `words/__init__.py`. Code fences, diffs
 of `.rb` files and inline code in documents about Ruby will use it. If the language has an operator the
 tokeniser in `speech/code.py` doesn't know, add it to the `op` alternation there. Use the names from the
 language's own manual, and add a line to `tests/test_speech.py` with a line of code and how it should sound.

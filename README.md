@@ -179,7 +179,7 @@ The rules were written for PHP and Laravel first, read right through laravel/fra
 [docs/hearing/corpus.py](https://github.com/jaystewartuk/voce/blob/main/docs/hearing/corpus.py) to find what came out odd, and checked by ear against the real
 voice with [docs/hearing/check.py](https://github.com/jaystewartuk/voce/blob/main/docs/hearing/check.py). A doc comment is read as a person reads it: `@param
 array|string $columns` is "parameter array or string, columns". Each language then has its own words on top of what is common
-to all of them, in [`speech/words.py`](https://github.com/jaystewartuk/voce/blob/main/src/voce/speech/words.py): a Python line says "returns" for `->`, "floor
+to all of them, in [`speech/words/`](https://github.com/jaystewartuk/voce/tree/main/src/voce/speech/words): a Python line says "returns" for `->`, "floor
 divided by" for `//` and "dunder init" for `__init__`; a JavaScript line says "is strictly equal to" for `===`
 and "optional chaining" for `?.`, which are MDN's names; shell says "pipe" and "and then"; SQL says "is not
 equal to" for `<>`. A fenced block is read in the language on its fence, a diff in the language of its file,
@@ -297,7 +297,7 @@ stable, so you can ask for the feature you want and review what comes back.
 
 The easiest place to start is a new language for [Code, read aloud](#code-read-aloud): Ruby, Go, Rust, Java, C#
 and Swift are all read with the common words today, and each needs only a few lines of data in
-[`speech/words.py`](https://github.com/jaystewartuk/voce/blob/main/src/voce/speech/words.py). [CONTRIBUTING.md](https://github.com/jaystewartuk/voce/blob/main/CONTRIBUTING.md) has the details.
+[`speech/words/`](https://github.com/jaystewartuk/voce/tree/main/src/voce/speech/words). [CONTRIBUTING.md](https://github.com/jaystewartuk/voce/blob/main/CONTRIBUTING.md) has the details.
 
 ## Licence
 

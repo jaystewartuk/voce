@@ -20,7 +20,7 @@ docs/hearing/.corpus/<name>/:
     operators.tsv   every operator with the word before it and the word after, and what it is said as
     sample.txt      a few hundred lines at random, to read as a listener would hear them
 
-Adding a framework is a line in corpora.txt. Adding a language is a Language in speech/words.py; its files are
+Adding a framework is a line in corpora.txt. Adding a language is a file in speech/words/; its files are
 found by extension through the same table of language aliases.
 """
 

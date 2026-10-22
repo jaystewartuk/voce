@@ -28,10 +28,10 @@ def _reading_code() -> str:
     """A short hash of the source that turns Markdown into blocks and code into words."""
     here = Path(__file__).parent
     files = sorted([here / "document.py", here / "highlight.py",
-                    *here.glob("markdown/*.py"), *here.glob("speech/*.py")])
+                    *here.glob("markdown/*.py"), *here.glob("speech/**/*.py")])
     h = hashlib.sha256()
     for f in files:
-        h.update(f.name.encode())
+        h.update(f.relative_to(here).as_posix().encode())
         h.update(f.read_bytes())
     return h.hexdigest()[:12]
 

@@ -25,7 +25,8 @@ CI runs ruff and pytest on macOS and Linux, on Python 3.9 and 3.13. Write code t
 
 ## Where things are
 
-- `src/voce/speech/words.py`: how code is read, per language, as data. **Most feature requests about how
+- `src/voce/speech/words/`: how code is read, as data. `common.py` for every language, then a file per
+  language (`php.py`, `python.py`, ...), each naming the manual its operator names come from. **Most feature requests about how
   something sounds belong here.**
 - `src/voce/speech/code.py`: the tokeniser that turns a line of code into words.
 - `src/voce/speech/prose.py`, `sentences.py`: prose rewrites and sentence splitting.
@@ -54,13 +55,14 @@ CI runs ruff and pytest on macOS and Linux, on Python 3.9 and 3.13. Write code t
 
 ## Adding a language
 
-A good first change. In `src/voce/speech/words.py`, add a `Language` with its comment markers, the words it says
-differently and its operator names, then its fence names in `LANGUAGES`:
+A good first change. Add `src/voce/speech/words/ruby.py` with a `Language`: its comment markers, the words it
+says differently, its operator names, its fence names and the manual the names come from. Then add it to `ALL`
+in `words/__init__.py`:
 
 ```python
 RUBY = Language("ruby", comments=("#",), words={"attr_accessor": "attribute accessor"},
-                operators={"=>": "hash rocket", "<=>": "spaceship", "&.": "safe navigation"})
-# in LANGUAGES: "ruby": RUBY, "rb": RUBY,
+                operators={"=>": "hash rocket", "<=>": "spaceship", "&.": "safe navigation"},
+                aliases=("ruby", "rb"), manual="https://docs.ruby-lang.org/en/master/syntax/operators_rdoc.html")
 ```
 
 If the language has an operator the tokeniser doesn't know, add it to the `op` alternation in

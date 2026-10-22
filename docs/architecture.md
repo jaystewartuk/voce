@@ -19,7 +19,7 @@ src/voce/
     sentences.py      cutting prose into sentences
     prose.py          small rewrites so prose reads naturally (symbols, abbreviations, "(+12 −3)")
     code.py           code read the way a pairing partner says it, in a language's own words
-    words.py          the word tables: common ones, then a Language for PHP, Python, JavaScript, shell, SQL
+    words/            the word tables: common.py for every language, then a file per language (php.py, ...)
   highlight.py      Pygments tokens reduced to a dozen roles; diffs highlighted as a reviewer reads them
   document.py       a file as Blocks to show and Units to say: sentences, code lines, diff hunks, quiz pairing
   playlist.py       "Listen in this order" READMEs
@@ -73,8 +73,9 @@ one unit each. Code is one unit per line. Quiz answers are moved to sit straight
 
 `speech/code.py` reads a line of code the way a pairing partner says it: names as words, a variable's dollar sign
 and the brackets silent, operators by name, strings by their contents, a trailing comment as prose. The words
-are data in `speech/words.py`: `COMMON_WORDS` and `LINE_OPERATORS` for every language, then a `Language` for
-each language with its own words, operator names and comment markers. `language(alias)` looks one up by its
+are data in `speech/words/`: `COMMON_WORDS` and `LINE_OPERATORS` in `common.py` for every language, then a file
+per language with a `Language` holding its own words, operator names, comment markers, aliases and the manual
+its names come from. `language(alias)` looks one up by its
 fence label or Pygments alias; anything unknown gets the generic rules, which are PHP's. A fenced block is read
 in the language on its fence, and a document's inline code in the language most of its code is in
 (`Doc.language`). A line with four or more words, a sentence's punctuation and nothing that only code has is

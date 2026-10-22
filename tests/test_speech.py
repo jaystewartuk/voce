@@ -220,3 +220,28 @@ def test_a_path_inside_a_string_is_read_as_a_path():
         "Route double colon middleware array of web, auth colon sanctum arrow group base path " \
         "routes slash web dot P H P"
     assert spoken_line("str_ends_with($host, 'booking.com')", "php") == "string ends with host, booking dot com"
+
+
+def test_each_language_has_its_aliases_and_a_manual():
+    from voce.speech.words import ALL, LANGUAGES, PROSE, language
+
+    claimed = [alias for lang in ALL for alias in lang.aliases]
+    assert len(claimed) == len(set(claimed)), "an alias is claimed by two languages"
+    assert set(LANGUAGES) == set(claimed)
+    for lang in ALL:
+        assert lang.aliases, lang.name
+        assert language(lang.aliases[0]) is lang
+        if lang is not PROSE:
+            assert lang.manual.startswith("https://"), lang.name
+
+
+def test_prepared_documents_are_remade_when_a_language_file_changes(monkeypatch):
+    from pathlib import Path
+
+    import voce
+    from voce import prepared
+
+    here, seen, real = Path(voce.__file__).parent, [], Path.read_bytes
+    monkeypatch.setattr(Path, "read_bytes", lambda self: seen.append(self.relative_to(here).as_posix()) or real(self))
+    prepared._reading_code()
+    assert "speech/words/php.py" in seen and "speech/words/common.py" in seen

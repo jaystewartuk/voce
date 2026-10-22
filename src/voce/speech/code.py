@@ -5,10 +5,10 @@ the brackets are silent, operators get the PHP manual's own names (``===`` is "i
 "spaceship"), a string is read by its contents and a trailing comment as prose. A file path is read with its
 slashes and its extension by letter: ``src/voce/cli.py`` is "source slash voce slash C L I dot P Y".
 
-Each language has its own words and operator names in words.py, on top of what is common to all of them: a
-Python line says "returns" for ``->`` and "floor divided by" for ``//``, and a JavaScript line says "is strictly
-equal to" for ``===``, MDN's name. The rules were written for PHP first and the generic rules are PHP's. Checked
-by ear with docs/hearing/check.py.
+Each language has its own words and operator names in its own file in words/, on top of what is common to all of
+them: a Python line says "returns" for ``->`` and "floor divided by" for ``//``, and a JavaScript line says "is
+strictly equal to" for ``===``, MDN's name. The rules were written for PHP first and the generic rules are
+PHP's. Checked by ear with docs/hearing/check.py.
 """
 
 from __future__ import annotations
