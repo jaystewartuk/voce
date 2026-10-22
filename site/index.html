@@ -103,6 +103,10 @@ h1 .said b { background: var(--blue); color: #fff; padding: 0 .08em; border-radi
 .copy { flex: none; border: 1px solid #2A313C; background: #171C24; color: var(--term-text); border-radius: 8px;
   font: 13px var(--sans); padding: 7px 10px; cursor: pointer; }
 .copy:hover { background: #1E2530; }
+.prompt { display: flex; flex-direction: column; }
+.prompt h3 { margin-top: 0; }
+.prompt p { flex: 1; margin-bottom: 16px; }
+.prompt .copy { align-self: flex-start; }
 .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 18px; border-radius: 12px; font-weight: 600;
   text-decoration: none; font-size: 16px; border: 1px solid var(--line); color: var(--text); background: var(--card); }
 .btn:hover { border-color: var(--muted); }
@@ -274,6 +278,7 @@ footer a:hover { color: var(--text); }
         <div class="install"><span class="p">$</span><code id="install-cmd">uv tool install voce</code>
           <button class="copy" data-copy="install-cmd" type="button">Copy</button></div>
         <a class="btn" href="https://github.com/jaystewartuk/voce">View on GitHub</a>
+        <a class="btn" href="#courses">Make a course to listen to</a>
       </div>
       <p class="small">MIT licensed · no account, no API key, nothing sent anywhere</p>
     </div>
@@ -356,7 +361,34 @@ footer a:hover { color: var(--text); }
     </div>
   </section>
 
-  <section class="band alt" id="compare">
+  <section class="band alt" id="courses">
+    <div class="wrap">
+      <p class="kicker">Courses by your coding agent</p>
+      <h2>Ask for a course. Listen to it anywhere.</h2>
+      <p class="intro">Hearing code read the way a pairing partner says it is how you learn to say it yourself, which
+        is what a live-coding interview, a pairing session or a code review asks of you. Give one of these to Claude
+        Code, Codex or Cursor in your voce library, and it writes the course as Markdown files and a playlist. Push,
+        and it is on your phone.</p>
+      <div class="grid">
+        <div class="card prompt"><h3>Pass the live-coding interview</h3><p id="prompt-1">Write me a voce course that gets me ready for a pair-programming interview in Python. Take the twelve problems interviewers ask most, and for each one walk through a solution the way I should talk through it out loud: what I'm about to write, then each line, then how I'd test it. Ten minutes a part.</p>
+          <button class="copy" data-copy="prompt-1" type="button">Copy</button></div>
+        <div class="card prompt"><h3>Talk through a new codebase</h3><p id="prompt-2">Turn this repository into a voce playlist for my first week on the team. Pick the files a new engineer has to understand, and explain each the way a senior engineer would on a call: what it's for, the important lines, and what would break if you changed them.</p>
+          <button class="copy" data-copy="prompt-2" type="button">Copy</button></div>
+        <div class="card prompt"><h3>Python for AI work</h3><p id="prompt-3">Write a voce course on the Python I need to build with LLM APIs: type hints, dataclasses, async and await, calling an API, retrying and handling errors, and testing it. Real code in every part, kept short enough to follow by ear.</p>
+          <button class="copy" data-copy="prompt-3" type="button">Copy</button></div>
+        <div class="card prompt"><h3>Review code an agent wrote</h3><p id="prompt-4">Write a voce course on reviewing code that a coding agent wrote: the mistakes agents tend to make, how to spot each one in a diff, and what to say about it in a review. Use small, real examples in TypeScript and Python.</p>
+          <button class="copy" data-copy="prompt-4" type="button">Copy</button></div>
+        <div class="card prompt"><h3>A new language, from one you know</h3><p id="prompt-5">I know JavaScript well. Write a voce course that teaches me Go by comparing the two: each part takes one idea, shows it in both, and says where Go differs. Eight parts, about eight minutes each.</p>
+          <button class="copy" data-copy="prompt-5" type="button">Copy</button></div>
+        <div class="card prompt"><h3>SQL for the screening round</h3><p id="prompt-6">Write a voce course of the fifteen SQL questions most asked in screening interviews: joins, grouping, window functions and finding duplicates. For each, say how I'd reason about it before writing the query.</p>
+          <button class="copy" data-copy="prompt-6" type="button">Copy</button></div>
+      </div>
+      <p class="small" style="margin-top: 24px">No library yet? <a href="app/">Open the web app</a>, sign in with GitHub
+        and make one in two steps. It comes with notes that tell your agent how to write for the ear.</p>
+    </div>
+  </section>
+
+  <section class="band" id="compare">
     <div class="wrap">
       <p class="kicker">How it compares</p>
       <h2>Other readers speak code. None of them say it.</h2>
@@ -386,7 +418,7 @@ footer a:hover { color: var(--text); }
     </div>
   </section>
 
-  <section class="band" id="features">
+  <section class="band alt" id="features">
     <div class="wrap">
       <p class="kicker">What it does</p>
       <h2>Reads what a person would read.</h2>
@@ -415,7 +447,7 @@ footer a:hover { color: var(--text); }
     </div>
   </section>
 
-  <section class="band alt" id="claude-code">
+  <section class="band" id="claude-code">
     <div class="wrap split">
       <div>
         <p class="kicker">Made for Claude Code</p>
@@ -436,7 +468,7 @@ footer a:hover { color: var(--text); }
     </div>
   </section>
 
-  <section class="band">
+  <section class="band alt">
     <div class="wrap">
       <p class="kicker">Written for the eye, read for the ear</p>
       <h2>What you see, and what you hear.</h2>
@@ -463,7 +495,7 @@ footer a:hover { color: var(--text); }
     </div>
   </section>
 
-  <section class="band alt" id="voices">
+  <section class="band" id="voices">
     <div class="wrap">
       <p class="kicker">Voices</p>
       <h2>Good out of the box, and free for good.</h2>
@@ -480,7 +512,7 @@ footer a:hover { color: var(--text); }
     </div>
   </section>
 
-  <section class="band" aria-labelledby="keys-h">
+  <section class="band alt" aria-labelledby="keys-h">
     <div class="wrap">
       <p class="kicker">Keys</p>
       <h2 id="keys-h">Everything is one key away.</h2>
@@ -501,7 +533,7 @@ footer a:hover { color: var(--text); }
     </div>
   </section>
 
-  <section class="band alt" id="install">
+  <section class="band" id="install">
     <div class="wrap">
       <p class="kicker">Install</p>
       <h2>Ready in a minute.</h2>
@@ -515,7 +547,7 @@ footer a:hover { color: var(--text); }
     </div>
   </section>
 
-  <section class="band" aria-labelledby="privacy-h">
+  <section class="band alt" aria-labelledby="privacy-h">
     <div class="wrap">
       <p class="kicker">Privacy</p>
       <h2 id="privacy-h">Your notes stay yours.</h2>
