@@ -1,0 +1,8 @@
+{
+  "name": "voce-web-tests",
+  "private": true,
+  "description": "The web app in a headless browser, against a fake GitHub. See README.md.",
+  "type": "module",
+  "scripts": { "test": "playwright test" },
+  "devDependencies": { "@playwright/test": "1.56.1" }
+}

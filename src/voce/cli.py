@@ -170,7 +170,10 @@ def pick_voice(args, state: State) -> Voice:
     if not ENGINES[kind].configured(state):
         sys.exit(f"{ENGINES[kind].title} isn't set up. {ENGINES[kind].setup}")
     voice = voices.make(kind, args.voice or "", state)
-    if args.engine or args.voice or args.mac:
+    chosen = args.engine or args.voice or args.mac
+    if kind == "mac" and not chosen and not state.get("engine") and not ENGINES["kokoro"].configured(state):
+        voice.warning = f"Using the Mac's voice. {ENGINES['kokoro'].setup}"
+    if chosen:
         voices.remember(state, voice)
         state.save(force=True)
     return voice
@@ -233,14 +236,14 @@ def main(argv: list[str] | None = None) -> None:
     if args.voices:
         commands.print_voices(state)
         return
-    voice = pick_voice(args, state)
-
-    if args.check is not None:
+    if args.check is not None:  # how a file reads needs no voice
         targets = [Path(p) for p in args.check] or [Path(f) for f in args.files] or [e.path for e in entries]
         if not targets:
             sys.exit("Nothing to check: give files, or set a playlist with --playlist DIR.")
         commands.check(targets, args.skip_code)
         return
+    voice = pick_voice(args, state)
+
     if args.list:
         if not entries:
             sys.exit("No playlist set. Use --playlist DIR.")

@@ -1,18 +1,24 @@
-## Why the cache misses
+## How micrograd learns
 
-The cache key ignores the **query string**, so `/search?q=a` and `/search?q=b` share one entry. Add the query to the key, and keep the TTL short while you test.
+Every number is a `Value` that remembers the values it was made from, so the gradient can flow back through them. Multiplying two of them sets up the chain rule for that one step:
 
 ```python
-def cache_key(request):
-    # Include the query string, sorted so ?a=1&b=2 matches ?b=2&a=1
-    query = "&".join(sorted(request.query.split("&")))
-    return f"{request.path}?{query}"
+def __mul__(self, other):
+    other = other if isinstance(other, Value) else Value(other)
+    out = Value(self.data * other.data, (self, other), '*')
+
+    def _backward():
+        self.grad += other.data * out.grad
+        other.grad += self.data * out.grad
+    out._backward = _backward
+    return out
 ```
 
-| Request | Before | After |
-|---|---|---|
-| `/search?q=a` | hit | miss |
-| `/search?q=b` | hit (wrong) | miss |
+| Operation | Local gradient |
+|---|---|
+| `a + b` | 1 for each |
+| `a * b` | the other value |
+| `a ** n` | `n * a ** (n - 1)` |
 
-- [x] Reproduce it with two queries
-- [ ] Ship the fix behind a flag
+- [x] Read `engine.py` first
+- [ ] Then `nn.py`, where the neurons are

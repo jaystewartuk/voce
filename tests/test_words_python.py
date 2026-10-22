@@ -8,10 +8,10 @@ from voce.speech import spoken_line
 
 LINES = [
     # operators, by the reference's names
-    ("def f(x: int) -> str:", "def f x colon int returns string colon"),
+    ("def f(x: int) -> str:", "def f x colon int returns string"),
     ("area = side ** 2", "area equals side to the power of 2"),
     ("half = n // 2", "half equals n floor divided by 2"),
-    ("while chunk := f.read(8192):", "while chunk assignment expression f dot read 8192 colon"),
+    ("while chunk := f.read(8192):", "while chunk assignment expression f dot read 8192"),
     ("result = weights @ inputs", "result equals weights at inputs"),
     ("@property", "at property"),
     ("q = ~Q(pk=1) | Q(name=\"x\")", "q equals invert Q P K equals 1 or Q name equals x"),
@@ -25,7 +25,7 @@ LINES = [
     ("s |= other", "s or equals other"),
     ("s &= other", "s and equals other"),
     ("s ^= other", "s exclusive or equals other"),
-    ("def stub(self): ...", "def stub self colon ellipsis"),
+    ("def stub(self): ...", "def stub self, ellipsis"),
     ("handler: Callable[..., None]", "handler colon Callable ellipsis, None"),
     ("return []", "return empty list"),
     ("d.setdefault(k, []).append(v)", "d dot set default k, empty list dot append v"),
@@ -33,11 +33,11 @@ LINES = [
     ("del self._cache[key]", "delete self dot cache key"),
     ("nonlocal count", "non local count"),
     ("if not hasattr(self, \"label\") and not issubclass(cls, Base):",
-     "if not has attribute self, label and not is subclass class, Base colon"),
-    ("def __repr__(self):", "def dunder repper self colon"),
-    ("def __getitem__(self, key):", "def dunder get item self, key colon"),
-    ("def __lt__(self, other):", "def dunder less than self, other colon"),
-    ("if s.startswith(\"x\") or s.endswith(\"y\"):", "if s dot starts with x or s dot ends with y colon"),
+     "if not has attribute self, label and not is subclass class, Base"),
+    ("def __repr__(self):", "def dunder repper self"),
+    ("def __getitem__(self, key):", "def dunder get item self, key"),
+    ("def __lt__(self, other):", "def dunder less than self, other"),
+    ("if s.startswith(\"x\") or s.endswith(\"y\"):", "if s dot starts with x or s dot ends with y"),
     ("sys.stdout.write(msg)", "sys dot standard out dot write message"),
     # the standard library and the short names of Python code bases
     ("delta = datetime.now() - timedelta(days=1)", "delta equals date time dot now minus time delta days equals 1"),

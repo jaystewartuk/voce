@@ -92,6 +92,8 @@ details summary { cursor: pointer; margin-top: 14px; }
 button.link { padding: 0; color: var(--accent); text-decoration: underline; font-size: inherit; }
 .note.device { margin: 18px 4px; }
 #choose h2 { margin: 0 0 6px; font-size: 20px; }
+a.btn { text-decoration: none; }
+.steps { margin: 14px 0 0; padding-left: 22px; } .steps li { margin: 0 0 16px; } .steps .note { display: block; margin-top: 6px; }
 
 /* ---- library */
 .part { margin: 22px 0 6px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
@@ -183,9 +185,9 @@ article .l { color: var(--accent); text-decoration: underline; text-decoration-c
 
 <main>
   <section id="connect" class="hidden">
-    <h1 class="page">Your library, on this device</h1>
-    <p class="lead">voce keeps your places and prepared documents in a private git repository of yours. On the Mac,
-      <code>voce --sync OWNER/REPO</code> made it. Connect this device to the same one.</p>
+    <h1 class="page">Your library, on every device</h1>
+    <p class="lead">voce keeps what you listen to, and your place in each, in a private repository on your GitHub
+      account. Sign in, and voce helps you make one if you don't have it yet.</p>
     <div class="card" id="signin">
       <div id="signin-row">
         <p class="note" style="margin-top:0">Sign in, and GitHub lets this page read and write that one repository. Nothing is sent anywhere
@@ -210,7 +212,15 @@ article .l { color: var(--accent); text-decoration: underline; text-decoration-c
       <h2 id="choose-title"></h2>
       <p class="note" id="choose-lead"></p>
       <div class="repos" id="repos"></div>
-      <div class="actions"><button class="btn quiet" id="install-go"></button></div>
+      <ol class="steps hidden" id="make">
+        <li><a class="btn" id="make-go" target="_blank" rel="noopener">Make your library</a>
+          <span class="note">GitHub opens with a private copy of voce's starter library ready, examples included. Press
+            "Create repository", then come back here.</span></li>
+        <li><button class="btn" id="make-install">Give voce access to it</button>
+          <span class="note">Choose "Only select repositories" and your new <code>voce-library</code>. GitHub brings you back here.</span></li>
+      </ol>
+      <div class="actions" id="choose-actions"><button class="btn quiet" id="install-go"></button>
+        <a class="btn quiet" id="make-again" target="_blank" rel="noopener">Make a new library</a></div>
     </div>
   </section>
 

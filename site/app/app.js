@@ -6,6 +6,11 @@
    (relay/worker.js, a stateless function) does the code-for-token swap that GitHub won't let a page do. The
    library itself never leaves GitHub and this device. A fine-grained token pasted by hand works the same way.
 
+   The library repository holds what the person chose, as plain files: its README's "## Listen in this order" is
+   a playlist, items/<id>.json is anything added from any device (a web page, a file, shared text, another
+   repository's playlist), texts/<hash>.md the Markdown of the ones with no other home, places/<hash>.json the
+   place in each.
+
    The page also carries voce's own reading code (py.js: Python in the browser), so it can read a playlist straight
    from a repository, or a file or web page from this device, with nothing prepared on a Mac first. Without
    signing in, it works on this device alone: what was opened and the places in it stay in this browser. */
@@ -13,6 +18,8 @@
 const API = "https://api.github.com";
 // The GitHub App and its relay. With no client ID, the connect screen offers only the token form.
 const GITHUB_APP = { client: "Iv23liKDXAS67GVEUEA6", slug: "voce-reader", relay: "https://voce-relay.jay73x.workers.dev" };
+// A new library starts as a private copy of this template: a README playlist of examples, and notes for a coding agent.
+const TEMPLATE = { owner: "jaystewartuk", name: "voce-library-template" };
 const KOKORO_URL = "https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1/+esm";
 const KOKORO_MODEL = "onnx-community/Kokoro-82M-v1.0-ONNX-timestamped"; // the same model, also saying how long each sound lasts
 const READABILITY_URL = "https://cdn.jsdelivr.net/npm/@mozilla/readability@0.5.0/+esm"; // finds the article in a web page
@@ -105,7 +112,7 @@ async function gh(auth, path, init = {}) {
     headers: { Authorization: `Bearer ${await auth.bearer()}`, Accept: "application/vnd.github+json",
                "X-GitHub-Api-Version": "2022-11-28", ...(init.headers || {}) },
   });
-  if (!r.ok && r.status !== 404) {
+  if (!r.ok && r.status !== 404 && r.status !== 409) {
     const text = await r.text().catch(() => "");
     throw new Error(r.status === 401 ? (auth.manual ? "GitHub didn't accept the token." : "GitHub signed this device out. Sign in again.")
       : r.status === 403 ? "voce can't reach this repository, or the API limit is reached for the hour."
@@ -141,7 +148,7 @@ class Repo {
   /** {path: sha} for the files in a folder, in one request; with deep, every file under it. */
   async tree(folder, deep = false) {
     const r = await this.api(`/repos/${this.name}/git/trees/${folder ? "HEAD:" + encodeURI(folder) : "HEAD"}${deep ? "?recursive=1" : ""}`);
-    if (r.status === 404) return {};
+    if (r.status === 404 || r.status === 409) return {}; // no such folder, or a repository with nothing in it yet
     const d = await r.json();
     return Object.fromEntries(d.tree.filter((e) => e.type === "blob").map((e) => [e.path, e.sha]));
   }
@@ -177,8 +184,14 @@ class Repo {
       body: JSON.stringify(body),
     });
     if (r.status === 409 || r.status === 422) return null;
-    if (!r.ok) throw new Error(`Couldn't save your place: GitHub said ${r.status}.`);
+    if (!r.ok) throw new Error(`Couldn't save to your library: GitHub said ${r.status}.`);
     return (await r.json()).content.sha;
+  }
+
+  /** Remove a file; sha is the version being removed. */
+  async remove(path, sha, message) {
+    const r = await this.api(`/repos/${this.name}/contents/${path}`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message, sha }) });
+    if (!r.ok && r.status !== 404) throw new Error(`Couldn't remove it: GitHub said ${r.status}.`);
   }
 }
 
@@ -283,13 +296,20 @@ function address(text) {
 
 // ---------------------------------------------------------------- the library and places
 
-/** The documents to listen to: playlists read straight from repositories, then the Mac's prepared copies, then
-    files and pages opened on this device. Each is named by the hash of its text, which is what names its place too.
-    With no repository, it is this device's alone: the places are kept in this browser. */
+/** The documents to listen to: the library's own README playlist and the playlists added to it, then what was
+    added from any device, then the Mac's prepared copies. Each is named by the hash of its text, which is what names
+    its place too. With no repository, it is this device's alone: what was opened and the places in it are kept in
+    this browser, and carried into the repository on signing in. */
 class Library {
   constructor(repo, auth) {
     this.repo = repo; this.auth = auth;
     this.docs = []; this.places = {}; this.placeShas = {}; this.local = {}; this.notes = []; this.prepared = {};
+    this.items = {}; this.itemShas = {}; this.texts = {};
+  }
+
+  /** The playlists added to the library, as {id, repo, path}. */
+  get sources() {
+    return Object.entries(this.items).filter(([, it]) => it.kind === "playlist").map(([id, it]) => ({ id, repo: it.repo, path: it.path }));
   }
 
   async load() {
@@ -299,25 +319,87 @@ class Library {
       this.notes = [];
       return;
     }
-    const [prepared, places] = await Promise.all([this.repo.tree("prepared"), this.repo.tree("places")]);
-    this.prepared = prepared;
-    this.placeShas = places;
+    const read = async (tree) => Object.fromEntries((await Promise.all(Object.entries(tree)
+      .filter(([name]) => name.endsWith(".json"))
+      .map(async ([name, sha]) => { try { return [name.slice(0, -5), JSON.parse(await this.repo.blob(sha))]; } catch { return null; } })))
+      .filter(Boolean));
+    const [prepared, places, items, texts] = await Promise.all(["prepared", "places", "items", "texts"].map((f) => this.repo.tree(f)));
+    this.prepared = prepared; this.placeShas = places; this.itemShas = items; this.texts = texts;
     const index = prepared["index.json"] ? JSON.parse(await this.repo.blob(prepared["index.json"])) : { documents: [] };
-    const entries = await Promise.all(Object.entries(places)
-      .filter(([name]) => /^[0-9a-f]{64}\.json$/.test(name))
-      .map(async ([name, sha]) => { try { return [name.slice(0, 64), JSON.parse(await this.repo.blob(sha))]; } catch { return null; } }));
-    this.places = Object.fromEntries(entries.filter(Boolean));
+    [this.places, this.items] = await Promise.all([read(places), read(items)]);
+    for (const k of Object.keys(this.places)) if (!/^[0-9a-f]{64}$/.test(k)) delete this.places[k];
+    await this.carry();
     const docs = [], seen = new Set(), notes = [];
     const add = (d) => { if (!seen.has(d.hash)) { seen.add(d.hash); docs.push(d); } };
-    for (const source of store.get("sources", [])) {
+    try { (await this.fromSource({ repo: this.repo.name, path: "README.md" })).forEach(add); }
+    catch { /* a library made by voce --sync has no playlist of its own */ }
+    for (const source of this.sources) {
       try { (await this.fromSource(source)).forEach(add); }
       catch (e) { notes.push(`${source.repo} ${source.path}: ${e.message}`); }
     }
+    Object.entries(this.items).filter(([hash, it]) => it.kind !== "playlist" && this.texts[`${hash}.md`])
+      .sort(([, a], [, b]) => (b.added || "").localeCompare(a.added || ""))
+      .forEach(([hash, it]) => add({ hash, title: it.title, part: "Added", minutes: it.minutes, sha: this.texts[`${hash}.md`],
+                                     name: `${hash}.md`, source: { repo: this.repo.name } }));
     const fresh = new Set(docs.map((d) => d.name));              // a Mac copy of a playlist file is its past: skip it
     index.documents.filter((d) => prepared[`${d.hash}.json`] && !fresh.has(d.file)).forEach(add);
     store.get("local", []).forEach((d) => add({ ...d, part: "On this device" }));
     this.docs = docs;
     this.notes = notes;
+  }
+
+  /** What was read on this device before signing in, and playlists added before they were kept in the library:
+      put into the repository, places too, so nothing is lost by signing in. */
+  async carry() {
+    const cache = await caches.open("voce-local").catch(() => null);
+    const left = [];
+    for (const d of store.get("local", [])) {
+      const hit = cache && await cache.match(`${API}/local-text/${d.hash}`);
+      if (!hit) { left.push(d); continue; } // opened before the text was kept: it stays on this device
+      try {
+        const { text, from } = await hit.json();
+        await this.keep(d.hash, text, { kind: "file", ...from, title: d.title, minutes: d.minutes, added: d.added || now() });
+        const place = store.get("places", {})[d.hash];
+        if (place && !this.placeShas[`${d.hash}.json`]) {
+          const sha = await this.repo.put(`places/${d.hash}.json`, JSON.stringify(place, null, 1), undefined, `web: ${d.title.slice(0, 60)}`);
+          if (sha) { this.placeShas[`${d.hash}.json`] = sha; this.places[d.hash] = place; }
+        }
+      } catch { left.push(d); }
+    }
+    store.set("local", left);
+    for (const s of store.get("sources", [])) await this.addSource(s.repo, s.path).catch(() => {});
+    store.del("sources");
+  }
+
+  /** Put a text and its entry in the library: texts/<hash>.md, then items/<hash>.json. */
+  async keep(hash, text, item) {
+    const message = `web: ${item.title.slice(0, 60)}`;
+    if (!this.texts[`${hash}.md`]) {
+      const sha = await this.repo.put(`texts/${hash}.md`, text, undefined, message);
+      this.texts[`${hash}.md`] = sha || (await this.repo.file(`texts/${hash}.md`))?.sha; // null: another device put it there first
+    }
+    if (!this.itemShas[`${hash}.json`]) {
+      const sha = await this.repo.put(`items/${hash}.json`, JSON.stringify(item, null, 1), undefined, message);
+      if (sha) this.itemShas[`${hash}.json`] = sha;
+    }
+    this.items[hash] = item;
+  }
+
+  /** Add another repository's README playlist to the library. */
+  async addSource(repo, path) {
+    if (this.sources.some((s) => s.repo === repo && s.path === path)) return;
+    const id = (await sha256(`playlist ${repo} ${path}`)).slice(0, 16);
+    const item = { kind: "playlist", repo, path, added: now() };
+    const sha = await this.repo.put(`items/${id}.json`, JSON.stringify(item, null, 1), this.itemShas[`${id}.json`], `web: playlist ${repo} ${path}`);
+    if (sha) this.itemShas[`${id}.json`] = sha;
+    this.items[id] = item;
+    this.docs = [];
+  }
+
+  async removeSource(id) {
+    await this.repo.remove(`items/${id}.json`, this.itemShas[`${id}.json`], `web: remove playlist ${this.items[id]?.repo || ""}`);
+    delete this.items[id]; delete this.itemShas[`${id}.json`];
+    this.docs = [];
   }
 
   /** The documents of one playlist README in a repository, each with the sha of its text and the hash of it. */
@@ -364,15 +446,27 @@ class Library {
     return out;
   }
 
-  /** A file or page from this device, read now and kept in this browser, listed under "On this device". The
-      newest LOCAL_KEEP are kept. */
-  async open(text, name) {
+  /** A file, page or shared text, read now. Signed in, it goes into the library, listed under "Added" on every
+      device; otherwise it is kept in this browser under "On this device", the newest LOCAL_KEEP of them. `from`
+      says where it came from: {kind: "page", url}, {kind: "file"} or {kind: "text"}. */
+  async open(text, name, from = { kind: "file" }) {
     const out = await py.prepare(text, name);
     this.local[out.hash] = out;
     const cache = await caches.open("voce-local").catch(() => null);
     if (cache) await cache.put(`${API}/local/${out.hash}`, new Response(JSON.stringify(out))).catch(() => {});
-    const kept = [{ hash: out.hash, title: out.title, minutes: out.minutes }, ...store.get("local", []).filter((d) => d.hash !== out.hash)];
-    kept.slice(LOCAL_KEEP).forEach((d) => cache && cache.delete(`${API}/local/${d.hash}`).catch(() => {}));
+    if (this.repo) {
+      try {
+        await this.keep(out.hash, text, { ...from, title: out.title, minutes: out.minutes, added: now() });
+        if (!this.docs.some((d) => d.hash === out.hash)) {
+          this.docs.push({ hash: out.hash, title: out.title, part: "Added", minutes: out.minutes, sha: this.texts[`${out.hash}.md`],
+                           name: `${out.hash}.md`, source: { repo: this.repo.name } });
+        }
+        return out.hash;
+      } catch { /* GitHub turned it away: keep it on this device, and it is carried into the library next time */ }
+    }
+    if (cache) await cache.put(`${API}/local-text/${out.hash}`, new Response(JSON.stringify({ text, from }))).catch(() => {});
+    const kept = [{ hash: out.hash, title: out.title, minutes: out.minutes, added: now() }, ...store.get("local", []).filter((d) => d.hash !== out.hash)];
+    kept.slice(LOCAL_KEEP).forEach((d) => cache && [`local/${d.hash}`, `local-text/${d.hash}`].forEach((k) => cache.delete(`${API}/${k}`).catch(() => {})));
     store.set("local", kept.slice(0, LOCAL_KEEP));
     if (!this.docs.some((d) => d.hash === out.hash)) this.docs.push({ hash: out.hash, title: out.title, part: "On this device", minutes: out.minutes });
     return out.hash;
@@ -901,16 +995,26 @@ function connectView(state, repos = []) {
   $("connect-status").textContent = state === "busy" ? "Signing in…" : "";
   $("signin-go").disabled = state === "busy";
   if (!signedIn) return;
-  $("choose-title").textContent = state === "install" ? "Give voce access to your library" : state === "busy" ? "Signing in…" : "Which repository?";
+  $("choose-title").textContent = state === "install" ? "Make your library" : state === "busy" ? "Signing in…" : "Which repository?";
   $("choose-lead").textContent = state === "install"
-    ? "voce isn't installed on any of your repositories yet. On GitHub, choose the one voce --sync made."
-    : state === "busy" ? "" : "The repositories voce can reach. Choose the one voce --sync made.";
+    ? "Two steps on GitHub, a minute in all. Already have a library, made by voce --sync on a Mac? Skip to step 2 and choose it."
+    : state === "busy" ? "" : "The repositories voce can reach. Choose your library.";
+  $("make").classList.toggle("hidden", state !== "install");
+  $("choose-actions").classList.toggle("hidden", state === "install" || state === "busy");
   $("repos").replaceChildren(...repos.map((name) => {
     const b = document.createElement("button"); b.className = "btn quiet repo"; b.textContent = name;
     b.onclick = () => useRepo(name);
     return b;
   }));
   $("install-go").textContent = state === "install" ? "Choose the repository on GitHub" : "Give voce access to another repository";
+}
+
+/** GitHub's new-repository page, filled in: a private copy of the starter library, named voce-library. */
+function makeUrl() {
+  const u = new URL("https://github.com/new");
+  Object.entries({ template_owner: TEMPLATE.owner, template_name: TEMPLATE.name, owner: "@me", name: "voce-library",
+                   visibility: "private", description: "What I listen to with voce" }).forEach(([k, v]) => u.searchParams.set(k, v));
+  return u.href;
 }
 
 function fail(message) {
@@ -979,10 +1083,10 @@ async function showLibrary() {
   if (!library.repo) {
     el.insertAdjacentHTML("beforeend", `<h1 class="page">Read something</h1><p class="lead">A web page or a Markdown file, read aloud with
       each sentence and word marked as it is said. It stays on this device: <a href="../privacy.html">what goes where</a>.
-      Have a voce library? <a href="#/" id="signin-link">Sign in with GitHub</a>.</p>`);
+      <a href="#/" id="signin-link">Sign in with GitHub</a> to keep what you read, and your place in it, on every device.</p>`);
     el.append(open);
   } else if (!library.docs.length) {
-    el.insertAdjacentHTML("beforeend", '<h1 class="page">Nothing here yet</h1><p class="lead">In settings, add a playlist from a repository voce can reach, or open a web page or a file below. On the Mac, <code>voce --sync</code> sends your playlist here too.</p>');
+    el.insertAdjacentHTML("beforeend", '<h1 class="page">Nothing here yet</h1><p class="lead">Open a web page or a file below and it stays in your library, on every device. Or write a playlist in your library\'s README, add one from another repository in settings, or run <code>voce --sync</code> on a Mac.</p>');
   }
   let part;
   for (const d of library.docs) {
@@ -1007,8 +1111,9 @@ async function openDoc(doing, get) {
   const note = (text) => { const n = $("open-note"); if (n) n.textContent = text; };
   note(doing);
   try {
-    const { text, name } = await get(note);
-    location.hash = `#/doc/${await library.open(text, name)}`;
+    const { text, name, from } = await get(note);
+    if (library.repo) note("Adding it to your library…");
+    location.hash = `#/doc/${await library.open(text, name, from)}`;
   } catch (e) { note(`Couldn't read it: ${e.message}`); }
 }
 
@@ -1018,7 +1123,8 @@ function openFile(file) {
   if (!file) return;
   return openDoc("Reading…", async () => {
     const text = await file.text();
-    return isHtml(file.name) ? { text: await pageToMarkdown(text), name: file.name.replace(/\.\w+$/, ".md") } : { text, name: file.name };
+    const from = { kind: "file", file: file.name };
+    return isHtml(file.name) ? { text: await pageToMarkdown(text), name: file.name.replace(/\.\w+$/, ".md"), from } : { text, name: file.name, from };
   });
 }
 
@@ -1028,8 +1134,8 @@ function openPage(typed) {
   return openDoc("Fetching the page…", async (note) => {
     const page = await fetchPage(url);
     note("Reading…");
-    const name = `${new URL(page.url).hostname}.md`;
-    return /html|xml/.test(page.type) ? { text: await pageToMarkdown(page.text, page.url), name } : { text: page.text, name };
+    const name = `${new URL(page.url).hostname}.md`, from = { kind: "page", url: page.url };
+    return /html|xml/.test(page.type) ? { text: await pageToMarkdown(page.text, page.url), name, from } : { text: page.text, name, from };
   });
 }
 
@@ -1046,7 +1152,7 @@ function openShared(s) {
   const url = address(s.url) || address(s.text);
   if (url) return openPage(url);
   if (!s.text.trim()) return;
-  return openDoc("Reading…", async () => ({ text: s.title ? `# ${s.title}\n\n${s.text}` : s.text, name: "shared.md" }));
+  return openDoc("Reading…", async () => ({ text: s.title ? `# ${s.title}\n\n${s.text}` : s.text, name: "shared.md", from: { kind: "text" } }));
 }
 
 function esc(s) { return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
@@ -1089,12 +1195,12 @@ function fillVoices() {
 }
 
 function fillSources() {
-  const sources = store.get("sources", []);
-  $("s-sources").replaceChildren(...sources.map((src, i) => {
+  const sources = library && library.repo ? library.sources : [];
+  $("s-sources").replaceChildren(...sources.map((src) => {
     const row = document.createElement("div"); row.className = "kv source";
     const b = document.createElement("b"); b.textContent = `${src.repo} · ${src.path}`;
     const x = document.createElement("button"); x.className = "icon"; x.setAttribute("aria-label", "Remove"); x.textContent = "×";
-    x.onclick = () => { sources.splice(i, 1); store.set("sources", sources); fillSources(); if (library) library.docs = []; };
+    x.onclick = () => library.removeSource(src.id).then(fillSources, (e) => { $("s-src-note").textContent = e.message; });
     row.append(b, x);
     return row;
   }));
@@ -1104,22 +1210,22 @@ function fillSources() {
   }
 }
 
-function addSource() {
+async function addSource() {
   const repo = $("s-src-repo").value.trim().replace(/^https:\/\/github\.com\//, "").replace(/\.git$/, "");
   const path = $("s-src-path").value.trim().replace(/^\/+/, "");
   if (!/^[\w.-]+\/[\w.-]+$/.test(repo) || !path) { $("s-src-note").textContent = "Give the repository as owner/name and the README's path in it."; return; }
-  const sources = store.get("sources", []);
-  if (!sources.some((s) => s.repo === repo && s.path === path)) sources.push({ repo, path });
-  store.set("sources", sources);
+  if (!library || !library.repo) return;
+  try { await library.addSource(repo, path); } catch (e) { $("s-src-note").textContent = e.message; return; }
   $("s-src-path").value = ""; $("s-src-note").textContent = "";
   fillSources();
-  if (library) library.docs = [];
 }
 
 function wire() {
   if (!GITHUB_APP.client) { $("signin-row").classList.add("hidden"); $("token-form").open = true; $("token-form").querySelector("summary").classList.add("hidden"); }
   $("signin-go").onclick = () => signIn();
   $("install-go").onclick = () => signIn(true);
+  $("make-install").onclick = () => signIn(true);
+  $("make-go").href = $("make-again").href = makeUrl();
   $("connect-go").onclick = async () => {
     const name = $("repo").value.trim().replace(/^https:\/\/github\.com\//, "").replace(/\.git$/, "");
     const token = $("token").value.trim();
