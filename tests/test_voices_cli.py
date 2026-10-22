@@ -79,7 +79,10 @@ def test_a_failed_engine_falls_back_and_says_so(tmp_path, monkeypatch):
     assert voice.warning.startswith("Kokoro voice failed (model missing); using the Mac voice")
 
 
-def test_check_command(tmp_path, capsys):
+def test_check_command(tmp_path, capsys, monkeypatch):
+    # how a file reads needs no voice: on Python 3.9 there is none to set up
+    monkeypatch.setattr(Kokoro, "configured", classmethod(lambda cls, state: False))
+    monkeypatch.setattr(Mac, "configured", classmethod(lambda cls, state: False))
     path = tmp_path / "a.md"
     path.write_text("# A\n\nOne sentence. Another.\n\n```\nx\n```\n")
     cli.main(["--check", str(path)])
