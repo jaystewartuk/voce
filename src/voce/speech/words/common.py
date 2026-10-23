@@ -13,6 +13,7 @@ class Language:
     name: str
     words: dict = field(default_factory=dict)       # names said in full or by letter, on top of COMMON_WORDS
     operators: dict = field(default_factory=dict)   # operators by this language's names, on top of LINE_OPERATORS
+    after_value: dict = field(default_factory=dict)  # operators named differently after a value: a & b, not &a
     comments: tuple = ()                            # how a comment starts
     dunder: bool = False                            # __init__ is "dunder init"
     prose: bool = False                             # a prose format: a line is read as text, not as code

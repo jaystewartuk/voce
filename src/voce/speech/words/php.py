@@ -1,4 +1,8 @@
-"""PHP's own words, named as the PHP manual names them: ``===`` is "identical"."""
+"""PHP's own words, named as the PHP manual names them: ``===`` is "identical", ``<>`` is "not equal".
+
+LINE_OPERATORS in common.py already hold PHP's names; the operators here are the ones it lacks or names
+otherwise. The pages: https://www.php.net/manual/en/language.operators.php and the pages under it.
+"""
 
 from __future__ import annotations
 
@@ -75,5 +79,30 @@ PHP = Language("php", comments=("//", "#", "/*"), words={
     "Broadcastable": "broadcast able", "Dispatchable": "dispatch able", "Prunable": "prune able",
     "Batchable": "batch able", "Notifiable": "notify able", "Routable": "route able", "Tappable": "tap able",
     "Hashable": "hash able", "Encryptable": "encrypt able", "Validatable": "validate able",
+    # A name is split at its underscores before it is looked up, so mt_rand needs "mt" and ctype_digit "ctype".
+    "mt": "M T", "ctype": "C type", "alnum": "alphanumeric", "xdigit": "hex digit", "punct": "punctuation",
+    "spl": "S P L", "ini": "I N I", "utf8": "U T F 8", "pcntl": "P C N T L", "openssl": "open S S L",
+    "hmac": "H MAC", "curlopt": "curl option", "setopt": "set option", "errno": "error number", "eol": "end of line",
+    "getcsv": "get C S V", "setcookie": "set cookie", "gethostname": "get host name", "pid": "P I D",
+    "gethostbyname": "get host by name", "fsockopen": "F sock open", "natsort": "natural sort",
+    "natcasesort": "natural case sort", "multisort": "multi sort", "ireplace": "I replace", "sscanf": "S scan F",
+    "strspn": "string span", "strcspn": "string C span", "strpbrk": "string pointer break",
+    "stristr": "string I string", "strrchr": "string R char", "strtok": "string token", "strwidth": "string width",
+    "strnatcmp": "string natural compare", "strnatcasecmp": "string natural case compare",
+    "addcslashes": "add C slashes", "stripcslashes": "strip C slashes", "quotemeta": "quote meta",
+    "opcache": "op cache", "ucsplit": "U C split", "flushdb": "flush D B", "goto": "go to", "xor": "exclusive or",
+    "argv": "arg V", "argc": "arg C", "http": "HTTP", "https": "HTTPS", "uri": "U R I", "uris": "U R Is",
+    "ftp": "F T P", "sftp": "S F T P", "smtp": "S M T P", "ssl": "S S L", "dns": "DNS", "csrf": "C S R F",
+    "xsrf": "X S R F", "csp": "C S P", "aws": "A W S", "ses": "S E S", "gd": "G D", "iv": "I V", "ips": "I Ps",
+    "href": "H ref", "tty": "T T Y", "cwd": "C W D", "odbc": "O D B C", "SQ": "S Q L",  # SQLite splits as SQ Lite
+}, operators={
+    # language.operators.comparison.php: <> is "Not equal", the same as !=
+    "<>": "is not equal to",
+    # language.operators.bitwise.php: "Shift left", "Shift right", "Xor (exclusive or)", and ~ is "Not"
+    "<<": "shifted left by", ">>": "shifted right by", "^": "exclusive or", "~": "bitwise not",
+    # language.operators.assignment.php, the bitwise assignment operators "Left Shift" and "Right Shift"
+    "<<=": "left shift equals", ">>=": "right shift equals",
+    # language.operators.functional.php: PHP 8.5's |> is "the pipe operator"; "piped into" keeps it apart from |
+    "|>": "piped into",
 }, aliases=("php", "blade"),
     manual="https://www.php.net/manual/en/language.operators.php")

@@ -35,7 +35,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 from voce.speech import speakable, spoken_line
-from voce.speech.code import _tokens  # the same tokeniser the reader uses, so the operator report matches it
+from voce.speech.code import tokens_for  # the same tokeniser the reader uses, so the operator report matches it
 from voce.speech.words import GENERIC, language
 
 HERE = Path(__file__).resolve().parent
@@ -125,7 +125,7 @@ def main() -> int:
 
     dictionary = set(DICTIONARY.read_text().lower().split()) if DICTIONARY.exists() else set()
     grep = re.compile(args.grep) if args.grep else None
-    tokens = _tokens(language(lang).comments)
+    tokens = tokens_for(language(lang))
 
     transcript: list[str] = []
     unknown: Counter = Counter()
@@ -202,7 +202,7 @@ def main() -> int:
     random.seed(args.seed)
     picked = random.sample(transcript, min(args.sample, len(transcript)))
     (out / "sample.txt").write_text("".join(
-        f"{where}\n    {line}\n    => {said}\n\n" for where, line, said in (t.split("\t") for t in picked)))
+        f"{where}\n    {line}\n    => {said}\n\n" for where, line, said in (t.split("\t", 2) for t in picked)))
     print(f"{len(files)} files, {total} lines, {len(unknown)} unknown words -> {out}")
     return 0
 
