@@ -49,7 +49,8 @@ Ask Claude Code, Codex or any agent to write you something, and press play. It r
 
 - **Reads code like a pairing partner.** `'1' === 1` is heard as "the string 1 is identical to 1", and
   `$totals[$channel] ??= 0;` as "totals channel null coalescing assignment zero". Operators get their manual's
-  real names, in each language's own words, so you learn to say them. See [Code, read aloud](#code-read-aloud).
+  real names, in each language's own words, so you learn to say them. Thirteen languages so far: Python, JavaScript,
+  TypeScript, Go, Rust, PHP, Ruby, Java, C#, Swift, Kotlin, shell and SQL. See [Code, read aloud](#code-read-aloud).
 - **Reads what a person would read.** Markup is never spoken. Tables are read row by row, and links by their
   text. Things meant for the eye stay on the screen.
 - **Follows along.** The sentence being read sits on a pale band, and the word being spoken on a darker one. The
@@ -168,7 +169,12 @@ as it is read, with the word being spoken marked, just like a sentence of prose.
 | `Str::slug('Sea View');` | string double colon slug Sea View |
 | `def __init__(self, **kwargs) -> None:` (Python) | def dunder init self, double star keyword args returns None |
 | `const name = user?.name ?? 'guest';` (JavaScript) | const name equals user optional chaining name nullish coalescing guest |
-| `grep -r TODO src \| wc -l && echo done` (shell) | grep minus r TODO source pipe wc minus l and then echo done |
+| `if err := json.Unmarshal(data, &v); err != nil {` (Go) | if error short variable declaration JSON dot Unmarshal data, address of v, error is not equal to nil |
+| `let n = reader.read(&mut buf)?;` (Rust) | let n equals reader dot read mutable borrow buffer try |
+| `name = user&.name \|\| 'guest'` (Ruby) | name equals user safe navigation name or guest |
+| `val l = b?.length ?: 0` (Kotlin) | val l equals b safe call length elvis zero |
+| `grep -r TODO src \| wc -l && echo done` (shell) | grep dash r TODO source pipe W C dash l and then echo done |
+| `SELECT data->>'name' FROM users WHERE meta ? 'admin';` (SQL) | SELECT data extracts as text name FROM users WHERE meta exists admin |
 
 The rules are the ones a person uses without thinking. Names are said as words: `array_values` is "array
 values", `strlen` is "string length", `mb_strlen` is "M B string length", `usort` is "U sort", `isset` is "is
@@ -187,13 +193,21 @@ you pair or review code with someone.
 The rules were written for PHP and Laravel first, read right through laravel/framework with
 [docs/hearing/corpus.py](https://github.com/jaystewartuk/voce/blob/main/docs/hearing/corpus.py) to find what came out odd, and checked by ear against the real
 voice with [docs/hearing/check.py](https://github.com/jaystewartuk/voce/blob/main/docs/hearing/check.py). A doc comment is read as a person reads it: `@param
-array|string $columns` is "parameter array or string, columns". Each language then has its own words on top of what is common
-to all of them, in [`speech/words/`](https://github.com/jaystewartuk/voce/tree/main/src/voce/speech/words): a Python line says "returns" for `->`, "floor
-divided by" for `//` and "dunder init" for `__init__`; a JavaScript line says "is strictly equal to" for `===`
-and "optional chaining" for `?.`, which are MDN's names; shell says "pipe" and "and then"; SQL says "is not
-equal to" for `<>`. A fenced block is read in the language on its fence, a diff in the language of its file,
-and inline code in a sentence in the language most of the document's code is in. Prose inside code, such as a
-doc comment or a heredoc, is read as prose. Adding a language is a few lines of data, and welcome.
+array|string $columns` is "parameter array or string, columns".
+
+Every other language has its own file of words and operator names in
+[`speech/words/`](https://github.com/jaystewartuk/voce/tree/main/src/voce/speech/words), each naming the manual its operators come from: Python's
+reference, MDN, the TypeScript Handbook, the Go specification, the Rust Reference and Book, the Ruby documentation,
+the Java Language Specification, Microsoft's C# reference, The Swift Programming Language, the Kotlin documentation,
+the Bash manual and the PostgreSQL manual. A Python line says "returns" for `->`, "floor divided by" for `//` and
+"dunder init" for `__init__`; JavaScript says "is strictly equal to" for `===` and "optional chaining" for `?.`;
+Go says "short variable declaration" for `:=` and "bit clear" for `&^`; Rust says "turbofish" for `::<`, which The
+Rust Book does; Ruby says "spaceship" and "hash rocket", which its documentation does; Kotlin says "elvis"; shell
+says "pipe" and "here string"; SQL says "is not equal to" for `<>` and "cast to" for `::`. Each language was read
+through well-known projects in it, and has tests with the exact words. A fenced block is read in the language on
+its fence, a diff in the language of its file, and inline code in a sentence in the language most of the document's
+code is in. Prose inside code, such as a doc comment or a heredoc, is read as prose. Adding a language is one small
+file of data, and welcome.
 
 If you would rather hear only the prose, `--skip-code` shows code without reading it.
 
@@ -304,9 +318,13 @@ Issues and pull requests are welcome, and so is a coding agent doing the work. T
 [AGENTS.md](https://github.com/jaystewartuk/voce/blob/main/AGENTS.md) tells Claude Code, Codex or Cursor how voce is laid out, how to test it and what to keep
 stable, so you can ask for the feature you want and review what comes back.
 
-The easiest place to start is a new language for [Code, read aloud](#code-read-aloud): Ruby, Go, Rust, Java, C#
-and Swift are all read with the common words today, and each needs only a few lines of data in
-[`speech/words/`](https://github.com/jaystewartuk/voce/tree/main/src/voce/speech/words). [CONTRIBUTING.md](https://github.com/jaystewartuk/voce/blob/main/CONTRIBUTING.md) has the details.
+The easiest place to start is a new language for [Code, read aloud](#code-read-aloud), such as C, C++, Scala, Dart,
+Lua, Perl, R or Elixir: one small file of data in
+[`speech/words/`](https://github.com/jaystewartuk/voce/tree/main/src/voce/speech/words) and a few tests.
+The other good first change is a rule a language still lacks. The tests for these are marked as expected failures
+(search for `xfail` in `tests/test_words_*.py`), for example TypeScript's non-null `!`, Swift's optionals, Go's
+pointers and C#'s attributes; each passes once the rule is in `speech/code.py`.
+[CONTRIBUTING.md](https://github.com/jaystewartuk/voce/blob/main/CONTRIBUTING.md) has the details.
 
 ## Licence
 

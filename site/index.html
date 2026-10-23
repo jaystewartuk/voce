@@ -199,6 +199,26 @@ h2 { font-size: clamp(30px, 4.2vw, 46px); line-height: 1.08; letter-spacing: -0.
 .said-list li { padding: 8px 0; border-bottom: 1px dashed var(--line); font-size: 16px; }
 .said-list li:last-child { border-bottom: 0; }
 .said-list .skip-it { color: var(--muted); font-style: italic; }
+.pick { margin: 0 0 14px; color: var(--muted); font-size: 17px; }
+.lang-tabs { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 14px; scrollbar-width: none; }
+.lang-tabs::-webkit-scrollbar { display: none; }
+.lang-tabs button { flex: none; font: 600 14px var(--sans); color: var(--muted); background: var(--card); border: 1px solid var(--line);
+  border-radius: 999px; padding: 8px 16px; cursor: pointer; }
+.lang-tabs button:hover { color: var(--text); }
+.lang-tabs button[aria-selected="true"] { color: #fff; background: var(--accent); border-color: var(--accent); }
+.lang-tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.lang-panel .card { padding: 8px 24px 20px; }
+.said-table { width: 100%; border-collapse: collapse; }
+.said-table th { text-align: left; padding: 14px 0 8px; font: 600 13px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.said-table td { padding: 10px 16px 10px 0; border-top: 1px dashed var(--line); vertical-align: top; font-size: 16px; }
+.said-table td:first-child { width: 46%; overflow-wrap: anywhere; }
+.lang-panel .small { margin: 12px 0 0; }
+.more { margin-top: 14px; }
+@media (max-width: 640px) {
+  .said-table thead { display: none; }
+  .said-table td { display: block; width: auto !important; padding: 6px 0; border: 0; }
+  .said-table tr { display: block; padding: 10px 0; border-top: 1px dashed var(--line); }
+}
 .compare-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); }
 .compare { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 16px; }
 .compare th, .compare td { text-align: left; padding: 14px 16px; border-bottom: 1px solid var(--line); vertical-align: top; }
@@ -238,6 +258,7 @@ footer a:hover { color: var(--text); }
 .theme-toggle { background: none; border: 1px solid var(--line); color: var(--muted); border-radius: 999px;
   padding: 5px 12px; font: 14px var(--sans); cursor: pointer; }
 </style>
+<noscript><style>.lang-panel[hidden] { display: block; } .lang-tabs { display: none; }</style></noscript>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -336,34 +357,238 @@ footer a:hover { color: var(--text); }
         symbols: "dollar, totals, left bracket, dollar, channel". Text-to-speech apps read code as prose, and
         <code>Str::slug</code> comes out as "stress log". voce says what the person next to you would say, one line at a
         time, and the line lights up as it is read.</p>
-      <div class="pair">
-        <div class="card"><h4>On the line</h4>
-          <ul class="said-list">
-            <li><code>$totals[$channel] ??= 0;</code></li>
-            <li><code>fn ($a, $b) =&gt; $a['nights'] &lt;=&gt; $b['nights']</code></li>
-            <li><code>foreach ($rows as &amp;$row) {</code></li>
-            <li><code>'1' === 1;   // false: a string is not an integer</code></li>
-            <li><code>(int) (19.99 * 100);   // 1998, a cent short</code></li>
-            <li><code>Str::slug('Sea View');</code></li>
-            <li><code> * @param  array|string  $columns</code></li>
-            <li><code>$reservation-&gt;guest?-&gt;notify(new BookingConfirmed($reservation));</code></li>
-          </ul></div>
-        <div class="card"><h4>What you hear</h4>
-          <ul class="said-list">
-            <li>"totals channel null coalescing assignment zero"</li>
-            <li>"arrow function a, b returns a nights spaceship b nights"</li>
-            <li>"for each rows as by reference row"</li>
-            <li>"the string 1 is identical to 1, false: a string is not an integer"</li>
-            <li>"cast to int 19.99 times 100, 1998, a cent short"</li>
-            <li>"string double colon slug Sea View"</li>
-            <li>"parameter array or string, columns"</li>
-            <li>"reservation arrow guest nullsafe arrow notify new Booking Confirmed reservation"</li>
-          </ul></div>
+      <p class="pick">Thirteen languages, each in its own manual's words. Pick yours.</p>
+      <!-- language-switcher:start -->
+      <div class="lang-tabs" role="tablist" aria-label="Language">
+        <button type="button" role="tab" id="tab-python" aria-controls="lang-python" aria-selected="true">Python</button>
+        <button type="button" role="tab" id="tab-javascript" aria-controls="lang-javascript" aria-selected="false" tabindex="-1">JavaScript</button>
+        <button type="button" role="tab" id="tab-typescript" aria-controls="lang-typescript" aria-selected="false" tabindex="-1">TypeScript</button>
+        <button type="button" role="tab" id="tab-go" aria-controls="lang-go" aria-selected="false" tabindex="-1">Go</button>
+        <button type="button" role="tab" id="tab-rust" aria-controls="lang-rust" aria-selected="false" tabindex="-1">Rust</button>
+        <button type="button" role="tab" id="tab-php" aria-controls="lang-php" aria-selected="false" tabindex="-1">PHP</button>
+        <button type="button" role="tab" id="tab-ruby" aria-controls="lang-ruby" aria-selected="false" tabindex="-1">Ruby</button>
+        <button type="button" role="tab" id="tab-java" aria-controls="lang-java" aria-selected="false" tabindex="-1">Java</button>
+        <button type="button" role="tab" id="tab-csharp" aria-controls="lang-csharp" aria-selected="false" tabindex="-1">C#</button>
+        <button type="button" role="tab" id="tab-swift" aria-controls="lang-swift" aria-selected="false" tabindex="-1">Swift</button>
+        <button type="button" role="tab" id="tab-kotlin" aria-controls="lang-kotlin" aria-selected="false" tabindex="-1">Kotlin</button>
+        <button type="button" role="tab" id="tab-shell" aria-controls="lang-shell" aria-selected="false" tabindex="-1">Shell</button>
+        <button type="button" role="tab" id="tab-sql" aria-controls="lang-sql" aria-selected="false" tabindex="-1">SQL</button>
       </div>
+      <div class="lang-panel" id="lang-python" role="tabpanel" aria-labelledby="tab-python"
+           data-lang="python">
+        <div class="card">
+          <table class="said-table">
+            <thead><tr><th scope="col">On the line</th><th scope="col">What you hear</th></tr></thead>
+            <tbody>
+            <tr><td><code>while chunk := f.read(8192):</code></td><td>&quot;while chunk assignment expression f dot read 8192&quot;</td></tr>
+            <tr><td><code>def __init__(self, **kwargs) -&gt; None:</code></td><td>&quot;def dunder init self, double star keyword args returns None&quot;</td></tr>
+            <tr><td><code>value: str | None = None</code></td><td>&quot;value colon string or None equals None&quot;</td></tr>
+            <tr><td><code>total //= 2</code></td><td>&quot;total floor divided equals 2&quot;</td></tr>
+            </tbody>
+          </table>
+          <p class="small">Operators are named as <a href="https://docs.python.org/3/reference/expressions.html">the Python reference</a>
+            names them.</p>
+        </div>
+      </div>
+      <div class="lang-panel" id="lang-javascript" role="tabpanel" aria-labelledby="tab-javascript"
+           data-lang="javascript" hidden>
+        <div class="card">
+          <table class="said-table">
+            <thead><tr><th scope="col">On the line</th><th scope="col">What you hear</th></tr></thead>
+            <tbody>
+            <tr><td><code>user?.name ?? &#x27;guest&#x27;</code></td><td>&quot;user optional chaining name nullish coalescing guest&quot;</td></tr>
+            <tr><td><code>options ??= {}</code></td><td>&quot;options nullish coalescing assignment&quot;</td></tr>
+            <tr><td><code>const mid = (low + high) &gt;&gt;&gt; 1;</code></td><td>&quot;const mid equals low plus high unsigned right shift 1&quot;</td></tr>
+            <tr><td><code>if (typeof value === &#x27;function&#x27;) {</code></td><td>&quot;if type of value is strictly equal to function&quot;</td></tr>
+            </tbody>
+          </table>
+          <p class="small">Operators are named as <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators">MDN</a>
+            names them.</p>
+        </div>
+      </div>
+      <div class="lang-panel" id="lang-typescript" role="tabpanel" aria-labelledby="tab-typescript"
+           data-lang="typescript" hidden>
+        <div class="card">
+          <table class="said-table">
+            <thead><tr><th scope="col">On the line</th><th scope="col">What you hear</th></tr></thead>
+            <tbody>
+            <tr><td><code>type Pet = Fish &amp; Bird;</code></td><td>&quot;type Pet equals Fish and Bird&quot;</td></tr>
+            <tr><td><code>const names: Array&lt;string&gt; = [];</code></td><td>&quot;const names colon Array of string equals empty array&quot;</td></tr>
+            <tr><td><code>readonly items?: ReadonlyArray&lt;Item&gt;;</code></td><td>&quot;read only items optional read only Array of Item&quot;</td></tr>
+            <tr><td><code>@Component({ selector: &#x27;app&#x27; })</code></td><td>&quot;decorator Component selector colon app&quot;</td></tr>
+            </tbody>
+          </table>
+          <p class="small">Operators are named as <a href="https://www.typescriptlang.org/docs/handbook/">the TypeScript Handbook</a>
+            names them.</p>
+        </div>
+      </div>
+      <div class="lang-panel" id="lang-go" role="tabpanel" aria-labelledby="tab-go"
+           data-lang="go" hidden>
+        <div class="card">
+          <table class="said-table">
+            <thead><tr><th scope="col">On the line</th><th scope="col">What you hear</th></tr></thead>
+            <tbody>
+            <tr><td><code>if err := json.Unmarshal(data, &amp;v); err != nil {</code></td><td>&quot;if error short variable declaration JSON dot Unmarshal data, address of v, error is not equal to nil&quot;</td></tr>
+            <tr><td><code>x := &lt;-ch</code></td><td>&quot;x short variable declaration receive from ch&quot;</td></tr>
+            <tr><td><code>ch &lt;- v</code></td><td>&quot;ch send v&quot;</td></tr>
+            <tr><td><code>y := x &amp;^ mask</code></td><td>&quot;y short variable declaration x bit clear mask&quot;</td></tr>
+            </tbody>
+          </table>
+          <p class="small">Operators are named as <a href="https://go.dev/ref/spec">the Go specification</a>
+            names them.</p>
+        </div>
+      </div>
+      <div class="lang-panel" id="lang-rust" role="tabpanel" aria-labelledby="tab-rust"
+           data-lang="rust" hidden>
+        <div class="card">
+          <table class="said-table">
+            <thead><tr><th scope="col">On the line</th><th scope="col">What you hear</th></tr></thead>
+            <tbody>
+            <tr><td><code>let n = reader.read(&amp;mut buf)?;</code></td><td>&quot;let n equals reader dot read mutable borrow buffer try&quot;</td></tr>
+            <tr><td><code>let v = s.parse::&lt;i32&gt;();</code></td><td>&quot;let v equals s dot parse turbofish I 32&quot;</td></tr>
+            <tr><td><code>println!(&quot;hello {}&quot;, name);</code></td><td>&quot;print line hello, name&quot;</td></tr>
+            <tr><td><code>for i in 0..=n {</code></td><td>&quot;for i in 0 up to and including n&quot;</td></tr>
+            </tbody>
+          </table>
+          <p class="small">Operators are named as <a href="https://doc.rust-lang.org/reference/expressions/operator-expr.html">the Rust Reference and Book</a>
+            names them.</p>
+        </div>
+      </div>
+      <div class="lang-panel" id="lang-php" role="tabpanel" aria-labelledby="tab-php"
+           data-lang="php" hidden>
+        <div class="card">
+          <table class="said-table">
+            <thead><tr><th scope="col">On the line</th><th scope="col">What you hear</th></tr></thead>
+            <tbody>
+            <tr><td><code>$totals[$channel] ??= 0;</code></td><td>&quot;totals channel null coalescing assignment 0&quot;</td></tr>
+            <tr><td><code>fn ($a, $b) =&gt; $a[&#x27;nights&#x27;] &lt;=&gt; $b[&#x27;nights&#x27;]</code></td><td>&quot;arrow function a, b returns a nights spaceship b nights&quot;</td></tr>
+            <tr><td><code>foreach ($rows as &amp;$row) {</code></td><td>&quot;for each rows as by reference row&quot;</td></tr>
+            <tr><td><code>$reservation-&gt;guest?-&gt;notify($booking);</code></td><td>&quot;reservation arrow guest nullsafe arrow notify booking&quot;</td></tr>
+            </tbody>
+          </table>
+          <p class="small">Operators are named as <a href="https://www.php.net/manual/en/language.operators.php">the PHP manual</a>
+            names them.</p>
+        </div>
+      </div>
+      <div class="lang-panel" id="lang-ruby" role="tabpanel" aria-labelledby="tab-ruby"
+           data-lang="ruby" hidden>
+        <div class="card">
+          <table class="said-table">
+            <thead><tr><th scope="col">On the line</th><th scope="col">What you hear</th></tr></thead>
+            <tbody>
+            <tr><td><code>list &lt;&lt; item</code></td><td>&quot;list append item&quot;</td></tr>
+            <tr><td><code>name = user&amp;.name || &#x27;guest&#x27;</code></td><td>&quot;name equals user safe navigation name or guest&quot;</td></tr>
+            <tr><td><code>return if list.empty?</code></td><td>&quot;return if list dot empty question mark&quot;</td></tr>
+            <tr><td><code>Integer === value</code></td><td>&quot;Integer case equals value&quot;</td></tr>
+            </tbody>
+          </table>
+          <p class="small">Operators are named as <a href="https://docs.ruby-lang.org/en/master/syntax/methods_rdoc.html">the Ruby documentation</a>
+            names them.</p>
+        </div>
+      </div>
+      <div class="lang-panel" id="lang-java" role="tabpanel" aria-labelledby="tab-java"
+           data-lang="java" hidden>
+        <div class="card">
+          <table class="said-table">
+            <thead><tr><th scope="col">On the line</th><th scope="col">What you hear</th></tr></thead>
+            <tbody>
+            <tr><td><code>names.forEach(System.out::println);</code></td><td>&quot;names dot for Each System dot out method reference print line&quot;</td></tr>
+            <tr><td><code>List&lt;String&gt; names = new ArrayList&lt;&gt;();</code></td><td>&quot;List of String names equals new Array List diamond&quot;</td></tr>
+            <tr><td><code>int h = hash &gt;&gt;&gt; 16;</code></td><td>&quot;int h equals hash unsigned right shift 16&quot;</td></tr>
+            <tr><td><code>void log(String format, Object... params) {</code></td><td>&quot;void log String format, Object variable arity params&quot;</td></tr>
+            </tbody>
+          </table>
+          <p class="small">Operators are named as <a href="https://docs.oracle.com/javase/specs/jls/se21/html/jls-15.html">the Java Language Specification</a>
+            names them.</p>
+        </div>
+      </div>
+      <div class="lang-panel" id="lang-csharp" role="tabpanel" aria-labelledby="tab-csharp"
+           data-lang="csharp" hidden>
+        <div class="card">
+          <table class="said-table">
+            <thead><tr><th scope="col">On the line</th><th scope="col">What you hear</th></tr></thead>
+            <tbody>
+            <tr><td><code>person?.Name ?? &quot;unknown&quot;</code></td><td>&quot;person null conditional Name null coalescing unknown&quot;</td></tr>
+            <tr><td><code>var last = values[^1];</code></td><td>&quot;var last equals values index from end 1&quot;</td></tr>
+            <tr><td><code>items.Where(x =&gt; x.IsActive)</code></td><td>&quot;items dot Where x lambda x dot Is Active&quot;</td></tr>
+            <tr><td><code>_cache ??= new Dictionary&lt;string, int&gt;();</code></td><td>&quot;cache null coalescing assignment new Dictionary of string, int&quot;</td></tr>
+            </tbody>
+          </table>
+          <p class="small">Operators are named as <a href="https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/operators/">Microsoft&#x27;s C# reference</a>
+            names them.</p>
+        </div>
+      </div>
+      <div class="lang-panel" id="lang-swift" role="tabpanel" aria-labelledby="tab-swift"
+           data-lang="swift" hidden>
+        <div class="card">
+          <table class="said-table">
+            <thead><tr><th scope="col">On the line</th><th scope="col">What you hear</th></tr></thead>
+            <tbody>
+            <tr><td><code>user?.name ?? &quot;Anonymous&quot;</code></td><td>&quot;user optional chaining name nil coalescing Anonymous&quot;</td></tr>
+            <tr><td><code>for i in 0..&lt;count {</code></td><td>&quot;for i in 0 half open range count&quot;</td></tr>
+            <tr><td><code>let total = a &amp;+ b</code></td><td>&quot;let total equals a overflow addition b&quot;</td></tr>
+            <tr><td><code>func greet(person: String) -&gt; String {</code></td><td>&quot;function greet person colon String return arrow String&quot;</td></tr>
+            </tbody>
+          </table>
+          <p class="small">Operators are named as <a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/basicoperators">The Swift Programming Language</a>
+            names them.</p>
+        </div>
+      </div>
+      <div class="lang-panel" id="lang-kotlin" role="tabpanel" aria-labelledby="tab-kotlin"
+           data-lang="kotlin" hidden>
+        <div class="card">
+          <table class="said-table">
+            <thead><tr><th scope="col">On the line</th><th scope="col">What you hear</th></tr></thead>
+            <tbody>
+            <tr><td><code>val l = b?.length ?: 0</code></td><td>&quot;val l equals b safe call length elvis 0&quot;</td></tr>
+            <tr><td><code>val l = b!!.length</code></td><td>&quot;val l equals b not null assertion dot length&quot;</td></tr>
+            <tr><td><code>for (i in 1..10) println(i)</code></td><td>&quot;for i in 1 range to 10 print line i&quot;</td></tr>
+            <tr><td><code>if (other !is Pin) return false</code></td><td>&quot;if other is not Pin return false&quot;</td></tr>
+            </tbody>
+          </table>
+          <p class="small">Operators are named as <a href="https://kotlinlang.org/docs/keyword-reference.html">the Kotlin documentation</a>
+            names them.</p>
+        </div>
+      </div>
+      <div class="lang-panel" id="lang-shell" role="tabpanel" aria-labelledby="tab-shell"
+           data-lang="bash" hidden>
+        <div class="card">
+          <table class="said-table">
+            <thead><tr><th scope="col">On the line</th><th scope="col">What you hear</th></tr></thead>
+            <tbody>
+            <tr><td><code>grep -r &quot;TODO&quot; . | wc -l</code></td><td>&quot;grep dash r TODO dot pipe W C dash l&quot;</td></tr>
+            <tr><td><code>[ &quot;$a&quot; -eq 1 ] &amp;&amp; echo ok</code></td><td>&quot;a is equal to 1 and then echo ok&quot;</td></tr>
+            <tr><td><code>cat &lt;&lt;&lt; &quot;$text&quot;</code></td><td>&quot;cat here string text&quot;</td></tr>
+            <tr><td><code>make build &gt; out.log</code></td><td>&quot;make build to out dot log&quot;</td></tr>
+            </tbody>
+          </table>
+          <p class="small">Operators are named as <a href="https://www.gnu.org/software/bash/manual/bash.html">the Bash manual</a>
+            names them.</p>
+        </div>
+      </div>
+      <div class="lang-panel" id="lang-sql" role="tabpanel" aria-labelledby="tab-sql"
+           data-lang="sql" hidden>
+        <div class="card">
+          <table class="said-table">
+            <thead><tr><th scope="col">On the line</th><th scope="col">What you hear</th></tr></thead>
+            <tbody>
+            <tr><td><code>SELECT data-&gt;&gt;&#x27;name&#x27; FROM users WHERE meta ? &#x27;admin&#x27;;</code></td><td>&quot;SELECT data extracts as text name FROM users WHERE meta exists admin&quot;</td></tr>
+            <tr><td><code>SELECT created_at::date FROM orders;</code></td><td>&quot;SELECT created at cast to date FROM orders&quot;</td></tr>
+            <tr><td><code>WHERE tags @&gt; ARRAY[&#x27;a&#x27;]</code></td><td>&quot;WHERE tags contains ARRAY a&quot;</td></tr>
+            <tr><td><code>SELECT * FROM film WHERE title ~* &#x27;ace&#x27;</code></td><td>&quot;SELECT star FROM film WHERE title matches case-insensitively ace&quot;</td></tr>
+            </tbody>
+          </table>
+          <p class="small">Operators are named as <a href="https://www.postgresql.org/docs/current/functions-comparison.html">the PostgreSQL manual</a>
+            names them.</p>
+        </div>
+      </div>
+      <!-- language-switcher:end -->
+      <p class="small more">Missing yours? A language is one small file of data and a few tests, so it is a good first
+        pull request. <a href="https://github.com/jaystewartuk/voce#contributing">Add one</a>.</p>
       <div class="grid" style="margin-top: 18px">
-        <div class="card"><h3>Real names, so you learn them</h3><p>Operators are called what they are called: arrow, double arrow, double colon, identical, equal, null coalescing, spaceship, nullable, cast, increment, by reference, unpack, variadic. They are the PHP manual's own names. After a few sessions you say them without thinking, which is what a pair-programming interview or a code review asks of you.</p></div>
+        <div class="card"><h3>Real names, so you learn them</h3><p>Operators are called what their own manual calls them: PHP's "identical", JavaScript's "strictly equal", Ruby's "spaceship", Kotlin's "elvis", Go's "bit clear", Rust's "turbofish", C#'s "null conditional". After a few sessions you say them without thinking, which is what a pair-programming interview or a code review asks of you.</p></div>
         <div class="card"><h3>Names as words</h3><p><code>array_values</code> is "array values", <code>strlen</code> is "string length", <code>usort</code> is "U sort", <code>isset</code> is "is set". A variable's dollar sign, the brackets and the semicolon are silent. A string is read by its contents, and a trailing comment as prose.</p></div>
-        <div class="card"><h3>Checked by ear, in each language's words</h3><p>Every rule is fetched from the real voice, transcribed with whisper and compared with what should be heard, and the rules were read right through laravel/framework to find what came out odd. PHP, Python, JavaScript, shell and SQL each have their own words: Python's <code>-&gt;</code> is "returns", JavaScript's <code>===</code> is MDN's "is strictly equal to", and a pipe in shell is "pipe". A new language is a few lines of data. Hear it on <a href="https://github.com/jaystewartuk/voce/blob/main/docs/examples/laravel.md">a reservation sync in Laravel</a>, or prefer the prose alone with <code>--skip-code</code>.</p></div>
+        <div class="card"><h3>Checked against real code</h3><p>The rules started with PHP, read right through laravel/framework and checked by ear against the real voice. Every other language was then read through well-known projects in that language (Django, express, Guava, ripgrep, Rails and others) and its operator names checked against its manual by a reviewer who had not seen the rules. A pipe in shell is "pipe", Python's <code>-&gt;</code> is "returns", and each language has tests with the exact words. Hear it on <a href="https://github.com/jaystewartuk/voce/blob/main/docs/examples/laravel.md">a reservation sync in Laravel</a>, or prefer the prose alone with <code>--skip-code</code>.</p></div>
       </div>
     </div>
   </section>
@@ -609,6 +834,27 @@ footer a:hover { color: var(--text); }
     theme = themes[(themes.indexOf(theme) + 1) % themes.length];
     try { localStorage.setItem("voce-theme", theme); } catch {}
     applyTheme();
+  });
+
+  // ---- the language switcher: arrow keys move between tabs, and every panel shows if scripts are off
+  const langTabs = [...document.querySelectorAll('.lang-tabs [role="tab"]')];
+  const showLang = (tab, focus) => {
+    langTabs.forEach(t => {
+      const on = t === tab;
+      t.setAttribute("aria-selected", on);
+      t.tabIndex = on ? 0 : -1;
+      document.getElementById(t.getAttribute("aria-controls")).hidden = !on;
+    });
+    if (focus) tab.focus();
+  };
+  langTabs.forEach((tab, i) => {
+    tab.addEventListener("click", () => showLang(tab, false));
+    tab.addEventListener("keydown", e => {
+      const to = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: langTabs.length - 1 }[e.key];
+      if (to === undefined) return;
+      e.preventDefault();
+      showLang(langTabs[(to + langTabs.length) % langTabs.length], true);
+    });
   });
 
   // ---- the demo: wrap each sentence's words, then move the highlight through them
