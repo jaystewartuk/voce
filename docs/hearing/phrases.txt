@@ -49,3 +49,8 @@ Compare with `===`, never `==`. => identical, never equal
 ```php\n$sql = "select * from users where id = ?";\n``` => id = question mark | id equals question mark
 ```php\nreturn (new Collection($this->extractChannelKeys($pattern, $channel)))\n``` => return new collection this arrow extract channel keys pattern, channel
 ```php\nreturn Attribute::get(fn () => (int) $this->check_in->diffInDays($this->check_out));\n``` => get arrow function returns cast to int this arrow check in arrow diff in days this arrow check out
+```ts\nfunction first<T>(items: T[]): T | undefined\n``` => function first of t items colon t array returns t or undefined
+```ts\nconst user = users.find((u) => u.id === id)!;\n``` => non-null assertion|non null assertion
+```tsx\nreturn <div>{id}</div>\n``` => return div i d end div|return div id end div
+```ts\nexpect(type).toMatch(/^text\/plain/i)\n``` => regular expression text plain|regular expression text plane
+```python\nself._backward = lambda: None\n``` => lambda returns none
