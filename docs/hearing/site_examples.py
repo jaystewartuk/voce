@@ -40,10 +40,10 @@ EXAMPLES = [
         "if (typeof value === 'function') {",
     ]),
     ("TypeScript", "typescript", "the TypeScript Handbook", [
-        "type Pet = Fish & Bird;",
-        "const names: Array<string> = [];",
+        "function first<T>(items: T[]): T | undefined {",
+        "const el = document.getElementById('app')!;",
         "readonly items?: ReadonlyArray<Item>;",
-        "@Component({ selector: 'app' })",
+        "return <Card title={user.name} />",
     ]),
     ("Go", "go", "the Go specification", [
         "if err := json.Unmarshal(data, &v); err != nil {",

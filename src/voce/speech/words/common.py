@@ -46,7 +46,7 @@ CODE_OPERATORS = {
     "]": "close square bracket", "(": "open bracket", ")": "close bracket", "{": "open brace", "}": "close brace",
     "=": "equals", "+": "plus",
     "-": "minus", "*": "times", "/": "divided by", "%": "modulo", ".": "dot", ".=": "dot equals",
-    "+=": "plus equals", "++": "increment", "--": "decrement", "$": "dollar", "_": "underscore",
+    "+=": "plus equals", "++": "increment", "**": "double star", "--": "decrement", "$": "dollar", "_": "underscore",
     "#": "hash", "@": "at", "|": "pipe", "<": "less than", ">": "greater than", "?": "question mark",
     ":": "colon", ";": "semicolon", "\\": "backslash",
 }

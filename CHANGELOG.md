@@ -5,6 +5,29 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+### Added
+
+- **JSX and TSX.** An element is read by its name: `<div>` is "div", `</div>` is "end div", `<App />` is "App" and
+  `<>` is "fragment". Before, `</div>` was "less than divided by div greater than".
+- **More of TypeScript, by the Handbook.** `T[]` is "T array", `user!` is "user, non-null assertion",
+  `name!: string` is "name definitely string", and a function's return type is "returns": `function
+  greet(name: string): string` is "function greet name colon string returns string". `first<T>(...)` and
+  `toEqualTypeOf<number>()` are type arguments too, also when the list runs over several lines.
+- **Regular expressions** in JavaScript and TypeScript are read as "regular expression" and the words in them,
+  not symbol by symbol.
+- `docs/hearing/corpora.txt` reads Hono, a TypeScript web framework, alongside laravel/framework.
+
+### Fixed
+
+- **`return []` is "return empty array"**, and `return [$a, $b]` "return array of a, b", in every language.
+  Before, a keyword before a bracket was taken for a value, so it was "return square brackets".
+- **Python's lambda.** `lambda x: x * 2` is "lambda x returns x times 2", not "lambda x colon". The colon that
+  opens a block is found after a slice too (`if xs[1:2]: pass`), and an f-string's symbols between its fields are
+  said: `f'**{n}'` is "f string double star n".
+- **A path that starts with a slash** is "slash stubs slash job dot stub", not "slash slash stubs".
+- **A doc comment's example code**, such as `* const app = new Hono()`, is read as code in JavaScript and
+  TypeScript. A comment such as `// Re-assign` or `# 0-9` is no longer read as a sum.
+
 ## [0.3.0] - 2026-10-22
 
 ### Added

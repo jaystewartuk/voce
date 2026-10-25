@@ -127,6 +127,7 @@ def test_python_reads_like_micrograd_out_loud():
 
 
 def test_paths_and_file_names_are_said_with_their_slashes_and_letters():
+    assert spoken_code("/stubs/job.stub") == "slash stubs slash job dot stub"  # a leading slash is said once
     assert spoken_code("src/voce/cli.py") == "source slash voce slash C L I dot P Y"
     assert spoken_code("test_reader.py") == "test reader dot P Y"
     assert spoken_code(".github/workflows/ci.yml") == "dot github slash workflows slash C I dot yaml"
@@ -185,7 +186,8 @@ def test_append_ternary_and_union_types():
     assert spoken_line("return $request->expectsJson() ? null : $this->redirectTo($request);", "php") == \
         "return request arrow expects JSON then null else this arrow redirect To request"
     assert spoken_line("    : $default;", "php") == "else default"
-    assert spoken_line("return [$a ?: 'x', $b ? $c : $d];", "php") == "return a short ternary x, b then c else d"
+    assert spoken_line("return [$a ?: 'x', $b ? $c : $d];", "php") == \
+        "return array of a short ternary x, b then c else d"
     assert spoken_line("public function withScheme(Stringable|string $scheme): static", "php") == \
         "public function with Scheme Stringable or string scheme colon static"
     assert spoken_line("function foo(A&B $x, ?\\Closure $cb = null): int|null", "php") == \

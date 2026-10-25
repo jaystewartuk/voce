@@ -47,18 +47,44 @@ def test_typescript_fences(alias):
 @pytest.mark.parametrize("line, spoken", [
     pytest.param("const names: Array<string> = [];", "const names colon Array of string equals empty array"),
     pytest.param("let map: Map<string, Array<number>>;", "let map colon Map of string, Array of number"),
-    pytest.param("const list: number[] = [];", "const list colon number array equals empty array",
-                 marks=pytest.mark.xfail(reason="needs tokeniser: [] after a name is an array type", strict=True)),
+    pytest.param("const list: number[] = [];", "const list colon number array equals empty array"),
     pytest.param("const el = document.getElementById('x')!;",
-                 "const element equals document dot get Element By I D x, non-null assertion",
-                 marks=pytest.mark.xfail(reason="needs tokeniser: a postfix ! is a non-null assertion", strict=True)),
-    pytest.param("function greet(name: string): string {", "function greet name colon string returns string",
-                 marks=pytest.mark.xfail(reason="needs tokeniser: ): is a return type annotation", strict=True)),
-    pytest.param("private name!: string;", "private name definitely string",
-                 marks=pytest.mark.xfail(reason="needs tokeniser: !: is a definite assignment assertion", strict=True)),
+                 "const element equals document dot get Element By I D x, non-null assertion"),
+    pytest.param("function greet(name: string): string {", "function greet name colon string returns string"),
+    pytest.param("private name!: string;", "private name definitely string"),
     pytest.param("type Getters = { [K in keyof T]: () => T[K] };",
                  "type Getters equals for each K in key of T colon arrow T K",
                  marks=pytest.mark.xfail(reason="needs tokeniser: [K in ...] is a mapped type", strict=True)),
 ])
 def test_typescript_needs_the_tokeniser(line, spoken):
     assert spoken_line(line, "typescript") == spoken
+
+
+@pytest.mark.parametrize("line, spoken", [
+    # A type's arguments and parameters, also when they run over several lines.
+    ("function first<T>(items: readonly T[]): T | undefined {",
+     "function first of T items colon read only T array returns T or undefined"),
+    ("const pick = <T>(xs: T[]) => xs[0];", "const pick equals generic T xs colon T array arrow xs 0"),
+    ("const app = new Hono<{", "const app equals new Hono of"),
+    ("}>()", ""),
+    ("if (a < b && c > d) return;", "if a less than b and c greater than d return"),
+    # JSX: an element by its name.
+    ("return <div>{id}</div>", "return div I D end div"),
+    ("<Suspense fallback={<p>Loading...</p>}>", "Suspense fallback equals p Loading and so on end p"),
+    ("<>{a}</>", "fragment a end fragment"),
+    ('<h1 class="title">Hello!</h1>', "h1 class equals title Hello end h1"),
+    ("  />", ""),
+    ("const [first, ...rest] = xs;", "const first, spread rest equals xs"),
+    # A regular expression by the words in it.
+    ("expect(type).toMatch(/^text\\/plain/i)", "expect type dot to Match regular expression text plain"),
+    ("const half = total / 2 / count;", "const half equals total divided by 2 divided by count"),
+    # An example in a doc comment is code; a doc comment's sentence is not.
+    (" * const app = new Hono()", "const app equals new Hono"),
+    (" * Returns the user (or null).", "Returns the user (or null)"),
+])
+def test_typescript_and_jsx_as_hono_is_written(line, spoken):
+    assert spoken_line(line, "tsx") == spoken
+
+
+def test_jsx_in_javascript():
+    assert spoken_line("render(<App />, root)", "jsx") == "render App, root"

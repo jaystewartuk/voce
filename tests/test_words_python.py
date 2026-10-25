@@ -7,6 +7,13 @@ import pytest
 from voce.speech import spoken_line
 
 LINES = [
+    # a lambda's colon is what it returns; a block's colon after a slice; an f-string's symbols between its fields
+    ("self._backward = lambda: None", "self dot backward equals lambda returns None"),
+    ("rows.sort(key=lambda r: r[1])", "rows dot sort key equals lambda r returns r 1"),
+    ("if xs[1:2]: pass", "if xs 1 colon 2, pass"),
+    ("out = Value(self.data**other, (self,), f'**{other}')",
+     "out equals Value self dot data to the power of other, self, f string double star other"),
+    ("x = y  # 0-9", "x equals y, 0-9"),
     # operators, by the reference's names
     ("def f(x: int) -> str:", "def f x colon int returns string"),
     ("area = side ** 2", "area equals side to the power of 2"),
