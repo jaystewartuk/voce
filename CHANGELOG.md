@@ -5,8 +5,18 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-25
+
 ### Added
 
+- **Eight more languages, each in its manual's words:** TypeScript (split out of JavaScript), Go, Rust, Ruby,
+  Java, C#, Swift and Kotlin. `List<String>` is "List of String", Rust's `println!` and lifetimes read cleanly,
+  and Ruby's `empty?` and `save!` keep their marks. PHP, Python, JavaScript, shell and SQL know many more words
+  and operators: `SELECT *` is "star", `0xFF` is "hex FF", and `${name}` and `#{name}` in a string are read as
+  code.
+- **The website shows all thirteen languages**, with a tab for each: four lines of code, what you hear, and the
+  manual the names come from. Nothing on it is typed by hand: `docs/hearing/site_examples.py` writes it from
+  voce, and a test fails if the page and voce disagree.
 - **JSX and TSX.** An element is read by its name: `<div>` is "div", `</div>` is "end div", `<App />` is "App" and
   `<>` is "fragment". Before, `</div>` was "less than divided by div greater than".
 - **More of TypeScript, by the Handbook.** `T[]` is "T array", `user!` is "user, non-null assertion",
@@ -16,6 +26,11 @@ and versions follow [Semantic Versioning](https://semver.org).
 - **Regular expressions** in JavaScript and TypeScript are read as "regular expression" and the words in them,
   not symbol by symbol.
 - `docs/hearing/corpora.txt` reads Hono, a TypeScript web framework, alongside laravel/framework.
+
+### Changed
+
+- **Code in the new and deepened languages is fetched from the voice again, once**, since what is said for it
+  changed. `%` is now "remainder" in JavaScript, Java, Go, Swift, C#, Rust and Kotlin, each manual's word.
 
 ### Fixed
 
@@ -215,7 +230,8 @@ The first public release.
   durations current.
 - A click on a sentence jumps to it. The mouse wheel scrolls.
 
-[Unreleased]: https://github.com/jaystewartuk/voce/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/jaystewartuk/voce/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/jaystewartuk/voce/releases/tag/v0.4.0
 [0.3.0]: https://github.com/jaystewartuk/voce/releases/tag/v0.3.0
 [0.2.0]: https://github.com/jaystewartuk/voce/releases/tag/v0.2.0
 [0.1.0]: https://github.com/jaystewartuk/voce/releases/tag/v0.1.0
