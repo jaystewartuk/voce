@@ -32,6 +32,8 @@ COMMON_WORDS = {
     "ttl": "T T L", "ip": "I P", "pdo": "P D O", "psr": "P S R", "sqs": "S Q S", "cc": "C C", "bcc": "B C C",
     "svg": "S V G", "css": "C S S", "js": "J S", "ioc": "I O C", "dsn": "D S N", "tz": "time zone",
     "args": "args", "func": "function", "dir": "dir", "ob": "O B", "pg": "P G", "ascii": "ascii", "nn": "N N",
+    "jwt": "J W T", "jsx": "J S X", "tsx": "T S X", "tok": "token", "alg": "algorithm",
+    "IPv4": "I P v4", "IPv6": "I P v6", "href": "H ref", "etag": "E tag",
 }
 
 # A bit of inline code that is only an operator, said on its own: `===` is "identical".
@@ -45,7 +47,7 @@ CODE_OPERATORS = {
     "]": "close square bracket", "(": "open bracket", ")": "close bracket", "{": "open brace", "}": "close brace",
     "=": "equals", "+": "plus",
     "-": "minus", "*": "times", "/": "divided by", "%": "modulo", ".": "dot", ".=": "dot equals",
-    "+=": "plus equals", "++": "increment", "--": "decrement", "$": "dollar", "_": "underscore",
+    "+=": "plus equals", "++": "increment", "**": "double star", "--": "decrement", "$": "dollar", "_": "underscore",
     "#": "hash", "@": "at", "|": "pipe", "<": "less than", ">": "greater than", "?": "question mark",
     ":": "colon", ";": "semicolon", "\\": "backslash",
 }

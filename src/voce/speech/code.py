@@ -63,9 +63,9 @@ def _word(w: str, words: dict) -> str:
 def spoken_path(path: str) -> str:
     """A file path or name, the way a person says it: slashes said, underscores silent, the extension by letter."""
     parts = []
-    for n, segment in enumerate(path.split("/")):
+    for segment in path.split("/"):
         if not segment:
-            parts.append("slash" if n == 0 else "")
+            parts.append("")  # a leading slash is said once, by the join below
             continue
         if segment == "..":
             parts.append("dot dot")
@@ -109,7 +109,7 @@ _COMMENT_STARTS = {"//": r"//.*", "#": r"\#.*", "/*": r"/\*.*?(?:\*/|$)", "--": 
 _TOKENS = r"""(?P<space>\s+)
       | (?P<comment>COMMENTS)
       | (?P<string>'(?:[^'\\]|\\.)*'?|"(?:[^"\\]|\\.)*"?|`(?:[^`\\]|\\.)*`?)
-      | (?P<number>\d+(?:\.\d+)?)
+      | (?P<number>0[xX][\da-fA-F_]+|\d+(?:\.\d+)?)
       | (?P<var>\$+[A-Za-z_][A-Za-z0-9_]*)
       | (?P<name>[A-Za-z_][A-Za-z0-9_]*)
       | (?P<op><=>|===|!==|\?\?=|\*\*=|<<<|\?->|->|=>|::|==|!=|>=|<=|<>|\?\?|\?:|\?\.|:=|&&|\|\||\+\+|--|\+=|-=
@@ -133,12 +133,19 @@ _WHERE = re.compile(r"\b(where|orWhere|whereNot|orWhereNot|having|orHaving)\(\s*
 # A line of words with a sentence's punctuation and none of code's: prose inside a string, a doc comment or a
 # heredoc, read as prose.
 _PROSE_LINE = re.compile(r"^[\w\s,.;:!?'\"-]+$")
+# TypeScript's type parameters before a function's own: <T extends Foo, U>(x: T) => ..., said "generic T".
+_TYPE_PARAMS = re.compile(r"<[A-Z]\w*(?:\s+extends\s+[^<>()]+)?(?:\s*,\s*[A-Z]\w*(?:\s+extends\s+[^<>()]+)?)*,?>\s*\(")
+# A line of a doc comment that is an example of code rather than prose: const app = new Hono(), app.get(...).
+_DOC_CODE = re.compile(r"(?:const|let|var|import|export|return|await|function|class|new|type|interface)\s|"
+                       r"[\w$.]+\(.*\)\s*;?$|[\w$.\[\]]+\s*=\s")
+# A JavaScript regular expression literal: /^text\/plain/i.
+_REGEX = re.compile(r"/(?![/*])(?:\\.|\[(?:\\.|[^\]\\])*\]|[^/\\\n\[])+/[a-z]*")
 # A Python line that opens a block, such as `for child in v._prev:`, which can look like prose but is code.
 _PY_BLOCK = re.compile(r"\s*(if|elif|else|for|while|with|def|class|try|except|finally|async|match|case)\b[^:]*:")
 # A docstring on a line of its own, or a line with only its opening or closing quotes: read as prose.
 _DOCSTRING = re.compile(r"\s*[rRuU]?(?:\"\"\"|''')(.*?)(?:\"\"\"|''')?\s*$")
 # A comment that is only an expression, such as `# other + self` or `# -self`: read as code.
-_CODE_COMMENT = re.compile(r"-?\w+(?:\s*[-+*/]\s*-?\w+)+|-\w+")
+_CODE_COMMENT = re.compile(r"-?\w+(?:\s+[-+*/]\s+-?\w+)+|-[A-Za-z_]\w*")
 
 
 # "{$this->name}" and "$name" inside a double-quoted string are code: read them as code.
@@ -188,6 +195,8 @@ def _spoken_doc(text: str, lang: Language) -> str:
     text = re.sub(r"\{@inherit[Dd]oc\}", "inherit doc", text)
     m = re.match(r"@([\w-]+)\s*(.*)$", text)
     if not m:
+        if _DOC_CODE.match(text):
+            return spoken_line(text, lang)  # an example in a doc comment, such as `const app = new Hono()`
         return _spoken_comment(text)
     tag, rest = m.group(1), m.group(2)
     said_tag = _DOC_TAGS.get(tag.lower(), tag.replace("-", " "))
@@ -226,7 +235,10 @@ def _spoken_string(raw: str, lang: Language = GENERIC) -> str:
         return spoken_path(body)  # 'routes/web.php' is "routes slash web dot P H P"
     body = re.sub(r"\\n", " new line ", body)
     if lang.name == "python" and "{" in body:  # an f-string's fields are code: {self.data} is "self dot data"
-        body = re.sub(r"\{([^{}]+)\}", lambda m: " " + spoken_code(m.group(1), lang) + " ", body)
+        parts = re.split(r"(\{[^{}]+\})", body)  # the fields, and the text between them: f'**{n}' is "double star n"
+        body = " ".join(spoken_code(p[1:-1], lang) if p.startswith("{") else
+                        CODE_OPERATORS.get(p.strip(), p) if re.fullmatch(r"\s*[-+*/%=<>!&|^~]+\s*", p) else p
+                        for p in parts)
         body = body.replace("(", " ").replace(")", " ").replace("=", " equals ")
     body = _INTERPOLATED.sub(lambda m: " " + spoken_code(m.group(1) or m.group(2), lang) + " ", body)
     body = body.replace("?->", " nullsafe arrow ").replace("->", " arrow ")
@@ -251,6 +263,8 @@ def _spoken_operator(tok: str, line: str, end: int, after_value: bool, lang: Lan
     nxt = line[end:end + 1]
     if tok in ("*", "**") and not after_value:
         return "star" if tok == "*" else "double star"  # *args and **kwargs
+    if tok == "..." and not (nxt == "$" or nxt.isalpha() or nxt in "[{("):
+        return "and so on"  # Loading... in a JSX element's text, or an elided line
     if tok in lang.operators:
         return lang.operators[tok]
     if tok == "[]":
@@ -287,7 +301,7 @@ def is_prose_line(line: str) -> bool:
 def spoken_line(line: str, lang: str | Language = GENERIC) -> str:
     """One line of code, the way a person reads it aloud, in the language's own words if it is given."""
     lang = language(lang) if isinstance(lang, str) else lang
-    python = lang.name == "python"
+    python, ts = lang.name == "python", lang.name == "typescript"
     if python:
         doc = _DOCSTRING.match(line)
         if doc:
@@ -302,6 +316,11 @@ def spoken_line(line: str, lang: str | Language = GENERIC) -> str:
     previous = ""  # the kind of the last token that was not space, for [ and ...
     ternaries = 0  # a ? waiting for its :
     depth, arrows = 0, []  # open brackets, and the depth at each fn whose => is still to come
+    generics = 0  # TypeScript's type arguments still open: Promise<User> is "Promise of User"
+    lambdas: list[int] = []  # the depth at each Python lambda whose colon is still to come
+    block_said = False  # the colon that opens a Python block has been read
+    jsx = lang.name in ("javascript", "typescript")
+    tags, skip = 0, 0  # JSX tags still open (<div ... >), and where the tokens a tag's reading took up end
     if lang is GENERIC or lang.name == "php":
         line = _CAST.sub(lambda m: f"cast to {m.group(1)} ", line)
         line = re.sub(r"^(\s*)#\[", r"\1attribute [", line)  # #[AsCommand] is an attribute, not a comment
@@ -310,7 +329,7 @@ def spoken_line(line: str, lang: str | Language = GENERIC) -> str:
     for m in _tokens(lang.comments).finditer(line):
         kind = m.lastgroup
         tok = m.group()
-        if kind == "space" or (tok == "." and m.end() == len(line.rstrip())):
+        if m.start() < skip or kind == "space" or (tok == "." and m.end() == len(line.rstrip())):
             continue  # a full stop ending the line is prose's, not code's
         if kind == "comment":
             text = re.sub(r"^(//|#|/\*|--|;)\s*|\s*\*/$", "", tok).strip()
@@ -328,12 +347,15 @@ def spoken_line(line: str, lang: str | Language = GENERIC) -> str:
         if kind == "string":
             words.append(_spoken_string(tok, lang))
         elif kind == "number":
-            words.append(tok)
+            # 0x30 is "hex 30", 0xFF "hex F F": the voice says the letters of a hex number one by one
+            words.append("hex " + " ".join(re.findall(r"\d+|[a-fA-F]", tok[2:])) if tok[:2] in ("0x", "0X") else tok)
         elif kind == "var":
             words.append(spoken_code(tok.lstrip("$"), lang))
         elif kind == "name":
             if tok == "fn" and lang.name in ("php", "code"):
                 arrows.append(depth)
+            if tok == "lambda" and python:
+                lambdas.append(depth)
             if tok in STRING_PREFIXES and line[m.end():m.end() + 1] in ("'", '"'):
                 words.append(STRING_PREFIXES[tok])  # f"..." in Python is "f string ..."
             else:
@@ -348,17 +370,57 @@ def spoken_line(line: str, lang: str | Language = GENERIC) -> str:
             if tok == "=>" and arrows and depth == arrows[-1] and lang.name in ("php", "code"):
                 arrows.pop()
                 said = "returns"  # the => of fn ($x) => $x * 2: the arrow function returns its expression
-            if tok == "?" and said == "question mark" and not line[m.end():].strip().startswith((":", ")")):
+            rest = line[m.start():]
+            if ts and tok == "<" and previous == "name" and line[m.start() - 1:m.start()].isalnum() \
+                    and line[m.end():m.end() + 1] not in (" ", "=", "/"):
+                said, generics = "of", generics + 1  # a type argument, not less than: Array<T> is "Array of T"
+            elif ts and tok == "<" and (_TYPE_PARAMS.match(rest) or (not after_value and not rest[1:].strip())):
+                said, generics = "generic", generics + 1  # const first = <T>(items: T[]) => items[0]
+            elif jsx and tok == "<>":
+                said = "fragment"  # <> opens a fragment
+            elif jsx and tok == "!" and line[m.end():m.end() + 1] == "<":
+                said = ""  # Hello!</h1>: the element's text ends with its own mark
+            elif jsx and tok == "<" and re.match(r"</>", rest):
+                said, skip = "end fragment", m.start() + 3
+            elif jsx and tok == "<" and (re.match(r"</[A-Za-z]", rest) or (
+                    re.match(r"<[A-Za-z]", rest) and not line[m.start() - 1:m.start()].isalnum())):
+                tags += 1  # a JSX element: <div> is "div", </div> is "end div", <App /> is "App"
+                said, skip = ("end", m.start() + 2) if rest.startswith("</") else ("", 0)
+            elif jsx and tok == "/" and (not after_value or words[-1:] in (["return"], ["not"])) \
+                    and _REGEX.match(rest):
+                # a regular expression is said by the words in it, not symbol by symbol: /^text\/plain/ is
+                # "regex text plain"
+                literal = _REGEX.match(rest).group()
+                said = " ".join(["regex", *re.findall(r"[A-Za-z]{2,}", literal[1:literal.rindex("/")])][:6])
+                skip = m.start() + len(literal)
+            elif jsx and tok == "/" and line[m.end():m.end() + 1] == ">":
+                said, skip, tags = "", m.end() + 1, max(tags - 1, 0)  # /> closes an element, even on its own line
+            elif jsx and tags and tok == ">":
+                said, tags = "", tags - 1
+            elif ts and tok in (">", ">>") and (generics or not previous or (
+                    line[m.start() - 1:m.start()] not in (" ", "") and line[m.end():m.end() + 1] != " ")):
+                said, generics = "", max(generics - len(tok), 0)  # or a type argument list closing on its own line
+            elif ts and tok == "!" and after_value and line[m.end():m.end() + 1] in ("", " ", ".", ";", ",", ")", "]"):
+                said = "non-null"  # the handbook's non-null assertion, user!.name
+            elif ts and tok == "[]" and after_value:
+                said = "array"  # string[] is "string array"
+            elif ts and tok == ":" and not ternaries and line[:m.start()].rstrip().endswith(")") and depth == 0:
+                said = "returns"  # the return type after the parameters: (id: string): User
+            elif tok == ":" and python and lambdas and depth == lambdas[-1]:
+                lambdas.pop()
+                said = "returns"  # lambda x: x * 2 is "lambda x returns x times 2"
+            elif tok == "?" and said == "question mark" and not line[m.end():].strip().startswith((":", ")")):
                 said, ternaries = "then", ternaries + 1  # the ternary operator: a ? b : c
             elif tok == ":" and (ternaries or not previous):
                 said, ternaries = "else", max(ternaries - 1, 0)  # or a ternary's else on a line of its own
             elif tok == ":" and python and re.match(r"\s*(#.*)?$", line[m.end():]):
                 said = ""  # the colon that opens a block is not said, as a person reading it out doesn't
-            elif tok == ":" and python and depth == 0 and _PY_BLOCK.match(line) and \
-                    not re.search(r":", line[:m.start()]) and _balanced(line[:m.start()]):
-                said = ","  # if x: return 1, with its block on the same line, is "if x, return 1"
-            elif tok in ("|", "&") and previous == "name" and re.match(r"\s*[?\\A-Za-z]", line[m.end():]) \
-                    and (lang is GENERIC or lang.name == "php"):
+            elif tok == ":" and python and depth == 0 and not block_said and _PY_BLOCK.match(line) and \
+                    _balanced(line[:m.start()]):
+                said, block_said = ",", True  # if x: return 1, with its block on the same line, is "if x, return 1"
+            elif tok in ("|", "&") and previous in (("name", "string", "number") if ts else ("name",)) \
+                    and re.match(r"\s*[?\\A-Za-z'\"\d]" if ts else r"\s*[?\\A-Za-z]", line[m.end():]) \
+                    and (lang is GENERIC or lang.name in ("php", "typescript")):
                 said = "or" if tok == "|" else "and"  # a union type, Stringable|string, or an intersection
             words.append(said)
             if tok in (")", "]"):

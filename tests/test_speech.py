@@ -126,7 +126,56 @@ def test_python_reads_like_micrograd_out_loud():
     assert spoken_line("d = {'a': 1}", "python") == "d equals a colon 1"  # a colon inside a line is still said
 
 
+def test_python_lambdas_slices_and_f_string_symbols():
+    assert spoken_line("self._backward = lambda: None", "python") == "self dot backward equals lambda returns None"
+    assert spoken_line("rows.sort(key=lambda r: r[1])", "python") == "rows dot sort key equals lambda r returns r 1"
+    assert spoken_line("if xs[1:2]: pass", "python") == "if xs 1 colon 2, pass"
+    assert spoken_line("out = Value(self.data**other, (self,), f'**{other}')", "python") == \
+        "out equals Value self dot data to the power of other, self, f string double star other"
+    assert spoken_line("x = y  # 0-9", "python") == "x equals y, 0-9"  # a range in a comment is not a sum
+
+
+def test_typescript_reads_by_the_handbook():
+    ts = "typescript"
+    assert spoken_line("export async function getUser(id: string): Promise<User | undefined> {", ts) == \
+        "export async function get User I D colon string returns Promise of User or undefined"
+    assert spoken_line("function first<T>(items: readonly T[]): T | undefined { return items[0]; }", ts) == \
+        "function first of T items colon read only T array returns T or undefined return items 0"
+    assert spoken_line("const user = users.find((u) => u.id === id)!;", ts) == \
+        "const user equals users dot find u arrow u dot I D is strictly equal to I D non-null"
+    assert spoken_line("interface Props { name?: string }", ts) == "interface props name optional string"
+    assert spoken_line("type Status = 'idle' | 'loading' | 'done';", ts) == "type Status equals idle or loading or done"
+    assert spoken_line("const m = new Map<string, Array<number>>();", ts) == \
+        "const m equals new Map of string, Array of number"
+    assert spoken_line("type Keys = keyof typeof config;", ts) == "type Keys equals key of type of config"
+    assert spoken_line("const pick = <T>(xs: T[]) => xs[0];", ts) == \
+        "const pick equals generic T xs colon T array arrow xs 0"
+    assert spoken_line("const app = new Hono<{", ts) == "const app equals new Hono of"  # a type argument list
+    assert spoken_line("}>()", ts) == ""                                                  # over several lines
+    assert spoken_line("if (a < b && c > d) return;", ts) == "if a less than b and c greater than d return"
+    assert spoken_line("if (!ok) return", ts) == "if not ok return"
+    assert spoken_line("if (a === b) {}", "js") == "if a is strictly equal to b"  # JavaScript keeps MDN's words
+
+
+def test_jsx_elements_regexes_and_hex():
+    assert spoken_line("return <div>{id}</div>", "tsx") == "return div I D end div"
+    assert spoken_line("render(<App />, root)", "jsx") == "render App, root"
+    assert spoken_line("<Suspense fallback={<p>Loading...</p>}>", "tsx") == \
+        "Suspense fallback equals p Loading and so on end p"
+    assert spoken_line("<>{a}</>", "tsx") == "fragment a end fragment"
+    assert spoken_line("<h1 class=\"title\">Hello!</h1>", "tsx") == "h1 class equals title Hello end h1"
+    assert spoken_line("  />", "tsx") == ""
+    assert spoken_line("expect(type).toMatch(/^text\\/plain/i)", "ts") == "expect type dot to Match regex text plain"
+    assert spoken_line("const half = total / 2 / count;", "js") == \
+        "const half equals total divided by 2 divided by count"
+    assert spoken_line("if (c >= 0x30 && c <= 0xFF) {}", "js") == \
+        "if c is greater than or equal to hex 30 and c is less than or equal to hex F F"
+    assert spoken_line(" * const app = new Hono()", "ts") == "const app equals new Hono"  # an example in a doc comment
+    assert spoken_line(" * Returns the user (or null).", "ts") == "Returns the user (or null)"
+
+
 def test_paths_and_file_names_are_said_with_their_slashes_and_letters():
+    assert spoken_code("/stubs/job.stub") == "slash stubs slash job dot stub"
     assert spoken_code("src/voce/cli.py") == "source slash voce slash C L I dot P Y"
     assert spoken_code("test_reader.py") == "test reader dot P Y"
     assert spoken_code(".github/workflows/ci.yml") == "dot github slash workflows slash C I dot yaml"

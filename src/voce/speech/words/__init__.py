@@ -22,13 +22,14 @@ from voce.speech.words.php import PHP
 from voce.speech.words.python import PYTHON
 from voce.speech.words.shell import SHELL
 from voce.speech.words.sql import SQL
+from voce.speech.words.typescript import TYPESCRIPT
 
 PROSE = Language("text", prose=True, aliases=("markdown", "md", "text", "txt", "plain", "rst", "restructuredtext",
                                                "asciidoc", "adoc"))
 
 GENERIC = Language("code", comments=("//", "#", "/*"), words=PHP.words)  # the rules were written for PHP first
 
-ALL = (PHP, PYTHON, JAVASCRIPT, SHELL, SQL, PROSE)
+ALL = (PHP, PYTHON, JAVASCRIPT, TYPESCRIPT, SHELL, SQL, PROSE)
 
 LANGUAGES: dict[str, Language] = {alias: lang for lang in ALL for alias in lang.aliases}
 
@@ -40,4 +41,4 @@ def language(alias: str) -> Language:
 
 __all__ = ["ALL", "CAST_TYPES", "CODE_OPERATORS", "COMMON_WORDS", "FILE_EXTENSIONS", "GENERIC", "JAVASCRIPT",
            "LANGUAGES", "LINE_OPERATORS", "PHP", "PROSE", "PYTHON", "SHELL", "SQL", "STRING_PREFIXES",
-           "STRING_WORDS", "Language", "language"]
+           "STRING_WORDS", "TYPESCRIPT", "Language", "language"]

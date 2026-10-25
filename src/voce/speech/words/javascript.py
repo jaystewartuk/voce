@@ -7,8 +7,9 @@ from voce.speech.words.common import Language
 JAVASCRIPT = Language("javascript", comments=("//", "/*"), words={
     "el": "element", "evt": "event", "btn": "button", "arr": "array", "fn": "function", "init": "init",
     "DOM": "DOM", "params": "params", "args": "args", "props": "props", "ref": "ref", "ctx": "context",
+    "mw": "middleware",
 }, operators={
     "===": "is strictly equal to", "!==": "is not strictly equal to", "=>": "arrow", "?.": "optional chaining",
     "??": "nullish coalescing", "??=": "nullish assignment", "...": "spread", "**": "to the power of",
-}, aliases=("javascript", "js", "typescript", "ts", "jsx", "tsx", "mjs", "cjs", "vue", "svelte"),
+}, aliases=("javascript", "js", "jsx", "mjs", "cjs", "vue", "svelte"),
     manual="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators")
