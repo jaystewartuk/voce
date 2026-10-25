@@ -322,7 +322,7 @@ The easiest place to start is a new language for [Code, read aloud](#code-read-a
 Lua, Perl, R or Elixir: one small file of data in
 [`speech/words/`](https://github.com/jaystewartuk/voce/tree/main/src/voce/speech/words) and a few tests.
 The other good first change is a rule a language still lacks. The tests for these are marked as expected failures
-(search for `xfail` in `tests/test_words_*.py`), for example TypeScript's non-null `!`, Swift's optionals, Go's
+(search for `xfail` in `tests/test_words_*.py`), for example TypeScript's mapped types, Swift's optionals, Go's
 pointers and C#'s attributes; each passes once the rule is in `speech/code.py`.
 [CONTRIBUTING.md](https://github.com/jaystewartuk/voce/blob/main/CONTRIBUTING.md) has the details.
 
