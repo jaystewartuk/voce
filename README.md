@@ -168,6 +168,8 @@ as it is read, with the word being spoken marked, just like a sentence of prose.
 | `Str::slug('Sea View');` | string double colon slug Sea View |
 | `def __init__(self, **kwargs) -> None:` (Python) | def dunder init self, double star keyword args returns None |
 | `const name = user?.name ?? 'guest';` (JavaScript) | const name equals user optional chaining name nullish coalescing guest |
+| `function first<T>(items: T[]): T \| undefined` (TypeScript) | function first of T items colon T array returns T or undefined |
+| `return <Card title={user.name} />` (TSX) | return Card title equals user dot name |
 | `grep -r TODO src \| wc -l && echo done` (shell) | grep minus r TODO source pipe wc minus l and then echo done |
 
 The rules are the ones a person uses without thinking. Names are said as words: `array_values` is "array
@@ -184,13 +186,17 @@ Because the names are the real ones, you learn them as you listen. After a few s
 "null coalescing assignment" and "spaceship" come out of your mouth as easily as "equals", which is exactly what you want when
 you pair or review code with someone.
 
-The rules were written for PHP and Laravel first, read right through laravel/framework with
+The rules were written for PHP and Laravel first, read right through laravel/framework (and TypeScript through
+Hono) with
 [docs/hearing/corpus.py](https://github.com/jaystewartuk/voce/blob/main/docs/hearing/corpus.py) to find what came out odd, and checked by ear against the real
 voice with [docs/hearing/check.py](https://github.com/jaystewartuk/voce/blob/main/docs/hearing/check.py). A doc comment is read as a person reads it: `@param
 array|string $columns` is "parameter array or string, columns". Each language then has its own words on top of what is common
 to all of them, in [`speech/words/`](https://github.com/jaystewartuk/voce/tree/main/src/voce/speech/words): a Python line says "returns" for `->`, "floor
 divided by" for `//` and "dunder init" for `__init__`; a JavaScript line says "is strictly equal to" for `===`
-and "optional chaining" for `?.`, which are MDN's names; shell says "pipe" and "and then"; SQL says "is not
+and "optional chaining" for `?.`, which are MDN's names; a TypeScript line adds the handbook's: `Promise<User>`
+is "Promise of User", `A | B` is "A or B", `user!` is "user non-null" and `name?:` is "name optional", and a JSX
+element is read by its name, `<div>` as "div" and `</div>` as "end div"; a regular expression is "regex" and the
+words in it, not its symbols; shell says "pipe" and "and then"; SQL says "is not
 equal to" for `<>`. A fenced block is read in the language on its fence, a diff in the language of its file,
 and inline code in a sentence in the language most of the document's code is in. Prose inside code, such as a
 doc comment or a heredoc, is read as prose. Adding a language is a few lines of data, and welcome.

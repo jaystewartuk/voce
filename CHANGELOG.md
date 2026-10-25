@@ -5,6 +5,26 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+### Added
+
+- **TypeScript, in the handbook's words.** `Promise<User | undefined>` is "Promise of User or undefined", `T[]` is
+  "T array", `user!` is "user non-null", `name?: string` is "name optional string", and the return type after a
+  function's parameters is "returns". Type arguments over several lines are followed too. Before, TypeScript was
+  read as JavaScript, and `<T>` was "less than T greater than".
+- **JSX and TSX.** An element is read by its name: `<div>` is "div", `</div>` is "end div", `<App />` is "App" and
+  `<>` is "fragment". Before, `</div>` was "less than divided by div greater than".
+- **Regular expressions** in JavaScript and TypeScript are read as "regex" and the words in them, not symbol by
+  symbol. A hex number is "hex" and its digits: `0xFF` is "hex F F".
+- `docs/hearing/corpora.txt` reads Hono, a TypeScript web framework, alongside laravel/framework.
+
+### Fixed
+
+- **Python's lambda.** `lambda x: x * 2` is "lambda x returns x times 2", not "lambda x colon". The colon that
+  opens a block is found after a slice too (`if xs[1:2]: pass`), and an f-string's symbols between its fields are
+  said: `f'**{n}'` is "f string double star n".
+- **A path that starts with a slash** is "slash stubs slash job dot stub", not "slash slash stubs".
+- **A doc comment's example code**, such as `* const app = new Hono()`, is read as code.
+
 ## [0.3.0] - 2026-10-22
 
 ### Added
