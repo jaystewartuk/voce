@@ -559,24 +559,33 @@ function guessLanguage(units) {
   return best[1] >= 5 && best[1] > 2 * next[1] ? best[0] : "";
 }
 
+/** How good a device voice sounds, from how the device names it: 3 premium, 2 enhanced (the voices an iPhone or a
+    Mac downloads), 1 the rest, 0 the Eloquence and novelty voices (Eddy, Grandma, Bubbles), robotic on purpose. */
+function quality(v) {
+  const id = `${v.voiceURI} ${v.name}`;
+  return /premium/i.test(id) ? 3 : /enhanced|mejorad/i.test(id) ? 2 : /eloquence|speech\.synthesis\.voice/i.test(id) ? 0 : 1;
+}
+
 class BrowserVoice {
   constructor(name) { this.name = name; this.kind = "browser"; this.utterance = null; this.lang = ""; }
-  /** Every voice on the device, those in the device's own languages first, then English. */
+  /** Every voice on the device, those in the device's own languages first, then English; the best first in each. */
   static voices() {
     const mine = navigator.languages.map((l) => l.slice(0, 2));
     const rank = (v) => { const i = mine.indexOf(v.lang.slice(0, 2)); return i >= 0 ? i : v.lang.startsWith("en") ? mine.length : mine.length + 1; };
-    return [...speechSynthesis.getVoices()].sort((a, b) => rank(a) - rank(b)).map((v) => ({ id: v.voiceURI, label: `${v.name} (${v.lang})` }));
+    const tag = ["", "", " · enhanced", " · premium"];
+    return [...speechSynthesis.getVoices()].sort((a, b) => rank(a) - rank(b) || quality(b) - quality(a))
+      .map((v) => ({ id: v.voiceURI, label: `${v.name} (${v.lang})${tag[quality(v)]}` }));
   }
   /** The language of the document being read, as "es", or "" when it isn't known. */
   setLanguage(lang) { this.lang = lang; }
-  /** The voice chosen in settings, unless the document is in another language. Then the device's default voice if
-      it speaks that language, or one from the device's country (es-MX on a phone set to Mexico), or any that does. */
+  /** The voice chosen in settings, unless the document is in another language. Then the best-sounding voice the
+      device has for it, preferring the device's country (es-MX on a phone set to Mexico), then its default. */
   pick() {
     const all = speechSynthesis.getVoices(), chosen = all.find((v) => v.voiceURI === this.name);
     if (!this.lang || (chosen && chosen.lang.startsWith(this.lang))) return chosen;
-    const fits = all.filter((v) => v.lang.startsWith(this.lang));
     const regions = navigator.languages.map((l) => l.split("-")[1]).filter(Boolean);
-    return fits.find((v) => v.default) || fits.find((v) => regions.includes(v.lang.split(/[-_]/)[1])) || fits[0] || chosen;
+    const score = (v) => quality(v) * 4 + (regions.includes(v.lang.split(/[-_]/)[1]) ? 2 : 0) + (v.default ? 1 : 0);
+    return all.filter((v) => v.lang.startsWith(this.lang)).sort((a, b) => score(b) - score(a))[0] || chosen;
   }
   async ready() { if (!speechSynthesis.getVoices().length) await new Promise((r) => { speechSynthesis.onvoiceschanged = r; setTimeout(r, 500); }); }
   prefetch() {}
@@ -1290,14 +1299,18 @@ async function route() {
 function fillVoices() {
   const engine = store.get("engine", "browser");
   $("s-engine").value = engine;
-  const list = engine === "kokoro" ? KokoroVoice.voices() : BrowserVoice.voices();
+  const list = engine === "kokoro" ? KokoroVoice.voices()
+    : [{ id: "", label: "The best for each document's language" }, ...BrowserVoice.voices()];
   const chosen = store.get(`voice.${engine}`, engine === "kokoro" ? "af_heart" : "");
   $("s-voice").replaceChildren(...list.map((v) => { const o = document.createElement("option"); o.value = v.id; o.textContent = v.label; o.selected = v.id === chosen; return o; }));
   if (!list.length) { const o = document.createElement("option"); o.textContent = "the device's default voice"; $("s-voice").append(o); }
   fillSources();
   $("s-kokoro-note").textContent = engine === "kokoro"
     ? (KokoroVoice.tts ? "Kokoro is loaded. It runs on this device; nothing is sent anywhere." : "The model is fetched from Hugging Face once and kept by the browser.")
-    : "The voices your device has. Instant, and fine for prose; Kokoro reads code and names more evenly.";
+      + " It speaks English; a document in another language is read by the device's voice."
+    : "The voices your device has. Instant, and fine for prose; Kokoro reads code and names more evenly. "
+      + "For a better voice on an iPhone, download one marked Enhanced or Premium in Settings, Accessibility, "
+      + "Spoken Content, Voices, then come back here.";
 }
 
 function fillSources() {

@@ -22,6 +22,11 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ### Fixed
 
+- **The web app picks a good-sounding voice for a document's language.** On an iPhone it could pick one of the
+  robotic Eloquence or novelty voices, such as Eddy or Grandma, to read Spanish. It now picks the best voice the
+  device has, a downloaded Enhanced or Premium one first. Settings start with "The best for each document's
+  language", mark the better voices, and say where an iPhone downloads them.
+
 - **The web app's first sentence plays as soon as it is made.** The voice makes one sentence at a time, and it
   made the next three before the one you were on, so on a phone such as an iPhone 11 it seemed stuck on "Making
   the first sentence". It now makes the sentence you are on first.
