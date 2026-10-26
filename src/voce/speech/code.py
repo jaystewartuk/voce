@@ -473,6 +473,8 @@ def spoken_line(line: str, lang: str | Language = GENERIC) -> str:
                 said, skip = "definitely", m.end() + 1  # name!: string, the definite assignment assertion
             elif ts and tok == "!" and after_value and line[m.end():m.end() + 1] in ("", " ", ".", ";", ",", ")", "]"):
                 said = ", non-null assertion"  # the handbook's name for user!.name
+            elif ts and tok == "[" and re.match(r"\[\s*[A-Za-z_]\w*\s+in\s", rest):
+                said = "for each"  # a mapped type, { [K in keyof T]: ... }: the Handbook's "for each key"
             elif ts and tok == "[]" and after_value:
                 said = "array"  # string[] is "string array"
             elif ts and tok == ":" and not ternaries and depth == 0 and line[:m.start()].rstrip().endswith(")") \

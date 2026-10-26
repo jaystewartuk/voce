@@ -53,8 +53,7 @@ def test_typescript_fences(alias):
     pytest.param("function greet(name: string): string {", "function greet name colon string returns string"),
     pytest.param("private name!: string;", "private name definitely string"),
     pytest.param("type Getters = { [K in keyof T]: () => T[K] };",
-                 "type Getters equals for each K in key of T colon arrow T K",
-                 marks=pytest.mark.xfail(reason="needs tokeniser: [K in ...] is a mapped type", strict=True)),
+                 "type Getters equals for each K in key of T colon arrow T K"),
 ])
 def test_typescript_needs_the_tokeniser(line, spoken):
     assert spoken_line(line, "typescript") == spoken
@@ -75,6 +74,8 @@ def test_typescript_needs_the_tokeniser(line, spoken):
     ('<h1 class="title">Hello!</h1>', "h1 class equals title Hello end h1"),
     ("  />", ""),
     ("const [first, ...rest] = xs;", "const first, spread rest equals xs"),
+    ("type Opt<T> = { [P in keyof T]?: T[P] };", "type Opt of T equals for each P in key of T optional T P"),
+    ("const xs = [a, b];", "const xs equals array of a, b"),
     # A regular expression by the words in it.
     ("expect(type).toMatch(/^text\\/plain/i)", "expect type dot to Match regular expression text plain"),
     ("const half = total / 2 / count;", "const half equals total divided by 2 divided by count"),
