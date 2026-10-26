@@ -830,7 +830,6 @@ class Reader {
   sayCurrent() {
     const unit = this.units[this.pos];
     this.heard = false;
-    this.voice.prefetch(this.units.slice(this.pos + 1, this.pos + 1 + AHEAD).map((u) => u.say));
     this.ui.words(this.pos, unit.say);
     const making = this.voice.isReady && !this.voice.isReady(unit.say);
     if (making) this.ui.status(this.voice.made.size ? "Making this sentence…"
@@ -839,6 +838,9 @@ class Reader {
       () => this.after(unit),
       (why) => this.fail(`The voice stopped: ${why}`),
       () => { if (making) this.ui.status(this.where()); });
+    // after speak, which asks for this sentence first: the voice makes one sentence at a time, and on a phone each
+    // takes seconds, so the sentences after it waiting in front of it kept the first one quiet for a long while
+    this.voice.prefetch(this.units.slice(this.pos + 1, this.pos + 1 + AHEAD).map((u) => u.say));
     this.follow();
     if (Date.now() - this.lastSave > SAVE_EVERY) this.save();
   }
@@ -922,7 +924,10 @@ class Reader {
 // ---------------------------------------------------------------- the screen
 
 const INLINE = { bold: "b", italic: "i", strike: "s", code: "c", link: "l" };
-const wordKey = (w) => w.toLowerCase().replace(/’/g, "'");
+// Words voce respells so the voice says them right (speech/prose.py), matched to the word as written
+const RESPELLED = { moduloh: "modulo", innit: "init", eenum: "enum", eenums: "enums", itterable: "iterable",
+  itterables: "iterables", reddis: "redis", eh: "a" };
+const wordKey = (w) => { const k = w.toLowerCase().replace(/’/g, "'"); return RESPELLED[k] || k; };
 
 function renderBlocks(doc, units) {
   const article = $("article");

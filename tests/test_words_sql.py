@@ -19,8 +19,8 @@ def said(line: str) -> str:
      "SELECT first name concatenated with a space concatenated with last name FROM customer"),
     # comparison (Table 9.1)
     ("WHERE id = 1 AND status <> 'done'", "WHERE I D equals 1 AND status is not equal to done"),
-    ("WHERE a != b", "WHERE a is not equal to b"),
-    ("WHERE a <=> b", "WHERE a is null-safe equal to b"),
+    ("WHERE a != b", "WHERE A is not equal to b"),
+    ("WHERE a <=> b", "WHERE A is null-safe equal to b"),
     # mathematical operators (Table 9.4)
     ("SELECT 2 ^ 3, 5 % 4", "SELECT 2 to the power of 3, 5 modulo 4"),
     ("flags | 4", "flags bitwise or 4"),
@@ -31,12 +31,12 @@ def said(line: str) -> str:
     # PL/pgSQL assignment and named notation
     ("v_total := v_total + 1;", "v total is assigned v total plus 1"),
     ("SELECT concat_lower_or_upper(a => 'Hello', b => 'World')",
-     "SELECT concat lower or upper a is Hello, b is World"),
+     "SELECT concat lower or upper A is Hello, b is World"),
     # a parameter marker is not a ternary
     ("WHERE id = ?", "WHERE I D equals placeholder"),
     ("VALUES (?, ?)", "VALUES placeholder, placeholder"),
     ("special_features text[]", "special features text array"),
-    ("WHERE tags && ARRAY['a']", "WHERE tags overlaps ARRAY a"),
+    ("WHERE tags && ARRAY['a']", "WHERE tags overlaps ARRAY A"),
     # types, key words and names
     ("email VARCHAR(255) NOT NULL UNIQUE,", "email var char 255 NOT NULL UNIQUE"),
     ("order_id BIGINT NOT NULL,", "order I D big int NOT NULL"),
@@ -53,7 +53,7 @@ def said(line: str) -> str:
      "CREATE INDEX index F K customer I D ON payment USING B tree customer I D"),
     ("ORDER BY rental_date DESC", "ORDER BY rental date descending"),
     ("DEFAULT CHARSET=utf8mb4", "DEFAULT CHARSET equals U T F 8 M B 4"),
-    ("SELECT id FROM t WHERE a <> b -- why", "SELECT I D FROM t WHERE a is not equal to b, why"),
+    ("SELECT id FROM t WHERE a <> b -- why", "SELECT I D FROM t WHERE A is not equal to b, why"),
 ])
 def test_sql_reads_the_way_the_manual_names_it(line, spoken):
     assert said(line) == spoken
@@ -81,12 +81,12 @@ def test_contains_and_is_contained_in():
 
 def test_json_key_exists():
     assert said("WHERE meta ?| array['a'] AND meta ?& array['b']") == \
-        "WHERE meta has any of array a AND meta has all of array b"
+        "WHERE meta has any of array A AND meta has all of array b"
 
 
 def test_regular_expression_matches():
     assert said("WHERE a ~ 'x' AND b ~* 'y' AND c !~ 'z' AND d !~* 'w'") == \
-        "WHERE a matches x AND b matches case-insensitively y AND c does not match z " \
+        "WHERE A matches x AND b matches case-insensitively y AND c does not match z " \
         "AND d does not match case-insensitively w"
 
 

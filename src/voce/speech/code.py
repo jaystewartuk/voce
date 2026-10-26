@@ -41,6 +41,8 @@ def spoken_name(name: str, lang: Language = GENERIC) -> str:
     words = lang.words
     if name in words:
         return words[name]
+    if name == "a":
+        return "A"  # the variable a is its letter, as I D and U R L are, not the article
     if name in COMMON_WORDS:
         return COMMON_WORDS[name]
     if lang.dunder and re.fullmatch(r"__\w+__", name):
@@ -249,6 +251,15 @@ def _spoken_doc(text: str, lang: Language) -> str:
     return re.sub(r"\s+", " ", " ".join(said)).replace(" ,", ",").strip()
 
 
+def _spoken_field(field: str, lang: Language) -> str:
+    """An f-string's field: {mode!r} is "repr of mode", the conversion the Python reference names after repr()."""
+    m = re.fullmatch(r"(.+?)!([rsa])(:.*)?", field)
+    if not m:
+        return spoken_code(field, lang)
+    said = spoken_code(m.group(1), lang)
+    return {"r": f"repr of {said}", "a": f"ascii of {said}"}.get(m.group(2), said)
+
+
 def _spoken_string(raw: str, lang: Language = GENERIC) -> str:
     if raw[:3] in ('"""', "\'\'\'"):  # Python's: a docstring's quotes are not said, only what is inside
         body = raw[3:-3] if len(raw) >= 6 and raw.endswith(raw[:3]) else raw[3:]
@@ -269,7 +280,7 @@ def _spoken_string(raw: str, lang: Language = GENERIC) -> str:
     body = re.sub(r"\\n", " new line ", body)
     if lang.name == "python" and "{" in body:  # an f-string's fields are code: {self.data} is "self dot data"
         parts = re.split(r"(\{[^{}]+\})", body)  # the fields, and the text between them: f'**{n}' is "double star n"
-        body = " ".join(spoken_code(p[1:-1], lang) if p.startswith("{") else
+        body = " ".join(_spoken_field(p[1:-1], lang) if p.startswith("{") else
                         CODE_OPERATORS.get(p.strip(), p) if re.fullmatch(r"\s*[-+*/%=<>!&|^~]+\s*", p) else p
                         for p in parts)
         body = body.replace("(", " ").replace(")", " ").replace("=", " equals ")
@@ -294,6 +305,8 @@ def _spoken_comment(text: str) -> str:
 def _spoken_operator(tok: str, line: str, end: int, after_value: bool, lang: Language) -> str:
     """An operator token, given what follows it in the line and whether a value came before it."""
     nxt = line[end:end + 1]
+    if tok == "*" and not after_value and lang.name == "rust":
+        return "dereference"  # *ptr, the Reference's dereference expression
     if tok in ("*", "**") and not after_value:
         return "star" if tok == "*" else "double star"  # *args and **kwargs
     if after_value and tok in lang.after_value:
@@ -302,15 +315,18 @@ def _spoken_operator(tok: str, line: str, end: int, after_value: bool, lang: Lan
         return "and so on"  # Loading... in a JSX element's text, not a spread
     if tok in lang.operators:
         return lang.operators[tok]
+    if tok == "[]" and after_value and lang.name in ("java", "csharp"):
+        return "array"  # String[] args: an array type
     if tok == "[]":
         return "square brackets" if after_value else "empty array"
     if tok == "(" and nxt == ")" and not after_value and lang.name == "python":
         return "empty tuple"
     if tok == "[":
-        return "" if after_value else "array of"
+        return "" if after_value else "list of" if lang.name == "python" else "array of"
     if tok == "...":
         if nxt == "$" or nxt.isalpha():  # the manual: a variable-length argument list, or unpacking
-            return "variadic" if _SIGNATURE.match(line) else "unpack"
+            signature = _SIGNATURE.match(line) or (lang.name == "go" and line.lstrip().startswith("func"))
+            return "variadic" if signature else "unpack"
         return "and so on"
     if tok == "&" and nxt == "$":
         return "by reference"
@@ -358,6 +374,9 @@ _DOC_CODE = re.compile(r"(?:const|let|var|import|export|return|await|function|cl
 _BEFORE_VALUES = ("return", "yield", "await", "in", "of", "case", "echo", "print", "else", "and", "or", "not", "throw",
                   "new", "typeof", "void", "delete")
 
+
+# What follows a Go * that makes it a pointer type: *Server, *http.Request, *int.
+_GO_TYPE = re.compile(r"(?:[a-z]\w*\.)?[A-Z]|(?:u?int\d*|string|byte|rune|bool|float\d+|complex\d+|error|any)\b")
 
 # Languages whose Name<Type> is a type with arguments, not a comparison: List<String> is "List of String".
 _GENERICS = ("java", "kotlin", "csharp", "typescript", "rust", "swift")
@@ -487,8 +506,11 @@ def spoken_line(line: str, lang: str | Language = GENERIC) -> str:
             else:
                 handled = False
             if lang.name in _GENERICS and not handled:
-                if tok == "<" and previous == "name" and last[:1].isupper() and line[m.start() - 1:m.start()].isalnum():
-                    said, types = "of", types + 1  # List<String>: a type with arguments, not a comparison
+                if tok == "<" and previous == "name" and (last[:1].isupper() or lang.name == "rust") \
+                        and line[m.start() - 1:m.start()].isalnum():
+                    # List<String>: a type with arguments, not a comparison. In Rust any name<, fn longest<'a>, as
+                    # rustfmt spaces a comparison
+                    said, types = "of", types + 1
                 elif tok == "::<":
                     types += 1  # Rust's s.parse::<i32>()
                 elif tok in (">", ">>", ">>>") and types:
@@ -497,6 +519,9 @@ def spoken_line(line: str, lang: str | Language = GENERIC) -> str:
                     said = "wildcard"  # Java's List<? extends T>
             if lang.name == "rust" and tok == "!" and previous == "name" and line[m.end():m.end() + 1] in "([{":
                 said = ""  # println!(...): the bang is part of the macro's name
+            elif lang.name == "go" and tok == "*" and _GO_TYPE.match(line, m.end()) \
+                    and (not after_value or line[m.start() - 1:m.start()] == " "):
+                said = "pointer to"  # s *Server, r *http.Request: the spec's pointer type, not times
             elif lang.name == "sql" and tok == "*" and last.lower() in ("select", "distinct", ",", "("):
                 said = "star"  # SELECT * and count(*)
             if tok == "=>" and arrows and depth == arrows[-1] and lang.name in ("php", "code"):

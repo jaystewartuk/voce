@@ -161,7 +161,7 @@ as it is read, with the word being spoken marked, just like a sentence of prose.
 | On the line | What you hear |
 | --- | --- |
 | `$totals[$channel] ??= 0;` | totals channel null coalescing assignment zero |
-| `usort($rows, fn ($a, $b) => $a['nights'] <=> $b['nights']);` | U sort rows, arrow function a, b returns a nights spaceship b nights |
+| `usort($rows, fn ($a, $b) => $a['nights'] <=> $b['nights']);` | U sort rows, arrow function A, b returns A nights spaceship b nights |
 | `foreach ($rows as &$row) {` | for each rows as by reference row |
 | `'1' === 1;   // false: a string is not an integer` | the string 1 is identical to 1, false: a string is not an integer |
 | `if (strpos($s, 'Hi') !== false) { ... }` | if string position s, Hi is not identical to false and so on |

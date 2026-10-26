@@ -18,12 +18,12 @@ def test_fence_names_and_file_extensions_mean_kotlin():
     ("val y = x?.let { it + 1 } ?: return", "val y equals x safe call let it plus 1 elvis return"),
     ("var name: String? = null", "var name colon String nullable equals null"),
     # Referential and structural equality.
-    ("if (a === b) return", "if a is referentially equal to b return"),
-    ("if (a !== b) return", "if a is not referentially equal to b return"),
-    ("if (b == 0) a else b", "if b is equal to 0 a else b"),
+    ("if (a === b) return", "if A is referentially equal to b return"),
+    ("if (a !== b) return", "if A is not referentially equal to b return"),
+    ("if (b == 0) a else b", "if b is equal to 0 A else b"),
     # % is rem, and the bitwise infix functions are said in full.
     ("tailrec fun gcd(a: Int, b: Int): Int = if (b == 0) a else gcd(b, a % b)",
-     "tail rec fun gcd a colon Int, b colon Int colon Int equals if b is equal to 0 a else gcd b, a remainder b"),
+     "tail rec fun gcd A colon Int, b colon Int colon Int equals if b is equal to 0 A else gcd b, A remainder b"),
     ("x %= 3", "x remainder equals 3"),
     ("val flags = mask shl 2 xor bits", "val flags equals mask shift left 2 X or bits"),
     ("if (x !in range) return", "if x not in range return"),
@@ -39,7 +39,7 @@ def test_fence_names_and_file_extensions_mean_kotlin():
     # The standard library and the names around it.
     ("println(readln())", "print line read line"),
     ("val names = listOf(\"a\", \"b\").map { it.uppercase() }",
-     "val names equals list Of a, b dot map it dot uppercase"),
+     "val names equals list Of A, b dot map it dot uppercase"),
     ("@JvmStatic fun main(args: Array<String>) {}",
      "at J V M Static fun main args colon Array of String"),
     ("val client = OkHttpClient.Builder().build()", "val client equals Ok H T T P Client dot Builder dot build"),

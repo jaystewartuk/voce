@@ -16,7 +16,7 @@ from voce.speech import spoken_line
     ("ary.each_with_index { |(k, v), i| puts k }", "array dot each with index k, v, i put S k"),
     ("h = { :foo => 0, :bar => 1 }", "h equals colon foo hash rocket 0, colon bar hash rocket 1"),
     ("result ||= compute(value)", "result or equals compute value"),
-    ("by_size = a.size <=> b.size", "by size equals a dot size spaceship b dot size"),
+    ("by_size = a.size <=> b.size", "by size equals A dot size spaceship b dot size"),
     ("square = ->(x) { x * x }", "square equals lambda x x times x"),
     ("(0...n).map { |i| i * 2 }", "0 triple dot n dot map i i times 2"),
     ("Integer === value", "Integer case equals value"),

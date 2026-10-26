@@ -23,10 +23,13 @@ class ExportError(Exception):
 
 
 def spoken(docs: Iterable[Doc]) -> list[Unit]:
-    """Everything said, in order: each file's title, then its sentences."""
+    """Everything said, in order: each file's title, then its sentences. A file that opens with its title as a
+    heading has it said once."""
     units: list[Unit] = []
     for doc in docs:
-        units.append(Unit(-1, 0, 0, doc.title.rstrip(".") + ".", pause=0.8))
+        title = doc.title.rstrip(".")
+        if not (doc.units and doc.units[0].say.rstrip(".") == title):
+            units.append(Unit(-1, 0, 0, title + ".", pause=0.8))
         units += doc.units
     return units
 

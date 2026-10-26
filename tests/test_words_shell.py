@@ -18,7 +18,7 @@ from voce.speech import spoken_line
     ("cmd > /dev/null", "command to slash dev slash null"),
     ("rm -rf node_modules", "R M dash R F node modules"),
     ("git clone --depth 1 https://github.com/a/b.git",
-     "git clone dash dash depth 1 https colon slash slash github dot com slash a slash b dot git"),
+     "git clone dash dash depth 1 https colon slash slash github dot com slash A slash b dot git"),
     ("du -sh * | sort -h", "D U dash S H asterisk pipe sort dash h"),
     ("x=${f%.txt}", "x equals f percent dot txt"),
     ("elif [ -d \"$dir\" ]; then", "else if dash d dir, then"),
@@ -30,11 +30,11 @@ from voce.speech import spoken_line
     ("xargs -0 rm", "X args dash 0 R M"),
     ("nohup ./run &", "no hup dot slash run ampersand"),
     ("echo \"$PATH\" | tr ':' '\\n'", "echo PATH pipe T R a colon a new line"),
-    ("tar -xzf a.tar.gz", "tar dash X Z F a dot tar dot gz"),
+    ("tar -xzf a.tar.gz", "tar dash X Z F A dot tar dot gz"),
     ("while IFS= read -r l; do", "while I F S equals read dash r l, do"),
     ("readonly X=1", "read only X equals 1"),
     ("echo ${X:=y}", "echo X assign default y"),
-    ("[ \"$a\" -eq 1 ] && [ -n \"$b\" ]; then", "a is equal to 1 and then dash n b, then"),
+    ("[ \"$a\" -eq 1 ] && [ -n \"$b\" ]; then", "A is equal to 1 and then dash n b, then"),
 ])
 def test_shell_lines(line, spoken):
     assert spoken_line(line, "bash") == spoken
@@ -55,11 +55,11 @@ def test_standard_output_and_error():
 
 
 def test_regex_match():
-    assert spoken_line("[[ $a =~ b ]]", "bash") == "a matches b"
+    assert spoken_line("[[ $a =~ b ]]", "bash") == "A matches b"
 
 
 def test_numeric_tests():
-    assert spoken_line("[ $a -ge 1 ]", "bash") == "a is greater than or equal to 1"
+    assert spoken_line("[ $a -ge 1 ]", "bash") == "A is greater than or equal to 1"
 
 
 def test_special_parameters():

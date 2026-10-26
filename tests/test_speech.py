@@ -37,6 +37,32 @@ def test_speakable_versioned_codes_are_not_money():
     assert speakable("PHP 1,500 or PHP 500 or USD 8") == "PHP 1,500 or PHP 500 or USD 8"
 
 
+def test_speakable_says_an_operator_name_in_one_breath():
+    assert speakable("self dot grad plus equals out dot grad") == "self dot grad plus-equals out dot grad"
+    assert speakable("x left shift equals 2, y floor divided equals 3") == \
+        "x left shift-equals 2, y floor divided-equals 3"
+    assert speakable("totals null coalescing assignment 0") == "totals null-coalescing assignment 0"
+    assert speakable("read only items") == "read-only items"
+    assert speakable("if a dot equals b") == "if a dot equals b"  # Java's a.equals(b) is a call
+    assert speakable("x equals 1") == "x equals 1"
+
+
+def test_speakable_respells_what_the_voice_says_wrongly():
+    assert speakable("x modulo 2") == "x moduloh 2"
+    assert speakable("def dunder init self") == "def dunder innit self"
+    assert speakable("export Enum Color, a Redis client") == "export eenum Color, a reddis client"
+    assert speakable("initial and modular") == "initial and modular"
+
+
+def test_speakable_says_the_letter_a_as_a_letter_and_keeps_the_article():
+    assert speakable("A plus b, 1 for each") == "eh plus b, 1 for each"
+    assert speakable("for A in items, call the A P I") == "for eh in items, call the eh P I"
+    assert speakable("arrow function A, b returns A nights") == "arrow function eh, b returns eh nights"
+    assert speakable("A good day. A Value that remembers") == "A good day. A Value that remembers"
+    assert speakable("a good day, A-team") == "a good day, A-team"
+    assert spoken_line("for a in items:", "python") == "for A in items"
+
+
 def test_speakable_table_separators():
     assert speakable("Name │ Size") == "Name, Size"
 
@@ -68,10 +94,10 @@ def test_spoken_line_reads_code_as_a_person_would():
     assert spoken_line("[] == false;") == "empty array is equal to false"
     assert spoken_line("$email = $r['guest']['email'] ?? 'none';") == "email equals r guest email null coalescing none"
     assert spoken_line("usort($list, fn ($a, $b) => $a['check_in'] <=> $b['check_in']);") == \
-        "U sort list, arrow function a, b returns a check in spaceship b check in"
-    assert spoken_line("foreach ($a as &$n) {") == "for each a as by reference n"
+        "U sort list, arrow function A, b returns A check in spaceship b check in"
+    assert spoken_line("foreach ($a as &$n) {") == "for each A as by reference n"
     assert spoken_line("$channels[] = 'vrbo';") == "channels append vrbo"
-    assert spoken_line("$all = [...$a, ...$b];") == "all equals array of unpack a, unpack b"
+    assert spoken_line("$all = [...$a, ...$b];") == "all equals array of unpack A, unpack b"
     assert spoken_line("if ($i !== false) { ... }   // the key can be 0") == \
         "if i is not identical to false and so on, the key can be 0"
     assert spoken_line("explode(',', '');") == "explode a comma, the empty string"
@@ -97,14 +123,14 @@ def test_each_language_has_its_own_words():
     assert spoken_line("def f(x: int, *args, **kwargs) -> str:  # note", "python") == \
         "def f x colon int, star args, double star keyword args returns string, note"
     assert spoken_line("total = a // b if a != b else self.__init__", "py") == \
-        "total equals a floor divided by b if a is not equal to b else self dot dunder init"
+        "total equals A floor divided by b if A is not equal to b else self dot dunder init"
     assert spoken_line("const go = (a, b) => a?.x ?? [...b];  // js", "js") == \
-        "const go equals a, b arrow a optional chaining x nullish coalescing array of spread b, js"
-    assert spoken_line("if (a === b) {}", "typescript") == "if a is strictly equal to b"
+        "const go equals A, b arrow A optional chaining x nullish coalescing array of spread b, js"
+    assert spoken_line("if (a === b) {}", "typescript") == "if A is strictly equal to b"
     assert spoken_line("SELECT id FROM t WHERE a <> b -- why", "sql") == \
-        "SELECT I D FROM t WHERE a is not equal to b, why"
+        "SELECT I D FROM t WHERE A is not equal to b, why"
     assert spoken_line("cat a.txt | grep x && echo ok  # shell", "bash") == \
-        "cat a dot txt pipe grep x and then echo ok, shell"
+        "cat A dot txt pipe grep x and then echo ok, shell"
     assert spoken_line("$x = 1; // php", "php") == "x equals 1, php"
     assert spoken_line("$x = 1; // unknown language reads like PHP", "cobol") == \
         "x equals 1, unknown language reads like PHP"
@@ -126,9 +152,9 @@ def test_python_reads_like_micrograd_out_loud():
     assert spoken_line("    def __neg__(self): # -self", "python") == "def dunder neg self, minus self"
     assert spoken_line('        return f"Value(data={self.data}, grad={self.grad})"', "python") == \
         "return f string Value data equals self dot data, grad equals self dot grad"
-    assert spoken_code("a ** n", "python") == "a to the power of n"
+    assert spoken_code("a ** n", "python") == "A to the power of n"
     assert spoken_code("nn.py") == "N N dot P Y"
-    assert spoken_line("d = {'a': 1}", "python") == "d equals a colon 1"  # a colon inside a line is still said
+    assert spoken_line("d = {'a': 1}", "python") == "d equals A colon 1"  # a colon inside a line is still said
 
 
 def test_paths_and_file_names_are_said_with_their_slashes_and_letters():
@@ -136,8 +162,8 @@ def test_paths_and_file_names_are_said_with_their_slashes_and_letters():
     assert spoken_code("src/voce/cli.py") == "source slash voce slash C L I dot P Y"
     assert spoken_code("test_reader.py") == "test reader dot P Y"
     assert spoken_code(".github/workflows/ci.yml") == "dot github slash workflows slash C I dot yaml"
-    assert spoken_code("$a === $b") == "a is identical to b"
-    assert spoken_code("a/b") == "a slash b"
+    assert spoken_code("$a === $b") == "A is identical to b"
+    assert spoken_code("a/b") == "A slash b"
     assert spoken_code("array.length") == "array dot length"
     assert spoken_code("docs/") == "docs slash"
 
@@ -192,12 +218,12 @@ def test_append_ternary_and_union_types():
         "return request arrow expects JSON then null else this arrow redirect To request"
     assert spoken_line("    : $default;", "php") == "else default"
     assert spoken_line("return [$a ?: 'x', $b ? $c : $d];", "php") == \
-        "return array of a short ternary x, b then c else d"
+        "return array of A short ternary x, b then c else d"
     assert spoken_line("public function withScheme(Stringable|string $scheme): static", "php") == \
         "public function with Scheme Stringable or string scheme colon static"
     assert spoken_line("function foo(A&B $x, ?\\Closure $cb = null): int|null", "php") == \
         "function foo A and B x, nullable Closure callback equals null colon int or null"
-    assert spoken_line("$flags = $a | $b;", "php") == "flags equals a pipe b"
+    assert spoken_line("$flags = $a | $b;", "php") == "flags equals A pipe b"
 
 
 def test_strings_say_their_symbols_and_their_code():
@@ -215,7 +241,7 @@ def test_a_where_with_its_operator_left_out_says_the_equals_it_means():
     assert spoken_line("$q->where('property_id', '=', 1);", "php") == "q arrow where property I D is equal to 1"
     assert spoken_line("->orWhere('status', 'active')", "php") == "arrow or Where status is equal to active"
     assert spoken_line("->whereIn('id', $ids)", "php") == "arrow where In I D, ids"  # no operator is implied
-    assert spoken_line("->where('a', [1, 2])", "php") == "arrow where a, array of 1, 2"
+    assert spoken_line("->where('a', [1, 2])", "php") == "arrow where A, array of 1, 2"
     assert spoken_code("->where('property_id', 1)", "php") == "arrow where property I D is equal to 1"
 
 
@@ -236,7 +262,7 @@ def test_a_class_declaration_is_not_prose():
 
 def test_an_arrow_function_returns_its_expression_and_keeps_its_double_arrows():
     assert spoken_line("fn ($x) => ['a' => $x, 'b' => fn () => 2]", "php") == \
-        "arrow function x returns array of a double arrow x, b double arrow arrow function returns 2"
+        "arrow function x returns array of A double arrow x, b double arrow arrow function returns 2"
     assert spoken_line("$items->map(fn ($item) => $item->toArray())->filter(fn ($i) => $i > 1);", "php") == \
         "items arrow map arrow function item returns item arrow to Array " \
         "arrow filter arrow function i returns i greater than 1"

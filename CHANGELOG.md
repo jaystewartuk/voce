@@ -18,6 +18,10 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ### Fixed
 
+- **The web app's first sentence plays as soon as it is made.** The voice makes one sentence at a time, and it
+  made the next three before the one you were on, so on a phone such as an iPhone 11 it seemed stuck on "Making
+  the first sentence". It now makes the sentence you are on first.
+
 - **Spanish questions and exclamations are sentences of their own.** A sentence starting with "¿", "¡", "«" or
   an accented capital such as "Él" was joined to the one before it, so the highlight covered both. This changes
   how some non-English text is split, so those sentences fetch their audio again.

@@ -16,7 +16,7 @@ from voce.speech.words import LANGUAGES, TYPESCRIPT
     ("interface User { name?: string; readonly id: number }",
      "interface User name optional string, read only I D colon number"),
     ("const f = (a: number, b?: number): void => {};",
-     "const f equals a colon number, b optional number colon void arrow"),
+     "const f equals A colon number, b optional number colon void arrow"),
     # A decorator.
     ("@Component({ selector: 'app' })", "decorator Component selector colon app"),
     ("@memoize", "decorator memoize"),
@@ -26,14 +26,14 @@ from voce.speech.words import LANGUAGES, TYPESCRIPT
     ("readonly items: ReadonlyArray<Item>;", "read only items colon read only Array of Item"),
     ("const big: bigint = 10;", "const big colon big int equals 10"),
     ("const x = y as unknown as Foo;", "const x equals y as unknown as Foo"),
-    ("const config = { a: 1 } satisfies Config;", "const config equals a colon 1 satisfies Config"),
+    ("const config = { a: 1 } satisfies Config;", "const config equals A colon 1 satisfies Config"),
     ("type T = U extends string ? 'yes' : never;", "type T equals U extends string then yes else never"),
     ("function isString(x: unknown): x is string {", "function is String x colon unknown colon x is string"),
     # The tools, by letter.
     ("const options = ts.readConfigFile(tsconfig);", "const options equals T S dot read Config File T S config"),
     # What TypeScript shares with JavaScript, by MDN's names.
-    ("if (a === b && c !== d) {}", "if a is strictly equal to b and c is not strictly equal to d"),
-    ("const v = obj?.a ?? fallback;", "const v equals object optional chaining a nullish coalescing fallback"),
+    ("if (a === b && c !== d) {}", "if A is strictly equal to b and c is not strictly equal to d"),
+    ("const v = obj?.a ?? fallback;", "const v equals object optional chaining A nullish coalescing fallback"),
 ])
 def test_typescript_reads_by_the_handbook(line, spoken):
     assert spoken_line(line, "typescript") == spoken
@@ -66,16 +66,16 @@ def test_typescript_needs_the_tokeniser(line, spoken):
     ("const pick = <T>(xs: T[]) => xs[0];", "const pick equals generic T xs colon T array arrow xs 0"),
     ("const app = new Hono<{", "const app equals new Hono of"),
     ("}>()", ""),
-    ("if (a < b && c > d) return;", "if a less than b and c greater than d return"),
+    ("if (a < b && c > d) return;", "if A less than b and c greater than d return"),
     # JSX: an element by its name.
     ("return <div>{id}</div>", "return div I D end div"),
     ("<Suspense fallback={<p>Loading...</p>}>", "Suspense fallback equals p Loading and so on end p"),
-    ("<>{a}</>", "fragment a end fragment"),
+    ("<>{a}</>", "fragment A end fragment"),
     ('<h1 class="title">Hello!</h1>', "h1 class equals title Hello end h1"),
     ("  />", ""),
     ("const [first, ...rest] = xs;", "const first, spread rest equals xs"),
     ("type Opt<T> = { [P in keyof T]?: T[P] };", "type Opt of T equals for each P in key of T optional T P"),
-    ("const xs = [a, b];", "const xs equals array of a, b"),
+    ("const xs = [a, b];", "const xs equals array of A, b"),
     # A regular expression by the words in it.
     ("expect(type).toMatch(/^text\\/plain/i)", "expect type dot to Match regular expression text plain"),
     ("const half = total / 2 / count;", "const half equals total divided by 2 divided by count"),
