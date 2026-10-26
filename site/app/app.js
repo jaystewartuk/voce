@@ -29,6 +29,18 @@ const AHEAD = 3;          // units generated ahead of the one playing
 const SAVE_EVERY = 120e3; // ms between saves while playing
 const RESUME_WITHIN = 30e3; // ms a pause can last and still pick up mid-sentence; longer, and the sentence starts again
 const REWIND = 1.2;         // seconds of listening replayed on picking up, so the cut-off word is heard whole
+// iPhone and iPad, including an iPad that says it is a Mac.
+const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+// A tenth of a second of silence, as a WAV: played on a tap so that iOS lets the voice's audio play later.
+const SILENCE = (() => {
+  const rate = 8000, n = rate / 10, b = new DataView(new ArrayBuffer(44 + n));
+  const text = (at, t) => [...t].forEach((c, i) => b.setUint8(at + i, c.charCodeAt(0)));
+  text(0, "RIFF"); b.setUint32(4, 36 + n, true); text(8, "WAVEfmt "); b.setUint32(16, 16, true); b.setUint16(20, 1, true);
+  b.setUint16(22, 1, true); b.setUint32(24, rate, true); b.setUint32(28, rate, true); b.setUint16(32, 1, true);
+  b.setUint16(34, 8, true); text(36, "data"); b.setUint32(40, n, true);
+  for (let i = 0; i < n; i++) b.setUint8(44 + i, 128);
+  return URL.createObjectURL(new Blob([b], { type: "audio/wav" }));
+})();
 const SPACE = 16;           // Kokoro's token for the gap between words; the ones below it are punctuation
 const WORD = /[\p{L}\p{N}]+(?:['’]\p{L}+)*/gu;
 const HOST = "web";
@@ -549,7 +561,9 @@ class KokoroVoice {
     if (!KokoroVoice.loading) {
       KokoroVoice.loading = (async () => {
         const { KokoroTTS } = await import(KOKORO_URL);
-        const webgpu = !!navigator.gpu;
+        // Safari on iPhone and iPad has WebGPU from iOS 26, but the full model it needs (326 MB) is more than a
+        // phone gives a web page; the smaller one (92 MB) runs on the CPU.
+        const webgpu = !!navigator.gpu && !IOS;
         KokoroVoice.tts = await KokoroTTS.from_pretrained(KOKORO_MODEL, {
           dtype: webgpu ? "fp32" : "q8", device: webgpu ? "webgpu" : "wasm",
           progress_callback: (p) => { if (p.status === "progress" && onProgress) onProgress(p.progress || 0, p.file); },
@@ -572,6 +586,15 @@ class KokoroVoice {
     return Object.entries(tts.voices || tts.list_voices?.() || {}).map(([id, v]) => ({ id, label: `${v.name || id} · ${v.language === "en-gb" ? "British" : "American"} ${v.gender || ""}`.trim() }));
   }
   async ready() { await KokoroVoice.load(this.onProgress); }
+  /** iOS plays a page's audio only if it starts during a tap, and the first sentence comes seconds later, once the
+      model has loaded and spoken it. So on the tap, play a moment of silence: the same element may play after. */
+  unlock() {
+    if (this.unlocked) return;
+    this.unlocked = true;
+    const audio = this.audio;
+    audio.src = SILENCE;
+    audio.play().then(() => { if (audio.src === SILENCE) audio.pause(); }).catch(() => { this.unlocked = false; });
+  }
   /** A WAV for a sentence, where it goes quiet and when each word starts, generated once; generation is serialised so the model is never asked twice at once. */
   clip(text) {
     if (!this.clips.has(text)) {
@@ -726,6 +749,7 @@ class Reader {
     this.pausedAt = 0;
     this.playing = true;
     this.ui.setPlaying(true);
+    if (this.voice.unlock) this.voice.unlock(); // before anything is awaited, while the tap still counts
     try { await this.voice.ready(); } catch (e) { this.fail(`The voice couldn't load: ${e.message}`); return; }
     if (recent && this.heard) { this.next(); return; } // paused in the silence after a sentence
     if (recent && this.voice.resume(REWIND)) { this.follow(); return; }

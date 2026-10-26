@@ -5,6 +5,13 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Kokoro plays in the web app on iPhone and iPad.** iOS lets a page play sound only if it starts during a tap,
+  and the first sentence came seconds later, once the model had loaded. The tap on play now starts a moment of
+  silence, which lets the voice play after. iOS also gets the smaller model (92 MB, on the CPU) instead of the
+  full one for WebGPU, which is more than a phone gives a web page.
+
 ### Added
 
 - **TypeScript's mapped types**: `{ [K in keyof T]: T[K] }` is "for each K in key of T colon T K", not "array
