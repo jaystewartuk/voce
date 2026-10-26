@@ -17,7 +17,10 @@ const wav = (samples, rate) => {
 export class KokoroTTS {
   static async from_pretrained(model, options) {
     window.__kokoro = { device: options.device, dtype: options.dtype };
-    const progress = (n) => options.progress_callback({ status: "progress", progress: n, file: "model.onnx" });
+    const progress = (n, file = "onnx/model.onnx") => options.progress_callback({ status: "progress", progress: n, file });
+    await new Promise((r) => setTimeout(r, 300)); // the small files, before the model
+    progress(100, "config.json");
+    progress(100, "tokenizer.json");
     progress(50);
     await new Promise((r) => setTimeout(r, 300));
     progress(100);
@@ -99,7 +102,7 @@ test("an iPhone gets the smaller model, on the CPU", async ({ browser }) => {
 });
 
 
-test("after the download, the player says the voice is starting, then making the sentence, until it plays", async ({ page }) => {
+test("from the tap, the player says it is getting the voice, then downloading it, starting it, then making the sentence, until it plays", async ({ page }) => {
   await openPage(page);
   await page.locator("#play").click();
   // until the first sentence has been made and the status says where the reader is again
@@ -107,8 +110,9 @@ test("after the download, the player says the voice is starting, then making the
     && /left/.test(window.__said.at(-1))), { timeout: 10e3 }).toBe(true);
   const said = await page.evaluate(() => window.__said);
   const at = (re) => said.findIndex((t) => re.test(t));
-  expect(at(/Downloading the voice: 50%/)).toBeGreaterThanOrEqual(0);
-  expect(at(/Starting the voice/)).toBeGreaterThan(at(/Downloading the voice: 50%/));
+  expect(at(/Getting the voice/), said.join(" | ")).toBeGreaterThanOrEqual(0);
+  expect(at(/Downloading the voice: 50%/)).toBeGreaterThan(at(/Getting the voice/));
+  expect(at(/Starting the voice/), "said only once the model is here").toBeGreaterThan(at(/Downloading the voice: 50%/));
   expect(at(/Making the first sentence/)).toBeGreaterThan(at(/Starting the voice/));
   expect(said.slice(at(/Making the first sentence/) + 1).every((t) => /left/.test(t)), said.join(" | ")).toBe(true);
 });

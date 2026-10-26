@@ -566,8 +566,9 @@ class KokoroVoice {
         const webgpu = !!navigator.gpu && !IOS;
         KokoroVoice.tts = await KokoroTTS.from_pretrained(KOKORO_MODEL, {
           dtype: webgpu ? "fp32" : "q8", device: webgpu ? "webgpu" : "wasm",
-          // the download's progress, and then, once a file is all here, that the voice is starting from it
-          progress_callback: (p) => { if (p.status === "progress" && onProgress) onProgress(p.progress || 0, p.file); },
+          // the model's download, and then, once it is all here, that the voice is starting from it; the small
+          // files around it finish first, and would say it was starting before the download had begun
+          progress_callback: (p) => { if (p.status === "progress" && /\.onnx$/.test(p.file || "") && onProgress) onProgress(p.progress || 0, p.file); },
         });
         // kokoro-js keeps only the audio; keep the sounds and how long each lasts as well, for marking words.
         const model = KokoroVoice.tts.model;
@@ -586,7 +587,11 @@ class KokoroVoice {
     if (!tts) return [{ id: "af_heart", label: "Heart (downloads the model first)" }];
     return Object.entries(tts.voices || tts.list_voices?.() || {}).map(([id, v]) => ({ id, label: `${v.name || id} · ${v.language === "en-gb" ? "British" : "American"} ${v.gender || ""}`.trim() }));
   }
-  async ready() { await KokoroVoice.load(this.onProgress); }
+  async ready() {
+    // fetching kokoro-js and its small files takes a few seconds before the model's download says anything
+    if (!KokoroVoice.tts && this.onProgress) this.onProgress(null);
+    await KokoroVoice.load(this.onProgress);
+  }
   /** iOS plays a page's audio only if it starts during a tap, and the first sentence comes seconds later, once the
       model has loaded and spoken it. So on the tap, play a moment of silence: the same element may play after. */
   unlock() {
@@ -1059,7 +1064,7 @@ function makeVoice() {
   const engine = store.get("engine", "browser");
   const name = store.get(`voice.${engine}`, engine === "kokoro" ? "af_heart" : "");
   return engine === "kokoro"
-    ? new KokoroVoice(name, (p, file) => ui.status(p >= 100
+    ? new KokoroVoice(name, (p, file) => ui.status(p === null ? "Getting the voice…" : p >= 100
       ? "Starting the voice on this device. It takes a few seconds the first time."
       : `Downloading the voice: ${Math.round(p)}% of ${file || "the model"}`))
     : new BrowserVoice(name);
