@@ -17,6 +17,11 @@ def test_quotes_and_brackets_stay_with_their_sentence():
     assert split('He said "stop." Then (quietly.) More.') == ['He said "stop."', "Then (quietly.)", "More."]
 
 
+def test_spanish_questions_exclamations_and_accented_capitals_start_sentences():
+    assert split("Eso no dice nada. ¿Lo levantó? ¡Claro! Él dijo «sí». «Bueno», dijo. Ésta es otra.") == \
+        ["Eso no dice nada.", "¿Lo levantó?", "¡Claro!", "Él dijo «sí».", "«Bueno», dijo.", "Ésta es otra."]
+
+
 def test_lowercase_after_a_full_stop_is_not_a_new_sentence():
     assert split("Version 2.5 is out. next steps follow.") == ["Version 2.5 is out. next steps follow."]
 
