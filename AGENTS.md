@@ -83,3 +83,8 @@ print(spoken_line('puts user&.name', language('ruby')))"
 
 Keep each one to one change, with a commit message that says what a user notices. Run ruff and pytest
 first. Don't commit generated audio, caches or anything under `.venv`.
+
+`main` takes changes only through pull requests, squash-merged once CI passes and the branch is up to date with
+`main`; a direct push is refused. Other sessions and people work here at the same time, so start each change on
+a new branch from a freshly fetched `origin/main` (`git fetch && git switch -c my-change origin/main`), and
+fetch again before opening the pull request. Release tags (`v*`) can't be moved or deleted.
