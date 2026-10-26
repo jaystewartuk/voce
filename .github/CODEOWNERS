@@ -1,0 +1,7 @@
+# Changes here can reach users or publishing without a release step, so they always ask for the maintainer's
+# review: CI and publishing, the package and its dependencies, the website and web app (live on merge), and the
+# sign-in relay.
+/.github/       @jaystewartuk
+/pyproject.toml @jaystewartuk
+/site/          @jaystewartuk
+/relay/         @jaystewartuk

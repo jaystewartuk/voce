@@ -31,6 +31,14 @@ Some guidelines:
 - **Add a test** for any change to parsing, sentence splitting, code reading, layout, a source or the reader.
 - **Write for people.** Messages, help text and docs use plain words and short sentences.
 
+## How pull requests are reviewed
+
+voce has one maintainer, so reviews can take a while, and not every pull request will be merged: some won't fit
+the project, however good they are. Small, focused changes with tests are the quickest to review. Changes to CI,
+packaging, dependencies, the website or the sign-in relay get a closer look: the website goes live as soon as it
+is merged, and the rest decides what everyone installs. CI on a pull request from a fork waits until the
+maintainer approves it to run.
+
 ## Adding a language
 
 How code is read is data in `src/voce/speech/words/`: `common.py` holds what every language shares, and each
