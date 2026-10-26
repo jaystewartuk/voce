@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from voce.speech import spoken_line
+from voce.speech import speakable, spoken_line
 from voce.speech.words import ALL, language
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,7 +18,8 @@ site_examples = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(site_examples)
 
 PAGE = (ROOT / "site" / "index.html").read_text()
-ROW = re.compile(r"<tr><td><code>(.*?)</code></td><td>&quot;(.*?)&quot;</td></tr>")
+ROW = re.compile(r'<tr><td><code>(.*?)</code></td><td><button [^>]*data-clip="assets/lang/(\w+\.mp3)"[^>]*></button>'
+                 r"&quot;(.*?)&quot;</td></tr>")
 
 
 def test_the_page_is_up_to_date():
@@ -29,10 +30,23 @@ def test_the_page_is_up_to_date():
 def test_each_line_on_the_page_reads_as_shown(label, fence, manual_name, lines):
     panel = re.search(rf'data-lang="{re.escape(fence)}".*?</tbody>', PAGE, re.S)
     assert panel, f"no panel for {label}"
-    rows = [(html.unescape(code), html.unescape(said)) for code, said in ROW.findall(panel.group())]
-    assert [code for code, _ in rows] == lines
-    for code, said in rows:
+    rows = [(html.unescape(code), clip, html.unescape(said)) for code, clip, said in ROW.findall(panel.group())]
+    assert [code for code, _, _ in rows] == lines
+    for code, clip, said in rows:
         assert said == spoken_line(code, fence)
+        # the clip is the voice saying exactly what voce sends it for this line
+        assert clip == site_examples.clip_name(speakable(spoken_line(code, fence)))
+
+
+def test_every_line_has_its_clip_and_no_clip_is_left_over():
+    missing, unused = site_examples.stale()
+    assert not missing, "run .venv/bin/python docs/hearing/site_examples.py --record"
+    assert not unused, "run .venv/bin/python docs/hearing/site_examples.py --record"
+
+
+def test_a_line_that_reads_differently_gets_a_new_clip():
+    name = site_examples.clip_name
+    assert name("total floor divided-equals 2") != name("total floor divided equals 2")
 
 
 def test_every_language_on_the_page_has_its_own_rules_and_a_manual():

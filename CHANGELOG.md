@@ -7,6 +7,10 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ### Added
 
+- **Hear each language on the website.** Every line in the landing page's language switcher has a play button,
+  and each language has "Hear all four", in the same Kokoro voice as the demo. The clips are recorded from voce
+  by `docs/hearing/site_examples.py --record`, named by what voce sends the voice, so a line can't show one
+  reading and play another.
 - **The web app reads Spanish in a Spanish voice.** It tells from a document's words whether it is in Spanish or
   English, and the device's voice reads it in that language: the device's own Spanish voice, or one from its
   country, so a phone in Mexico gets a Mexican voice. Settings list every voice on the device, those in its own
