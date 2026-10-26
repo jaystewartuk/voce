@@ -10,7 +10,11 @@ and versions follow [Semantic Versioning](https://semver.org).
 - **The web app reads Spanish in a Spanish voice.** It tells from a document's words whether it is in Spanish or
   English, and the device's voice reads it in that language: the device's own Spanish voice, or one from its
   country, so a phone in Mexico gets a Mexican voice. Settings list every voice on the device, those in its own
-  languages first, where before they listed only English ones.
+  languages first, where before they listed only English ones. Kokoro in the web app speaks only English, so with
+  it chosen, a document in another language is read by the device's voice.
+
+- **A playlist in a public repository plays without giving voce access to it.** Add a course someone has shared
+  in Settings and it is read straight away. A private repository still needs voce given access on GitHub.
 
 ### Fixed
 

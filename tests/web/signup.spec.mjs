@@ -126,3 +126,19 @@ test("a playlist whose README moved into a folder is followed there, and one tha
     "Couldn't read the playlist gone/README.md in someone/notes: it isn't there any more. "
     + "If it moved, remove it in Settings and add it from where it is now.");
 });
+
+test("a playlist in someone's public repository plays without voce being given access to it", async ({ page }) => {
+  github.repo(LIBRARY, { ...templateFiles(),
+    "items/0000000000000003.json": JSON.stringify({ kind: "playlist", repo: "someone/course", path: "README.md", added: "2026-10-26T17:00:00Z" }) });
+  github.publicRepo("someone/course", {
+    "README.md": "# Un curso\n\n## Listen in this order\n\n1. [La primera lección](lecciones/01.md)\n",
+    "lecciones/01.md": "# La primera lección\n\nHola.\n" });
+  await page.goto("./");
+  await page.locator("#signin-link").click();
+  await page.locator("#signin-go").click();
+
+  await expect(page.locator("#library")).toContainText("La primera lección");
+  await expect(page.locator("#library .error")).toHaveCount(0);
+  await page.locator("#library .doc", { hasText: "La primera lección" }).click();
+  await expect(page.locator("#article")).toContainText("Hola.");
+});

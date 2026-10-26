@@ -58,3 +58,9 @@ test("a page too short to tell its language is left to the device's default voic
   const spoken = await listen(page, "https://example.test/post", "The cache key ignores the query string.", 3);
   expect(spoken.every((s) => !s.voice && !s.lang)).toBe(true);
 });
+
+test("with Kokoro chosen, which speaks only English here, a Spanish page is read by the device's voice", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("voce.engine", JSON.stringify("kokoro")));
+  const spoken = await listen(page, "https://example.test/clase", "para conocerte", 4);
+  expect(spoken.map((s) => s.voice)).toEqual(spoken.map(() => "paulina"));
+});

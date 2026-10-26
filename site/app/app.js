@@ -121,7 +121,7 @@ async function finishSignIn() {
 async function gh(auth, path, init = {}) {
   const r = await fetch(API + path, {
     ...init,
-    headers: { Authorization: `Bearer ${await auth.bearer()}`, Accept: "application/vnd.github+json",
+    headers: { ...(auth ? { Authorization: `Bearer ${await auth.bearer()}` } : {}), Accept: "application/vnd.github+json",
                "X-GitHub-Api-Version": "2022-11-28", ...(init.headers || {}) },
   });
   if (!r.ok && r.status !== 404 && r.status !== 409) {
@@ -147,9 +147,14 @@ async function reachable(auth) {
 // ---------------------------------------------------------------- the repository
 
 class Repo {
-  constructor(name, auth) { this.name = name; this.auth = auth; this.trees = {}; }
+  /** open: another repository's playlist, which may be public without voce having been given access to it. */
+  constructor(name, auth, open = false) { this.name = name; this.auth = auth; this.open = open; this.trees = {}; }
 
-  api(path, init) { return gh(this.auth, path, init); }
+  /** A public repository voce can't see with the sign-in is asked again without it, as anyone may. */
+  async api(path, init) {
+    const r = await gh(this.auth, path, init);
+    return r.status === 404 && this.open ? gh(null, path, init) : r;
+  }
 
   async check() {
     const r = await this.api(`/repos/${this.name}`);
@@ -428,7 +433,7 @@ class Library {
 
   /** The documents of one playlist README in a repository, each with the sha of its text and the hash of it. */
   async fromSource(source) {
-    const repo = new Repo(source.repo, this.auth);
+    const repo = new Repo(source.repo, this.auth, true);
     const dir = source.path.includes("/") ? source.path.slice(0, source.path.lastIndexOf("/")) : "";
     const tree = await repo.tree(dir, true);                       // paths under the README's folder
     const readme = tree[dir ? source.path.slice(dir.length + 1) : source.path];
@@ -468,7 +473,7 @@ class Library {
     const key = `${API}/prepared/${d.sha}/${await py.made()}`;
     const hit = cache && await cache.match(key);
     if (hit) return hit.json();
-    const text = await new Repo(d.source.repo, this.auth).blob(d.sha);
+    const text = await new Repo(d.source.repo, this.auth, true).blob(d.sha);
     const out = await py.prepare(text, d.name);
     if (cache) cache.put(key, new Response(JSON.stringify(out))).catch(() => {});
     return out;
@@ -740,7 +745,7 @@ function wordTimes(text, run, seconds) {
 
 class Reader {
   constructor(library, voice, ui) {
-    this.library = library; this.voice = voice; this.ui = ui;
+    this.library = library; this.chosen = this.voice = voice; this.ui = ui;
     this.doc = null; this.hash = ""; this.pos = 0; this.playing = false; this.timer = null; this.lastSave = 0;
     this.pausedAt = 0; this.heard = false; // when play was paused, and whether the sentence had already finished
     this.speed = store.get("speed", 1.0);
@@ -752,11 +757,19 @@ class Reader {
     this.doc = await this.library.doc(hash);
     this.units = this.doc.units;
     this.language = guessLanguage(this.units);
-    if (this.voice.setLanguage) this.voice.setLanguage(this.language);
+    this.useVoiceFor(this.language);
     this.measure();
     this.pos = this.resume();
     this.ui.render(this.doc, this.units);
     this.show();
+  }
+
+  /** The voice for a document in this language: the one chosen, except that Kokoro in the page speaks English only,
+      so a document known to be in another language is read by the device's voice for it. */
+  useVoiceFor(lang) {
+    const english = this.chosen.kind !== "kokoro" || !lang || lang === "en";
+    this.voice = english ? this.chosen : (this.deviceVoice ||= new BrowserVoice(""));
+    if (this.voice.setLanguage) this.voice.setLanguage(lang);
   }
 
   /** Where to start: the saved sentence, found again by its text if the document changed since. */
@@ -1415,8 +1428,8 @@ function swapVoice() {
   const wasPlaying = reader.playing;
   reader.stopVoice();
   reader.playing = false;
-  voice = reader.voice = makeVoice();
-  if (voice.setLanguage) voice.setLanguage(reader.language || "");
+  voice = reader.chosen = makeVoice();
+  reader.useVoiceFor(reader.language || "");
   if (wasPlaying) reader.play();
 }
 

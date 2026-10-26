@@ -31,6 +31,8 @@ export class FakeGitHub {
   constructor() {
     this.repos = {};          // owner/name -> {path: text}
     this.installed = new Set();
+    this.public = new Set();  // others' public repositories: seen only when asked without signing in, the strictest
+                              // GitHub could be with a sign-in that wasn't given access to them
     this.offline = [];        // requests the page tried to make anywhere else
     this.made = execFileSync(PYTHON, [join(ROOT, "tests/web/prepare.py"), "made"], { encoding: "utf8" }).trim();
   }
@@ -39,6 +41,11 @@ export class FakeGitHub {
     this.repos[name] = { ...files };
     if (installed) this.installed.add(name);
     return this.repos[name];
+  }
+
+  publicRepo(name, files = {}) {
+    this.public.add(name);
+    return this.repo(name, files, false);
   }
 
   /** Answer the page's requests; call before the page loads. */
@@ -82,7 +89,8 @@ export class FakeGitHub {
     if (p === "/user/installations") return ok({ installations: this.installed.size ? [{ id: 1 }] : [] });
     if (p === "/user/installations/1/repositories") return ok({ repositories: [...this.installed].map((full_name) => ({ full_name })) });
     const m = /^\/repos\/([^/]+\/[^/]+)(\/.*)?$/.exec(p);
-    if (!m || !this.installed.has(m[1])) return missing();
+    const anyone = !req.headers().authorization && this.public.has(m && m[1]) && method === "GET";
+    if (!m || !(this.installed.has(m[1]) || anyone)) return missing();
     const files = this.repos[m[1]], rest = m[2] || "";
     if (!rest) return ok({ full_name: m[1] });
 
