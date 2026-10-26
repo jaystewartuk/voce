@@ -21,7 +21,7 @@ READS = [
      "var size equals size of int plus type of Foo dot Name dot Length remainder 4"),
     ("Span<byte> buffer = stackalloc byte[256];",
      "Span of byte buffer equals stack alloc byte 256"),
-    ("var flags = a & b | c;", "var flags equals a logical and b logical or c"),
+    ("var flags = a & b | c;", "var flags equals A logical and b logical or c"),
     ("flags &= mask; flags |= other;", "flags logical and equals mask, flags logical or equals other"),
     ("mask = ~mask;", "mask equals bitwise complement mask"),
     ("x = y >> 2;", "x equals y right shift 2"),

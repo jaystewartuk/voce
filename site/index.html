@@ -327,9 +327,9 @@ footer a:hover { color: var(--text); }
             <table>
               <thead><tr><th><span class="s" data-say="Operation, Local gradient">Operation</span></th><th>Local gradient</th></tr></thead>
               <tbody>
-                <tr><td><span class="s" data-say="a plus b, 1 for each"><span class="ic">a + b</span></span></td><td>1 for each</td></tr>
-                <tr><td><span class="s" data-say="a times b, the other value"><span class="ic">a * b</span></span></td><td>the other value</td></tr>
-                <tr><td><span class="s" data-say="a to the power of n, n times a to the power of n minus 1"><span class="ic">a ** n</span></span></td><td><span class="ic">n * a ** (n - 1)</span></td></tr>
+                <tr><td><span class="s" data-say="A plus b, 1 for each"><span class="ic">a + b</span></span></td><td>1 for each</td></tr>
+                <tr><td><span class="s" data-say="A times b, the other value"><span class="ic">a * b</span></span></td><td>the other value</td></tr>
+                <tr><td><span class="s" data-say="A to the power of n, n times A to the power of n minus 1"><span class="ic">a ** n</span></span></td><td><span class="ic">n * a ** (n - 1)</span></td></tr>
               </tbody>
             </table>
             <ul>
@@ -461,7 +461,7 @@ footer a:hover { color: var(--text); }
             <thead><tr><th scope="col">On the line</th><th scope="col">What you hear</th></tr></thead>
             <tbody>
             <tr><td><code>$totals[$channel] ??= 0;</code></td><td>&quot;totals channel null coalescing assignment 0&quot;</td></tr>
-            <tr><td><code>fn ($a, $b) =&gt; $a[&#x27;nights&#x27;] &lt;=&gt; $b[&#x27;nights&#x27;]</code></td><td>&quot;arrow function a, b returns a nights spaceship b nights&quot;</td></tr>
+            <tr><td><code>fn ($a, $b) =&gt; $a[&#x27;nights&#x27;] &lt;=&gt; $b[&#x27;nights&#x27;]</code></td><td>&quot;arrow function A, b returns A nights spaceship b nights&quot;</td></tr>
             <tr><td><code>foreach ($rows as &amp;$row) {</code></td><td>&quot;for each rows as by reference row&quot;</td></tr>
             <tr><td><code>$reservation-&gt;guest?-&gt;notify($booking);</code></td><td>&quot;reservation arrow guest nullsafe arrow notify booking&quot;</td></tr>
             </tbody>
@@ -526,7 +526,7 @@ footer a:hover { color: var(--text); }
             <tbody>
             <tr><td><code>user?.name ?? &quot;Anonymous&quot;</code></td><td>&quot;user optional chaining name nil coalescing Anonymous&quot;</td></tr>
             <tr><td><code>for i in 0..&lt;count {</code></td><td>&quot;for i in 0 half open range count&quot;</td></tr>
-            <tr><td><code>let total = a &amp;+ b</code></td><td>&quot;let total equals a overflow addition b&quot;</td></tr>
+            <tr><td><code>let total = a &amp;+ b</code></td><td>&quot;let total equals A overflow addition b&quot;</td></tr>
             <tr><td><code>func greet(person: String) -&gt; String {</code></td><td>&quot;function greet person colon String return arrow String&quot;</td></tr>
             </tbody>
           </table>
@@ -557,7 +557,7 @@ footer a:hover { color: var(--text); }
             <thead><tr><th scope="col">On the line</th><th scope="col">What you hear</th></tr></thead>
             <tbody>
             <tr><td><code>grep -r &quot;TODO&quot; . | wc -l</code></td><td>&quot;grep dash r TODO dot pipe W C dash l&quot;</td></tr>
-            <tr><td><code>[ &quot;$a&quot; -eq 1 ] &amp;&amp; echo ok</code></td><td>&quot;a is equal to 1 and then echo ok&quot;</td></tr>
+            <tr><td><code>[ &quot;$a&quot; -eq 1 ] &amp;&amp; echo ok</code></td><td>&quot;A is equal to 1 and then echo ok&quot;</td></tr>
             <tr><td><code>cat &lt;&lt;&lt; &quot;$text&quot;</code></td><td>&quot;cat here string text&quot;</td></tr>
             <tr><td><code>make build &gt; out.log</code></td><td>&quot;make build to out dot log&quot;</td></tr>
             </tbody>
@@ -574,7 +574,7 @@ footer a:hover { color: var(--text); }
             <tbody>
             <tr><td><code>SELECT data-&gt;&gt;&#x27;name&#x27; FROM users WHERE meta ? &#x27;admin&#x27;;</code></td><td>&quot;SELECT data extracts as text name FROM users WHERE meta exists admin&quot;</td></tr>
             <tr><td><code>SELECT created_at::date FROM orders;</code></td><td>&quot;SELECT created at cast to date FROM orders&quot;</td></tr>
-            <tr><td><code>WHERE tags @&gt; ARRAY[&#x27;a&#x27;]</code></td><td>&quot;WHERE tags contains ARRAY a&quot;</td></tr>
+            <tr><td><code>WHERE tags @&gt; ARRAY[&#x27;a&#x27;]</code></td><td>&quot;WHERE tags contains ARRAY A&quot;</td></tr>
             <tr><td><code>SELECT * FROM film WHERE title ~* &#x27;ace&#x27;</code></td><td>&quot;SELECT star FROM film WHERE title matches case-insensitively ace&quot;</td></tr>
             </tbody>
           </table>

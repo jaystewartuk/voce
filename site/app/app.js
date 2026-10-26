@@ -877,7 +877,10 @@ class Reader {
 // ---------------------------------------------------------------- the screen
 
 const INLINE = { bold: "b", italic: "i", strike: "s", code: "c", link: "l" };
-const wordKey = (w) => w.toLowerCase().replace(/’/g, "'");
+// Words voce respells so the voice says them right (speech/prose.py), matched to the word as written
+const RESPELLED = { moduloh: "modulo", innit: "init", eenum: "enum", eenums: "enums", itterable: "iterable",
+  itterables: "iterables", reddis: "redis", eh: "a" };
+const wordKey = (w) => { const k = w.toLowerCase().replace(/’/g, "'"); return RESPELLED[k] || k; };
 
 function renderBlocks(doc, units) {
   const article = $("article");

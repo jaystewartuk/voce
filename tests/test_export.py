@@ -10,11 +10,12 @@ from voce.state import State
 from voce.voices import Mac, Voice
 
 
-def test_spoken_starts_each_file_with_its_title(tmp_path):
+def test_spoken_starts_each_file_with_its_title_once(tmp_path):
     (tmp_path / "a.md").write_text("# First\n\nOne.\n")
     (tmp_path / "b.md").write_text("# Second.\n\nTwo.\n")
-    units = spoken([load(tmp_path / "a.md"), load(tmp_path / "b.md")])
-    assert [u.say for u in units] == ["First.", "First", "One.", "Second.", "Second.", "Two."]
+    (tmp_path / "c.md").write_text("Three.\n")
+    units = spoken([load(tmp_path / n) for n in ("a.md", "b.md", "c.md")])
+    assert [u.say for u in units] == ["First", "One.", "Second.", "Two.", "Three."]
 
 
 def test_silence_follows_the_reader_and_gives_time_to_answer():
