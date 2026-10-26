@@ -5,6 +5,19 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+### Added
+
+- **The web app reads Spanish in a Spanish voice.** It tells from a document's words whether it is in Spanish or
+  English, and the device's voice reads it in that language: the device's own Spanish voice, or one from its
+  country, so a phone in Mexico gets a Mexican voice. Settings list every voice on the device, those in its own
+  languages first, where before they listed only English ones.
+
+### Fixed
+
+- **Spanish questions and exclamations are sentences of their own.** A sentence starting with "¿", "¡", "«" or
+  an accented capital such as "Él" was joined to the one before it, so the highlight covered both. This changes
+  how some non-English text is split, so those sentences fetch their audio again.
+
 ## [0.4.1] - 2026-10-26
 
 ### Fixed

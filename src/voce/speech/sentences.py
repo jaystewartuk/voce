@@ -7,7 +7,8 @@ import re
 ABBREVIATIONS = {"e.g", "i.e", "etc", "vs", "mr", "mrs", "ms", "dr", "st", "no", "approx", "inc", "ltd", "co",
                  "fig", "cf", "u.s", "u.k", "a.m", "p.m", "jan", "feb", "mar", "apr", "jun", "jul", "aug",
                  "sep", "sept", "oct", "nov", "dec"}
-_BOUNDARY = re.compile(r"([.!?…]+[\"'”’)\]]*)(\s+)(?=[\"'“‘(\[]?[A-Z0-9])")
+# A sentence starts with a capital or a digit, maybe after an opening quote or bracket, or Spanish's opening ¿ and ¡.
+_BOUNDARY = re.compile(r"([.!?…]+[\"'”’»)\]]*)(\s+)(?=[\"'“‘«(\[¿¡]?[A-ZÀ-ÖØ-Þ0-9])")
 
 
 def sentences(text: str) -> list[tuple[int, int]]:
