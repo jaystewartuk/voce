@@ -5,7 +5,17 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-26
+
 ### Fixed
+
+- **The web app says what it is doing from the moment you tap play.** On the first run it said nothing for a few
+  seconds while it fetched the voice, then said "Starting the voice" before the model's download had begun. It
+  now says "Getting the voice…" straight away, and "Starting the voice" only once the model is downloaded.
+
+- **A library playlist that moved is followed.** When a playlist's README moves into a folder of its repository,
+  the web app finds it there and keeps the new path. One it can't find says to remove it in Settings and add it
+  from where it is now, instead of "no such file".
 
 - **The web app says what the voice is doing after its download.** At 100% it said nothing more for several
   seconds while Kokoro started and made the first sentence. It now says "Starting the voice on this device",
@@ -246,7 +256,8 @@ The first public release.
   durations current.
 - A click on a sentence jumps to it. The mouse wheel scrolls.
 
-[Unreleased]: https://github.com/jaystewartuk/voce/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/jaystewartuk/voce/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/jaystewartuk/voce/releases/tag/v0.4.1
 [0.4.0]: https://github.com/jaystewartuk/voce/releases/tag/v0.4.0
 [0.3.0]: https://github.com/jaystewartuk/voce/releases/tag/v0.3.0
 [0.2.0]: https://github.com/jaystewartuk/voce/releases/tag/v0.2.0
