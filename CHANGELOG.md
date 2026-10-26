@@ -5,6 +5,11 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+### Added
+
+- **TypeScript's mapped types**: `{ [K in keyof T]: T[K] }` is "for each K in key of T colon T K", not "array
+  of K in key of T".
+
 ## [0.4.0] - 2026-10-25
 
 ### Added
