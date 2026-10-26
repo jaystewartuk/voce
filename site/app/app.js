@@ -347,7 +347,7 @@ class Library {
     catch { /* a library made by voce --sync has no playlist of its own */ }
     for (const source of this.sources) {
       try { (await this.fromSource(source)).forEach(add); }
-      catch (e) { notes.push(`${source.repo} ${source.path}: ${e.message}`); }
+      catch (e) { notes.push(`Couldn't read the playlist ${source.path} in ${source.repo}: ${e.message}.`); }
     }
     Object.entries(this.items).filter(([hash, it]) => it.kind !== "playlist" && this.texts[`${hash}.md`])
       .sort(([, a], [, b]) => (b.added || "").localeCompare(a.added || ""))
@@ -408,6 +408,18 @@ class Library {
     this.docs = [];
   }
 
+  /** A playlist whose README moved into a folder of its repository: follow it there, and keep the new path. */
+  async follow(source, repo) {
+    const all = await repo.tree("", true);
+    const hits = Object.keys(all).filter((p) => p.endsWith(`/${source.path}`));
+    if (hits.length !== 1) return null;
+    const item = { ...this.items[source.id], path: hits[0] };
+    const sha = await this.repo.put(`items/${source.id}.json`, JSON.stringify(item, null, 1), this.itemShas[`${source.id}.json`], `web: playlist ${source.repo} moved to ${hits[0]}`);
+    if (sha) this.itemShas[`${source.id}.json`] = sha;
+    this.items[source.id] = item;
+    return { ...source, path: hits[0] };
+  }
+
   async removeSource(id) {
     await this.repo.remove(`items/${id}.json`, this.itemShas[`${id}.json`], `web: remove playlist ${this.items[id]?.repo || ""}`);
     delete this.items[id]; delete this.itemShas[`${id}.json`];
@@ -420,7 +432,11 @@ class Library {
     const dir = source.path.includes("/") ? source.path.slice(0, source.path.lastIndexOf("/")) : "";
     const tree = await repo.tree(dir, true);                       // paths under the README's folder
     const readme = tree[dir ? source.path.slice(dir.length + 1) : source.path];
-    if (!readme) throw new Error("no such file");
+    if (!readme) {
+      const moved = source.id && await this.follow(source, repo);
+      if (moved) return this.fromSource(moved);
+      throw new Error("it isn't there any more. If it moved, remove it in Settings and add it from where it is now");
+    }
     const items = parsePlaylist(await repo.blob(readme));
     if (!items.length) throw new Error('no "## Listen in this order" section');
     const found = items.map((it) => ({ ...it, rel: under(it.path) })).filter((it) => it.rel && tree[it.rel]);
@@ -1115,7 +1131,7 @@ async function showLibrary() {
   el.innerHTML = '<p class="note">Loading your library…</p>';
   try { await library.load(); } catch (e) { el.innerHTML = `<p class="error">${e.message}</p>`; return; }
   el.replaceChildren();
-  for (const n of library.notes) { const p = document.createElement("p"); p.className = "error"; p.textContent = `Couldn't read ${n}`; el.append(p); }
+  for (const n of library.notes) { const p = document.createElement("p"); p.className = "error"; p.textContent = n; el.append(p); }
   const open = document.createElement("div"); open.className = "open";
   open.innerHTML = `<form class="open-url" id="open-url"><input id="url" type="url" inputmode="url" placeholder="A web page to read: https://…"
       autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Web page address"><button class="btn">Read</button></form>
