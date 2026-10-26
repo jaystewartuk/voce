@@ -92,9 +92,9 @@ def test_a_diff_is_read_as_a_reviewer_reads_it(tmp_path):
 
 def test_a_new_files_hunk_header_and_context_lines_are_not_read(tmp_path):
     doc = load(write(tmp_path, "```diff\n@@ -0,0 +1,2 @@\n+a = 1\n+b = 2\n```\n\n```diff\n ctx only\n another\n```"))
-    assert [u.say for u in doc.units] == ["Added, a equals 1", "b equals 2", "context only", "another"]
+    assert [u.say for u in doc.units] == ["Added, eh equals 1", "b equals 2", "context only", "another"]
 
 
 def test_inline_code_follows_the_documents_main_language(tmp_path):
     doc = load(write(tmp_path, "Use `a === b` and `fn`.\n\n```js\nx\n```\n\n```js\ny\n```\n\n```php\nz\n```"))
-    assert doc.units[0].say == "Use a is strictly equal to b and function."
+    assert doc.units[0].say == "Use eh is strictly equal to b and function."  # the letter A, as the voice says it

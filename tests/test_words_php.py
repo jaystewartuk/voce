@@ -9,14 +9,14 @@ from voce.speech import spoken_line
 
 @pytest.mark.parametrize("line, spoken", [
     # operators, by the manual's names
-    ("if ($a <> $b) {", "if a is not equal to b"),
+    ("if ($a <> $b) {", "if A is not equal to b"),
     ("$flags = $mask >> 2;", "flags equals mask shifted right by 2"),
     ("$hash = $hash ^ ord($char);", "hash equals hash exclusive or ord char"),
     ("$this->bitfield &= ~$mask;", "this arrow bitfield ampersand equals bitwise not mask"),
-    ("if ($a xor $b) {", "if a exclusive or b"),
-    ("$a ??= [];", "a null coalescing assignment empty array"),
-    ("return $a <=> $b;", "return a spaceship b"),
-    ("$x = $a ** 2 % 3;", "x equals a to the power of 2 modulo 3"),
+    ("if ($a xor $b) {", "if A exclusive or b"),
+    ("$a ??= [];", "A null coalescing assignment empty array"),
+    ("return $a <=> $b;", "return A spaceship b"),
+    ("$x = $a ** 2 % 3;", "x equals A to the power of 2 modulo 3"),
     # names said by their letters or in full
     ("$this->buffer .= \\PHP_EOL;", "this arrow buffer dot equals P H P end of line"),
     ("use Illuminate\\Http\\Request;", "use Illuminate HTTP Request"),

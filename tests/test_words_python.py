@@ -14,6 +14,9 @@ LINES = [
     ("out = Value(self.data**other, (self,), f'**{other}')",
      "out equals Value self dot data to the power of other, self, f string double star other"),
     ("x = y  # 0-9", "x equals y, 0-9"),
+    # a list, not an array; an f-string's !r is repr()
+    ("squares = [x * x for x in xs]", "squares equals list of x times x for x in xs"),
+    ('raise ValueError(f"unknown mode: {mode!r}")', "raise Value Error f string unknown mode: repr of mode"),
     # operators, by the reference's names
     ("def f(x: int) -> str:", "def f x colon int returns string"),
     ("area = side ** 2", "area equals side to the power of 2"),
@@ -23,7 +26,7 @@ LINES = [
     ("@property", "at property"),
     ("q = ~Q(pk=1) | Q(name=\"x\")", "q equals invert Q P K equals 1 or Q name equals x"),
     ("both = seen & wanted", "both equals seen and wanted"),
-    ("toggled = a ^ b", "toggled equals a exclusive or b"),
+    ("toggled = a ^ b", "toggled equals A exclusive or b"),
     ("value: str | None = None", "value colon string or None equals None"),
     ("n = n >> 2", "n equals n right shift 2"),
     ("n >>= 1", "n right shift equals 1"),

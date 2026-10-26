@@ -30,7 +30,7 @@ from voce.speech.words import GO, language
      "body, error short variable declaration I O util dot Read All response dot Body"),
     ('conn, err := net.Dial("tcp", addr)', "connection, error short variable declaration net dot Dial T C P, address"),
     # []T is a slice type
-    ('names := []string{"a", "b"}', "names short variable declaration slice of string a, b"),
+    ('names := []string{"a", "b"}', "names short variable declaration slice of string A, b"),
     # the arithmetic operators, by the spec's names
     ("y := x ^ mask", "y short variable declaration x bitwise X OR mask"),
     ("flags := os.O_CREATE | os.O_WRONLY",
@@ -62,10 +62,12 @@ def test_go_lines(line, spoken):
     pytest.param("y := 1 << n", "y short variable declaration 1 left shift n"),
     pytest.param("x <<= 2", "x left shift equals 2"),
     pytest.param("if d&mask != 0 {", "if d bitwise and mask is not equal to 0"),
-    pytest.param("func (s *Server) Close() error {", "function s pointer to Server Close error",
-                 marks=pytest.mark.xfail(reason="needs code.py: * before a type is a pointer type", strict=True)),
-    pytest.param("func f(xs ...string) {", "function f xs variadic string",
-                 marks=pytest.mark.xfail(reason="needs code.py: a func signature is variadic", strict=True)),
+    pytest.param("func (s *Server) Close() error {", "function s pointer to Server Close error"),
+    pytest.param("func New(r *http.Request, n *int) *Store {",
+                 "function New r pointer to HTTP dot Request, n pointer to int pointer to Store"),
+    pytest.param("d := 5*time.Second", "d short variable declaration 5 times time dot Second"),
+    pytest.param("n := a * b", "n short variable declaration A times b"),
+    pytest.param("func f(xs ...string) {", "function f xs variadic string"),
     pytest.param('Name string `json:"name,omitempty"`', "Name string, JSON name, omit empty",
                  marks=pytest.mark.xfail(reason="needs code.py: a struct tag read as its keys", strict=True)),
 ])
