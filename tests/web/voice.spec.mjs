@@ -29,7 +29,8 @@ export class KokoroTTS {
   }
   constructor() { this.voices = { af_heart: { name: "Heart", language: "en-us", gender: "Female" } }; }
   async model() { return {}; }
-  async generate() {
+  async generate(text) {
+    (window.__made ||= []).push(text);
     await this.model({ input_ids: { data: [] } });
     await new Promise((r) => setTimeout(r, 600));
     const audio = new Float32Array(4800);
@@ -56,7 +57,7 @@ test.beforeEach(async ({ context }) => {
     }, 20);
     const play = HTMLMediaElement.prototype.play;
     HTMLMediaElement.prototype.play = function () {
-      window.__plays.push({ inTap: !!window.event && window.event.type === "click" });
+      window.__plays.push({ inTap: !!window.event && window.event.type === "click", made: (window.__made || []).length });
       return play.call(this);
     };
   });
@@ -115,4 +116,13 @@ test("from the tap, the player says it is getting the voice, then downloading it
   expect(at(/Starting the voice/), "said only once the model is here").toBeGreaterThan(at(/Downloading the voice: 50%/));
   expect(at(/Making the first sentence/)).toBeGreaterThan(at(/Starting the voice/));
   expect(said.slice(at(/Making the first sentence/) + 1).every((t) => /left/.test(t)), said.join(" | ")).toBe(true);
+});
+
+test("the sentence being played is made before the ones after it", async ({ page }) => {
+  await openPage(page);
+  await page.locator("#play").click();
+  await expect.poll(() => page.evaluate(() => window.__plays.length)).toBeGreaterThan(1); // the silence, then a sentence
+  // each sentence takes seconds on a phone: made after the next three, the first one kept the reader quiet for a long while
+  const plays = await page.evaluate(() => window.__plays);
+  expect(plays[1].made, "sentences made before the first was played").toBe(1);
 });

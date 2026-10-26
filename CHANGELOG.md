@@ -5,6 +5,12 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+### Fixed
+
+- **The web app's first sentence plays as soon as it is made.** The voice makes one sentence at a time, and it
+  made the next three before the one you were on, so on a phone such as an iPhone 11 it seemed stuck on "Making
+  the first sentence". It now makes the sentence you are on first.
+
 ## [0.4.1] - 2026-10-26
 
 ### Fixed
