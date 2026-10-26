@@ -106,3 +106,23 @@ test("an empty library opens without an error", async ({ page }) => {
   await expect(page.locator("#library h1.page")).toHaveText("Nothing here yet");
   await expect(page.locator("#library .error")).toHaveCount(0);
 });
+
+test("a playlist whose README moved into a folder is followed there, and one that's gone says what to do", async ({ page }) => {
+  const playlist = (repo, path) => JSON.stringify({ kind: "playlist", repo, path, added: "2026-10-22T17:37:34Z" });
+  github.repo(LIBRARY, { ...templateFiles(),
+    "items/0000000000000001.json": playlist("someone/notes", "study/README.md"),
+    "items/0000000000000002.json": playlist("someone/notes", "gone/README.md") });
+  github.repo("someone/notes", {
+    "projects/study/README.md": "# Study\n\n## Listen in this order\n\n1. [First](first.md)\n",
+    "projects/study/first.md": "# First\n\nHello.\n" });
+  await page.goto("./");
+  await page.locator("#signin-link").click();
+  await page.locator("#signin-go").click();
+  await page.locator("#repos button", { hasText: LIBRARY }).click();
+
+  await expect(page.locator("#library")).toContainText("First");
+  expect(JSON.parse(github.repos[LIBRARY]["items/0000000000000001.json"]).path).toBe("projects/study/README.md");
+  await expect(page.locator("#library .error")).toHaveText(
+    "Couldn't read the playlist gone/README.md in someone/notes: it isn't there any more. "
+    + "If it moved, remove it in Settings and add it from where it is now.");
+});
