@@ -3,7 +3,8 @@
 import { expect, test } from "@playwright/test";
 import { FakeGitHub } from "./fake.mjs";
 
-// kokoro-js as the page imports it, taking a second and a half to load, as the real model takes several.
+// kokoro-js as the page imports it: it downloads, then takes a while to start and to make each sentence, as the
+// real model does.
 const KOKORO = `
 const wav = (samples, rate) => {
   const b = new DataView(new ArrayBuffer(44 + samples.length * 2));
@@ -16,13 +17,18 @@ const wav = (samples, rate) => {
 export class KokoroTTS {
   static async from_pretrained(model, options) {
     window.__kokoro = { device: options.device, dtype: options.dtype };
-    await new Promise((r) => setTimeout(r, 1500));
+    const progress = (n) => options.progress_callback({ status: "progress", progress: n, file: "model.onnx" });
+    progress(50);
+    await new Promise((r) => setTimeout(r, 300));
+    progress(100);
+    await new Promise((r) => setTimeout(r, 1200)); // starting, after the download
     return new KokoroTTS();
   }
   constructor() { this.voices = { af_heart: { name: "Heart", language: "en-us", gender: "Female" } }; }
   async model() { return {}; }
   async generate() {
     await this.model({ input_ids: { data: [] } });
+    await new Promise((r) => setTimeout(r, 600));
     const audio = new Float32Array(4800);
     return { audio, sampling_rate: 24000, toBlob: () => wav(audio, 24000) };
   }
@@ -39,6 +45,12 @@ test.beforeEach(async ({ context }) => {
     localStorage.setItem("voce.engine", JSON.stringify("kokoro"));
     // Each time the page asks to play, whether it was while a tap was being handled, as iOS requires.
     window.__plays = [];
+    // Everything the player's status line says, in order.
+    window.__said = [];
+    setInterval(() => {
+      const t = document.getElementById("status")?.textContent;
+      if (t && window.__said.at(-1) !== t) window.__said.push(t);
+    }, 20);
     const play = HTMLMediaElement.prototype.play;
     HTMLMediaElement.prototype.play = function () {
       window.__plays.push({ inTap: !!window.event && window.event.type === "click" });
@@ -84,4 +96,19 @@ test("an iPhone gets the smaller model, on the CPU", async ({ browser }) => {
   await page.locator("#play").click();
   await expect.poll(() => page.evaluate(() => window.__kokoro)).toEqual({ device: "wasm", dtype: "q8" });
   await context.close();
+});
+
+
+test("after the download, the player says the voice is starting, then making the sentence, until it plays", async ({ page }) => {
+  await openPage(page);
+  await page.locator("#play").click();
+  // until the first sentence has been made and the status says where the reader is again
+  await expect.poll(() => page.evaluate(() => window.__said.findIndex((t) => /Making/.test(t)) >= 0
+    && /left/.test(window.__said.at(-1))), { timeout: 10e3 }).toBe(true);
+  const said = await page.evaluate(() => window.__said);
+  const at = (re) => said.findIndex((t) => re.test(t));
+  expect(at(/Downloading the voice: 50%/)).toBeGreaterThanOrEqual(0);
+  expect(at(/Starting the voice/)).toBeGreaterThan(at(/Downloading the voice: 50%/));
+  expect(at(/Making the first sentence/)).toBeGreaterThan(at(/Starting the voice/));
+  expect(said.slice(at(/Making the first sentence/) + 1).every((t) => /left/.test(t)), said.join(" | ")).toBe(true);
 });

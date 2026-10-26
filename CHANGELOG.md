@@ -7,6 +7,10 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ### Fixed
 
+- **The web app says what the voice is doing after its download.** At 100% it said nothing more for several
+  seconds while Kokoro started and made the first sentence. It now says "Starting the voice on this device",
+  then "Making the first sentence", and says where you are again as soon as the voice speaks.
+
 - **Kokoro plays in the web app on iPhone and iPad.** iOS lets a page play sound only if it starts during a tap,
   and the first sentence came seconds later, once the model had loaded. The tap on play now starts a moment of
   silence, which lets the voice play after. iOS also gets the smaller model (92 MB, on the CPU) instead of the

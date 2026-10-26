@@ -554,7 +554,7 @@ class KokoroVoice {
   constructor(name, onProgress) {
     this.name = name || "af_heart"; this.kind = "kokoro"; this.onProgress = onProgress;
     this.audio = new Audio(); this.audio.preload = "auto";
-    this.clips = new Map(); this.generating = Promise.resolve();
+    this.clips = new Map(); this.made = new Set(); this.generating = Promise.resolve();
   }
   static async load(onProgress) {
     if (KokoroVoice.tts) return KokoroVoice.tts;
@@ -566,6 +566,7 @@ class KokoroVoice {
         const webgpu = !!navigator.gpu && !IOS;
         KokoroVoice.tts = await KokoroTTS.from_pretrained(KOKORO_MODEL, {
           dtype: webgpu ? "fp32" : "q8", device: webgpu ? "webgpu" : "wasm",
+          // the download's progress, and then, once a file is all here, that the voice is starting from it
           progress_callback: (p) => { if (p.status === "progress" && onProgress) onProgress(p.progress || 0, p.file); },
         });
         // kokoro-js keeps only the audio; keep the sounds and how long each lasts as well, for marking words.
@@ -595,12 +596,15 @@ class KokoroVoice {
     audio.src = SILENCE;
     audio.play().then(() => { if (audio.src === SILENCE) audio.pause(); }).catch(() => { this.unlocked = false; });
   }
+  /** Whether a sentence's audio is made and waiting, so it plays straight away. */
+  isReady(text) { return this.made.has(text); }
   /** A WAV for a sentence, where it goes quiet and when each word starts, generated once; generation is serialised so the model is never asked twice at once. */
   clip(text) {
     if (!this.clips.has(text)) {
       const job = this.generating.then(async () => {
         KokoroVoice.run = null;
         const audio = await KokoroVoice.tts.generate(text, { voice: this.name });
+        this.made.add(text);
         return {
           url: URL.createObjectURL(audio.toBlob()), quiet: quietTimes(audio.audio, audio.sampling_rate),
           words: wordTimes(text, KokoroVoice.run, audio.audio.length / audio.sampling_rate),
@@ -608,12 +612,12 @@ class KokoroVoice {
       });
       this.generating = job.catch(() => {});
       this.clips.set(text, job);
-      if (this.clips.size > 40) this.clips.delete(this.clips.keys().next().value);
+      if (this.clips.size > 40) { const old = this.clips.keys().next().value; this.clips.delete(old); this.made.delete(old); }
     }
     return this.clips.get(text);
   }
   prefetch(texts) { texts.forEach((t) => this.clip(t).catch(() => {})); }
-  async speak(text, speed, onEnd, onError) {
+  async speak(text, speed, onEnd, onError, onStart) {
     const token = this.token = {};
     let clip;
     try { clip = await this.clip(text); } catch (e) { if (this.token === token) onError(e.message); return; }
@@ -623,7 +627,8 @@ class KokoroVoice {
     this.audio.playbackRate = speed;
     this.audio.onended = () => { if (this.token === token) onEnd(); };
     this.audio.onerror = () => { if (this.token === token) onError("the clip wouldn't play"); };
-    try { await this.audio.play(); } catch (e) { if (this.token === token) onError(e.message); }
+    try { await this.audio.play(); } catch (e) { if (this.token === token) onError(e.message); return; }
+    if (this.token === token && onStart) onStart();
   }
   pause() { this.audio.pause(); }
   /** Pick the paused clip up `back` seconds of listening earlier, at the gap before a word. False when there's nothing left to pick up. */
@@ -761,9 +766,13 @@ class Reader {
     this.heard = false;
     this.voice.prefetch(this.units.slice(this.pos + 1, this.pos + 1 + AHEAD).map((u) => u.say));
     this.ui.words(this.pos, unit.say);
+    const making = this.voice.isReady && !this.voice.isReady(unit.say);
+    if (making) this.ui.status(this.voice.made.size ? "Making this sentence…"
+      : "Making the first sentence. On a phone that takes a few seconds.");
     this.voice.speak(unit.say, this.speed,
       () => this.after(unit),
-      (why) => this.fail(`The voice stopped: ${why}`));
+      (why) => this.fail(`The voice stopped: ${why}`),
+      () => { if (making) this.ui.status(this.where()); });
     this.follow();
     if (Date.now() - this.lastSave > SAVE_EVERY) this.save();
   }
@@ -1050,7 +1059,9 @@ function makeVoice() {
   const engine = store.get("engine", "browser");
   const name = store.get(`voice.${engine}`, engine === "kokoro" ? "af_heart" : "");
   return engine === "kokoro"
-    ? new KokoroVoice(name, (p, file) => ui.status(`Downloading the voice: ${Math.round(p)}% of ${file || "the model"}`))
+    ? new KokoroVoice(name, (p, file) => ui.status(p >= 100
+      ? "Starting the voice on this device. It takes a few seconds the first time."
+      : `Downloading the voice: ${Math.round(p)}% of ${file || "the model"}`))
     : new BrowserVoice(name);
 }
 
