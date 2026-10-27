@@ -266,6 +266,19 @@ function parsePlaylist(text) {
   return items;
 }
 
+/** A README's title, its first heading, and its first paragraph of prose, to say what the course is. */
+function readmeAbout(text) {
+  const head = text.split(PLAYLIST)[0];
+  const h1 = /^#\s+(.+)$/m.exec(head);
+  const rest = h1 ? head.slice(h1.index + h1[0].length) : head;
+  const para = rest.split(/\n\s*\n/).map((p) => p.trim())
+    .find((p) => p && !/^(#|[-*+]\s|\d+\.\s|<|!\[|\[!\[|\||```|>)/.test(p));
+  const about = para ? unmark(para.replace(/\s*\n\s*/g, " ")) : "";
+  return { title: h1 ? unmark(h1[1]) : "", about: about.length > 320 ? about.slice(0, 317).replace(/\s+\S*$/, "") + "…" : about };
+}
+
+const VISIBILITY = {}; // owner/name -> a promise of whether it is private, asked once a session
+
 /** A link as written in a README, as a path under the README's folder; null when it leads out of that folder. */
 function under(rel) {
   const out = [];
@@ -321,7 +334,7 @@ class Library {
   constructor(repo, auth) {
     this.repo = repo; this.auth = auth;
     this.docs = []; this.places = {}; this.placeShas = {}; this.local = {}; this.notes = []; this.prepared = {};
-    this.items = {}; this.itemShas = {}; this.texts = {};
+    this.items = {}; this.itemShas = {}; this.texts = {}; this.courses = [];
   }
 
   /** The playlists added to the library, as {id, repo, path}. */
@@ -346,14 +359,24 @@ class Library {
     [this.places, this.items] = await Promise.all([read(places), read(items)]);
     for (const k of Object.keys(this.places)) if (!/^[0-9a-f]{64}$/.test(k)) delete this.places[k];
     await this.carry();
-    const docs = [], seen = new Set(), notes = [];
+    const docs = [], seen = new Set(), notes = [], courses = [];
     const add = (d) => { if (!seen.has(d.hash)) { seen.add(d.hash); docs.push(d); } };
-    try { (await this.fromSource({ repo: this.repo.name, path: "README.md" })).forEach(add); }
+    // Each playlist is a course: its README's title and first paragraph, where it lives, and its documents in order.
+    const course = async (key, source, mine) => {
+      const got = await this.fromSource(source);
+      const c = { key, mine, repo: got.source.repo, path: got.source.path, title: got.title || (mine ? "Your library" : got.source.repo.split("/")[1]),
+                  about: got.about, coming: got.coming, hashes: [], private: null };
+      got.docs.forEach((d) => { if (!seen.has(d.hash)) d.course = key; c.hashes.push(d.hash); add(d); });
+      courses.push(c);
+    };
+    try { await course("library", { repo: this.repo.name, path: "README.md" }, true); }
     catch { /* a library made by voce --sync has no playlist of its own */ }
     for (const source of this.sources) {
-      try { (await this.fromSource(source)).forEach(add); }
+      try { await course(source.id, source, false); }
       catch (e) { notes.push(`Couldn't read the playlist ${source.path} in ${source.repo}: ${e.message}.`); }
     }
+    await Promise.all(courses.map(async (c) => { c.private = await this.visibility(c.repo); }));
+    this.courses = courses;
     Object.entries(this.items).filter(([hash, it]) => it.kind !== "playlist" && this.texts[`${hash}.md`])
       .sort(([, a], [, b]) => (b.added || "").localeCompare(a.added || ""))
       .forEach(([hash, it]) => add({ hash, title: it.title, part: "Added", minutes: it.minutes, sha: this.texts[`${hash}.md`],
@@ -431,7 +454,48 @@ class Library {
     this.docs = [];
   }
 
-  /** The documents of one playlist README in a repository, each with the sha of its text and the hash of it. */
+  /** Whether a repository is private: true, false, or null when GitHub won't say. Asked once a session each. */
+  async visibility(name) {
+    if (!(name in VISIBILITY)) {
+      VISIBILITY[name] = new Repo(name, this.auth, true).api(`/repos/${name}`)
+        .then(async (r) => (r.ok ? !!(await r.json()).private : null)).catch(() => null);
+    }
+    return VISIBILITY[name];
+  }
+
+  /** How far through a list of documents: how many are done, the minutes left, and the first not finished. */
+  stats(hashes) {
+    const docs = hashes.map((h) => this.docs.find((d) => d.hash === h)).filter(Boolean);
+    let done = 0, left = 0, next = null;
+    for (const d of docs) {
+      const p = this.progress(d.hash);
+      if (p.done) { done++; continue; }
+      left += (d.minutes || 0) * (1 - p.ratio);
+      if (!next) next = d;
+    }
+    return { done, total: docs.length, left, next, started: docs.some((d) => this.places[d.hash]) };
+  }
+
+  courseOf(d) { return d && this.courses.find((c) => c.key === d.course); }
+
+  /** What to play from the home page: the document last listened to if it isn't finished, else what comes after
+      it in its course, else the first course's next document. */
+  next() {
+    const placed = this.docs.filter((d) => this.places[d.hash] && this.places[d.hash].updated)
+      .sort((a, b) => this.places[b.hash].updated.localeCompare(this.places[a.hash].updated));
+    const last = placed[0];
+    if (last && !this.places[last.hash].done) return { doc: last, label: "Continue" };
+    const after = last && this.courseOf(last) && this.stats(this.courseOf(last).hashes).next;
+    if (after) return { doc: after, label: "Up next" };
+    for (const c of this.courses) {
+      const s = this.stats(c.hashes);
+      if (s.next) return { doc: s.next, label: s.started ? "Up next" : "Start" };
+    }
+    return null;
+  }
+
+  /** The documents of one playlist README in a repository, each with the sha of its text and the hash of it, and the
+      README's title, its first paragraph and how many listed files aren't written yet. */
   async fromSource(source) {
     const repo = new Repo(source.repo, this.auth, true);
     const dir = source.path.includes("/") ? source.path.slice(0, source.path.lastIndexOf("/")) : "";
@@ -442,7 +506,8 @@ class Library {
       if (moved) return this.fromSource(moved);
       throw new Error("it isn't there any more. If it moved, remove it in Settings and add it from where it is now");
     }
-    const items = parsePlaylist(await repo.blob(readme));
+    const text = await repo.blob(readme);
+    const items = parsePlaylist(text);
     if (!items.length) throw new Error('no "## Listen in this order" section');
     const found = items.map((it) => ({ ...it, rel: under(it.path) })).filter((it) => it.rel && tree[it.rel]);
     if (!found.length) throw new Error("none of its files are in that folder");
@@ -454,7 +519,7 @@ class Library {
                  sha, name: it.rel.split("/").pop(), source };
       })));
     }
-    return docs;
+    return { docs, source, ...readmeAbout(text), coming: items.length - found.length };
   }
 
   async doc(hash) {
@@ -1194,9 +1259,71 @@ async function showLibrary() {
   } else if (!library.docs.length) {
     el.insertAdjacentHTML("beforeend", '<h1 class="page">Nothing here yet</h1><p class="lead">Open a web page or a file below and it stays in your library, on every device. Or write a playlist in your library\'s README, add one from another repository in settings, or run <code>voce --sync</code> on a Mac.</p>');
   }
+  if (!library.repo) docList(el, library.docs);
+  else {
+    const next = library.next();
+    if (next) { el.append(section(next.label)); el.append(resumeCard(next.doc)); }
+    if (library.courses.length) {
+      el.append(section(library.courses.length === 1 ? "Course" : "Courses"));
+      const grid = document.createElement("div"); grid.className = "courses";
+      library.courses.forEach((c) => grid.append(courseCard(c)));
+      el.append(grid);
+    }
+    const saved = library.docs.filter((d) => !d.course);
+    if (saved.length) { el.append(section("Saved")); docList(el, saved, "Added"); }
+  }
+  if (library.repo) { open.classList.add("below"); el.append(open); }
+  $("open-file").onclick = () => $("file").click();
+  if ($("signin-link")) $("signin-link").onclick = (e) => { e.preventDefault(); if (reader) reader.stop(); signInView(); };
+  $("open-url").onsubmit = (e) => { e.preventDefault(); openPage($("url").value); };
+}
+
+const LOCK = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
+const GLOBE = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>';
+
+/** 75 minutes as "1 h 15 min". */
+function duration(minutes) {
+  const m = Math.max(1, Math.round(minutes));
+  return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ""}`;
+}
+
+function section(text) { const h = document.createElement("h2"); h.className = "section"; h.textContent = text; return h; }
+
+/** Private or public, as a small badge; nothing when GitHub didn't say. */
+function visibilityBadge(c) {
+  if (c.private === null) return "";
+  return `<span class="vis ${c.private ? "private" : ""}">${c.private ? LOCK : GLOBE}${c.private ? "Private" : "Public"}</span>`;
+}
+
+/** The one thing to play now: a document, where it sits in its course, and the time left in it. */
+function resumeCard(d, inCourse = false) {
+  const c = library.courseOf(d), p = library.progress(d.hash);
+  const b = document.createElement("button"); b.className = "resume"; b.dataset.hash = d.hash;
+  const where = [!inCourse && c && c.title, d.part, d.minutes && `${duration(d.minutes * (1 - p.ratio))} left`].filter(Boolean).join(" · ");
+  b.innerHTML = `<span class="go"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>
+    <span class="name">${esc(d.title)}<small>${esc(where)}</small><span class="bar"><i style="width:${100 * p.ratio}%"></i></span></span>`;
+  b.onclick = () => { location.hash = `#/doc/${d.hash}`; };
+  return b;
+}
+
+/** A course on the home page: its title, where it comes from and whether that is private, and how far through. */
+function courseCard(c) {
+  const s = library.stats(c.hashes);
+  const b = document.createElement("button"); b.className = "course"; b.dataset.course = c.key;
+  const status = s.done === s.total ? "Finished" : `${s.done} of ${s.total} done · ${duration(s.left)} left`;
+  b.innerHTML = `<span class="head"><b>${esc(c.title)}</b>${visibilityBadge(c)}</span>
+    <small class="repo">${esc(c.repo)}${c.path !== "README.md" ? ` · ${esc(c.path)}` : ""}</small>
+    <span class="bar"><i style="width:${s.total ? 100 * s.done / s.total : 0}%"></i></span>
+    <small>${status}${s.next ? ` · Next: ${esc(s.next.title)}` : ""}</small>`;
+  b.onclick = () => { location.hash = `#/course/${c.key}`; };
+  return b;
+}
+
+/** Documents in order, under their parts' headings. */
+function docList(el, docs, fallback = "Library") {
   let part;
-  for (const d of library.docs) {
-    if (d.part !== part) { part = d.part; const h = document.createElement("div"); h.className = "part"; h.textContent = part || (library.docs[0].part ? "Also" : "Library"); el.append(h); }
+  for (const d of docs) {
+    if (d.part !== part) { part = d.part; const h = document.createElement("div"); h.className = "part"; h.textContent = part || fallback; el.append(h); }
     const p = library.progress(d.hash);
     const b = document.createElement("button"); b.className = "doc"; b.dataset.hash = d.hash;
     b.innerHTML = `<span class="mark ${p.done ? "done" : ""}">${p.done ? "✓" : p.text}</span>
@@ -1205,10 +1332,31 @@ async function showLibrary() {
     b.onclick = () => { location.hash = `#/doc/${d.hash}`; };
     el.append(b);
   }
-  if (library.repo) { open.classList.add("below"); el.append(open); }
-  $("open-file").onclick = () => $("file").click();
-  if ($("signin-link")) $("signin-link").onclick = (e) => { e.preventDefault(); if (reader) reader.stop(); signInView(); };
-  $("open-url").onsubmit = (e) => { e.preventDefault(); openPage($("url").value); };
+}
+
+/** One course: what it is and where it lives, how far through, what to play next, and every part. */
+async function showCourse(key) {
+  show("library");
+  const el = $("library");
+  if (!library.docs.length) {
+    el.innerHTML = '<p class="note">Loading your library…</p>';
+    try { await library.load(); } catch (e) { el.innerHTML = `<p class="error">${esc(e.message)}</p>`; return; }
+  }
+  const c = library.courses.find((x) => x.key === key);
+  if (!c) { el.innerHTML = '<p class="error">That course isn\'t in your library any more.</p><p><a href="#/">Back to your library</a></p>'; return; }
+  const s = library.stats(c.hashes);
+  const docs = c.hashes.map((h) => library.docs.find((d) => d.hash === h)).filter(Boolean);
+  const repoUrl = `https://github.com/${c.repo}${c.path !== "README.md" ? `/blob/HEAD/${c.path}` : ""}`;
+  el.innerHTML = `<a class="crumb" href="#/">‹ Library</a>
+    <h1 class="page">${esc(c.title)}</h1>
+    <p class="meta"><a href="${esc(repoUrl)}" target="_blank" rel="noopener">${esc(c.repo)}</a>${visibilityBadge(c)}</p>
+    ${c.about ? `<p class="lead">${esc(c.about)}</p>` : ""}
+    <div class="summary"><span class="bar"><i style="width:${s.total ? 100 * s.done / s.total : 0}%"></i></span>
+      <small>${s.done} of ${s.total} done${s.left ? ` · ${duration(s.left)} left` : ""}</small></div>`;
+  if (s.next) el.append(resumeCard(s.next, true));
+  docList(el, docs, c.title);
+  if (c.coming) el.insertAdjacentHTML("beforeend", `<p class="note coming">${c.coming} more listed in the course, not written yet.</p>`);
+  $("title").textContent = c.title;
 }
 
 /** Read something new and go to it, saying how it's going under the open buttons. */
@@ -1269,6 +1417,11 @@ async function showDoc(hash) {
   try {
     if (!library.docs.length) await library.load();
     await reader.open(hash);
+    const c = library.courseOf(library.docs.find((d) => d.hash === hash));
+    if (c) {
+      const a = document.createElement("a"); a.href = `#/course/${c.key}`; a.textContent = c.title;
+      $("title").replaceChildren(a, ` · ${reader.doc.title}`);
+    }
     if ("mediaSession" in navigator) {
       const art = (n) => ({ src: new URL(`../assets/icon-${n}.png`, location.href).href, sizes: `${n}x${n}`, type: "image/png" });
       navigator.mediaSession.metadata = new MediaMetadata({ title: reader.doc.title, artist: "voce", artwork: [art(192), art(512)] });
@@ -1279,7 +1432,9 @@ async function showDoc(hash) {
 async function route() {
   if (!library) { show("connect"); return; }
   const m = location.hash.match(/^#\/doc\/([0-9a-f]{64})$/);
+  const c = location.hash.match(/^#\/course\/([\w-]+)$/);
   if (m) await showDoc(m[1]);
+  else if (c) { if (reader) reader.stop(); await showCourse(c[1]); }
   else {
     if (reader) reader.stop();
     await showLibrary();
@@ -1304,7 +1459,9 @@ function fillSources() {
   const sources = library && library.repo ? library.sources : [];
   $("s-sources").replaceChildren(...sources.map((src) => {
     const row = document.createElement("div"); row.className = "kv source";
-    const b = document.createElement("b"); b.textContent = `${src.repo} · ${src.path}`;
+    const c = library.courses.find((x) => x.key === src.id);
+    const b = document.createElement("b"); b.textContent = `${c ? `${c.title}: ` : ""}${src.repo} · ${src.path}`;
+    if (c && c.private !== null) b.insertAdjacentHTML("beforeend", visibilityBadge(c));
     const x = document.createElement("button"); x.className = "icon"; x.setAttribute("aria-label", "Remove"); x.textContent = "×";
     x.onclick = () => library.removeSource(src.id).then(fillSources, (e) => { $("s-src-note").textContent = e.message; });
     row.append(b, x);
