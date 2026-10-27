@@ -516,7 +516,7 @@ class Library {
       docs.push(...await Promise.all(found.slice(i, i + 6).map(async (it) => {
         const sha = tree[it.rel];
         return { hash: await sha256(await repo.blob(sha)), title: it.title, part: it.part, minutes: it.minutes,
-                 sha, name: it.rel.split("/").pop(), source };
+                 sha, name: it.rel.split("/").pop(), path: dir ? `${dir}/${it.rel}` : it.rel, source };
       })));
     }
     return { docs, source, ...readmeAbout(text), coming: items.length - found.length };
@@ -1058,6 +1058,8 @@ function segments(b, unitRanges) {
     b.spans.forEach(([ss, se, roles]) => { if (ss <= s && e <= se) roles.forEach((r) => classes.push(INLINE[r] || r)); });
     const unit = unitRanges.find(([us, ue]) => us <= s && e <= ue);
     if (unit) span.dataset.unit = unit[2];
+    const link = (b.links || []).find(([ls, le]) => ls <= s && e <= le); // older prepared copies have no links
+    if (link) span.dataset.href = link[2];
     if (classes.length) span.className = classes.join(" ");
     out.push(span);
   }
@@ -1429,6 +1431,21 @@ function openShared(s) {
 
 function esc(s) { return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
 
+/** Follow a link in the document being read: to another document in the library when it is one, else to the file
+    on GitHub, or to the page on the web. */
+function follow(href) {
+  if (/^[a-z][\w+.-]*:/i.test(href)) { window.open(href, "_blank", "noopener"); return; }
+  const path = decodeURIComponent(href.split(/[#?]/)[0]);
+  if (!path) return; // a heading in this same document
+  const d = library.docs.find((x) => x.hash === reader.hash);
+  const dir = d && d.path ? d.path.slice(0, d.path.lastIndexOf("/") + 1) : null;
+  const target = dir === null ? null : under(path.startsWith("/") ? path : dir + path);
+  if (!target) { ui.status("That link is to a file beside this one, and voce doesn't have it."); return; }
+  const to = library.docs.find((x) => x.path === target && x.source.repo === d.source.repo);
+  if (to) location.hash = `#/doc/${to.hash}`;
+  else window.open(`https://github.com/${d.source.repo}/blob/HEAD/${target}`, "_blank", "noopener");
+}
+
 async function showDoc(hash) {
   show("reader");
   $("article").innerHTML = '<p class="note busy">Loading…</p>';
@@ -1556,8 +1573,10 @@ function wire() {
   $("prev").onclick = () => reader && reader.go(reader.pos - 1);
   $("next").onclick = () => reader && reader.go(reader.pos + 1);
   $("speed").onclick = () => { if (!reader) return; const steps = [0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0]; reader.setSpeed(steps[(steps.findIndex((s) => s >= reader.speed - 0.01) + 1) % steps.length]); };
-  // A tap on the sentence being read plays or pauses it; a tap on any other sentence goes there.
+  // A tap on a link follows it; a tap on the sentence being read plays or pauses it; on any other sentence, goes there.
   $("article").onclick = (e) => {
+    const link = e.target.closest("[data-href]");
+    if (link && reader) { follow(link.dataset.href); return; }
     const el = e.target.closest("[data-unit]");
     if (!el || !reader) return;
     if (+el.dataset.unit === reader.pos) $("play").click(); else reader.go(+el.dataset.unit);

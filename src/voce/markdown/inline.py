@@ -1,7 +1,8 @@
 """Inline Markdown into plain text, keeping bold, italic, code, links and strikethrough as spans over it.
 
 The voice never hears the markup and the screen can still show it. Each style is a role in a span's frozenset,
-and nested styles combine: bold text with code inside it carries both roles.
+and nested styles combine: bold text with code inside it carries both roles. Where each link leads is kept
+apart from the styles, as (start, end, address), so a screen can follow it.
 """
 
 from __future__ import annotations
@@ -9,6 +10,7 @@ from __future__ import annotations
 import re
 
 Span = tuple[int, int, frozenset]  # (start, end, roles) over a block's text
+Link = tuple[int, int, str]        # (start, end, address) over a block's text
 
 
 _ESCAPABLE = set("\\`*_{}[]()#+-.!|>~<")
@@ -37,6 +39,8 @@ class _Out:
     def __init__(self) -> None:
         self.chars: list[str] = []
         self.styles: list[frozenset] = []
+        self.hrefs: list[str] = []
+        self.href = ""  # where the text being added links to, if anywhere
 
     def add(self, text: str, style: frozenset) -> None:
         for ch in text:
@@ -48,11 +52,13 @@ class _Out:
                 ch = " "
             self.chars.append(ch)
             self.styles.append(style)
+            self.hrefs.append(self.href)
 
-    def result(self) -> tuple[str, list[Span]]:
+    def result(self) -> tuple[str, list[Span], list[Link]]:
         while self.chars and self.chars[-1] == " ":
             self.chars.pop()
             self.styles.pop()
+            self.hrefs.pop()
         spans: list[Span] = []
         start = 0
         for k in range(1, len(self.styles) + 1):
@@ -60,7 +66,14 @@ class _Out:
                 if self.styles[start]:
                     spans.append((start, k, self.styles[start]))
                 start = k
-        return "".join(self.chars), spans
+        links: list[Link] = []
+        start = 0
+        for k in range(1, len(self.hrefs) + 1):
+            if k == len(self.hrefs) or self.hrefs[k] != self.hrefs[start]:
+                if self.hrefs[start]:
+                    links.append((start, k, self.hrefs[start]))
+                start = k
+        return "".join(self.chars), spans, links
 
 
 def _walk(s: str, out: _Out, style: frozenset) -> None:
@@ -87,13 +100,17 @@ def _walk(s: str, out: _Out, style: frozenset) -> None:
         if c == "[" or (c == "!" and s.startswith("[", i + 1)):
             m = _LINK.match(s, i)
             if m:
+                outer, out.href = out.href, "" if c == "!" else _address(m.group(2))
                 _walk(m.group(1), out, style | {"link"})
+                out.href = outer
                 i = m.end()
                 continue
         if c == "<":
             m = _AUTOLINK.match(s, i)
             if m:
+                outer, out.href = out.href, m.group(1)
                 out.add(m.group(1), style | {"link"})
+                out.href = outer
                 i = m.end()
                 continue
             m = _TAG.match(s, i)
@@ -124,6 +141,14 @@ def _walk(s: str, out: _Out, style: frozenset) -> None:
         i += 1
 
 
+def _address(dest: str) -> str:
+    """A link's address, without the title that may follow it: [text](address "title")."""
+    dest = dest.strip()
+    if dest.startswith("<"):
+        return dest[1:].split(">", 1)[0]
+    return dest.split()[0] if dest else ""
+
+
 def _entity(name: str) -> str:
     """The character an entity stands for, or "" if it isn't one that can be shown."""
     if not name.startswith("#"):
@@ -137,14 +162,21 @@ def _entity(name: str) -> str:
     return chr(code)
 
 
-def inline(s: str) -> tuple[str, list[Span]]:
-    """Markdown inline syntax to plain text, with (start, end, roles) spans for the styles it carried.
+def linked(s: str) -> tuple[str, list[Span], list[Link]]:
+    """Markdown inline syntax to plain text, with (start, end, roles) spans for the styles it carried and
+    (start, end, address) for where its links lead.
 
     Roles are bold, italic, code, link and strike. White space is collapsed and trimmed.
     """
     out = _Out()
     _walk(s, out, frozenset())
     return out.result()
+
+
+def inline(s: str) -> tuple[str, list[Span]]:
+    """Markdown inline syntax to plain text, with (start, end, roles) spans for the styles it carried."""
+    text, spans, _ = linked(s)
+    return text, spans
 
 
 def plain(s: str) -> str:
