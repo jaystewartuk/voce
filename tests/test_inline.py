@@ -1,4 +1,4 @@
-from voce.markdown import inline, plain
+from voce.markdown import inline, linked, plain
 
 
 def styled(text, spans):
@@ -53,6 +53,13 @@ def test_autolinks_and_images():
     text, spans = inline("See <https://example.com> and ![a diagram](d.png)")
     assert text == "See https://example.com and a diagram"
     assert styled(text, spans) == {"https://example.com": {"link"}, "a diagram": {"link"}}
+
+
+def test_links_keep_where_they_lead():
+    text, _, links = linked('Next: [How the **course** works](00/02.md "Part two") · <https://example.com> ![a](d.png)')
+    assert text == "Next: How the course works · https://example.com a"
+    assert [(text[a:z], to) for a, z, to in links] == [("How the course works", "00/02.md"),
+                                                       ("https://example.com", "https://example.com")]
 
 
 def test_strikethrough():

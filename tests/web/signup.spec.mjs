@@ -200,3 +200,25 @@ test("the home page shows each course, where it comes from and how far through, 
   await page.locator("#title a").click();
   await expect(page.locator("#library h1.page")).toHaveText("Application security");
 });
+
+test("a Next link at the foot of a course document opens the document it names", async ({ page }) => {
+  const course = "someone/voce-course-appsec";
+  github.repo(LIBRARY, { ...templateFiles(),
+    "items/0000000000000004.json": JSON.stringify({ kind: "playlist", repo: course, path: "README.md", added: "2026-10-27T19:20:00Z" }) });
+  github.repo(course, {
+    "README.md": "# Application security\n\n## Listen in this order\n\n1. [The goal](00/01.md)\n2. [How it works](00/02.md)\n",
+    "00/01.md": "# The goal\n\nGet paid for security work.\n\nNext: [How the course works](02.md)\n",
+    "00/02.md": "# How it works\n\nListen, then do.\n\nBack to the [course](../README.md)\n" });
+  await page.goto("./");
+  await page.locator("#signin-link").click();
+  await page.locator("#signin-go").click();
+  await page.locator("#repos button", { hasText: LIBRARY }).click();
+  await page.locator("#library .course", { hasText: "Application security" }).click();
+  await page.locator("#library .doc", { hasText: "The goal" }).click();
+
+  await page.locator("#article [data-href]", { hasText: "How the course works" }).click();
+  await expect(page.locator("#article")).toContainText("Listen, then do.");
+  await page.evaluate(() => { window.opened = []; window.open = (url) => window.opened.push(url); });
+  await page.locator("#article [data-href]", { hasText: "course" }).click(); // not in the playlist: opened on GitHub
+  expect(await page.evaluate(() => window.opened)).toEqual([`https://github.com/${course}/blob/HEAD/README.md`]);
+});

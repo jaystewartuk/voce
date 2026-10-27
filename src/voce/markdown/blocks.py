@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 
 from voce import highlight
 from voce.markdown import tables
-from voce.markdown.inline import inline
+from voce.markdown.inline import inline, linked
 
 
 @dataclass
@@ -30,6 +30,7 @@ class Block:
     ordered: bool = False    # a numbered list item
     lang: str = ""           # a code block's language
     say: str = ""            # what to say instead of the text (table rows)
+    links: list = field(default_factory=list)  # (start, end, address) for each link, so a screen can follow it
 
 
 _CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
@@ -71,9 +72,9 @@ def parse(md: str) -> list[Block]:
     def flush() -> None:
         if para:
             raw = " ".join(para)
-            text, spans = inline(raw)
+            text, spans, links = linked(raw)
             nav = is_navigation(raw)
-            add(Block("meta" if nav else "p", text, spans, spoken=not nav))
+            add(Block("meta" if nav else "p", text, spans, spoken=not nav, links=links))
             para.clear()
 
     while i < len(lines):
@@ -142,10 +143,10 @@ def parse(md: str) -> list[Block]:
         if m:
             flush()
             level = len(m.group(1))
-            text, spans = inline(m.group(2))
+            text, spans, links = linked(m.group(2))
             if level <= 2:
                 section = text.lower()
-            add(Block(f"h{level}", text, spans))
+            add(Block(f"h{level}", text, spans, links=links))
             i += 1
             continue
 
@@ -175,8 +176,8 @@ def parse(md: str) -> list[Block]:
             while i < len(lines) and lines[i].strip().startswith(">"):
                 quote.append(lines[i].strip()[1:].strip())
                 i += 1
-            text, spans = inline(" ".join(quote))
-            add(Block("quote", text, spans))
+            text, spans, links = linked(" ".join(quote))
+            add(Block("quote", text, spans, links=links))
             continue
 
         m = _ITEM.match(line)
@@ -200,9 +201,9 @@ def parse(md: str) -> list[Block]:
             if task and not ordered:
                 prefix = "☑ " if task.group(1) in "xX" else "☐ "
                 raw = task.group(2)
-            text, spans = inline(raw)
+            text, spans, links = linked(raw)
             add(Block("li", text, spans, prefix=prefix, indent=min(depth, 4), ordered=ordered,
-                      spoken=not is_navigation(raw)))
+                      spoken=not is_navigation(raw), links=links))
             continue
 
         para.append(s)
