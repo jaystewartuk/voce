@@ -100,6 +100,24 @@ test("what was read before signing in, and playlists kept on the device, move in
   await expect(page.locator("#library .part", { hasText: "On this device" })).toHaveCount(0);
 });
 
+test("something read on this device can be removed from it", async ({ page }) => {
+  await page.goto("./");
+  await page.locator("#url").fill("https://example.test/post");
+  await page.locator("#open-url button").click();
+  await expect(page.locator("#article")).toContainText("The cache key ignores the query string.");
+  await page.goto("./#/");
+
+  await expect(page.locator("#library .part", { hasText: "On this device" })).toHaveCount(1);
+  await page.getByRole("button", { name: "Remove A post worth hearing from this device" }).click();
+  await expect(page.locator("#library .doc")).toHaveCount(0);
+  await expect(page.locator("#library .part", { hasText: "On this device" })).toHaveCount(0);
+  expect(await page.evaluate(() => localStorage.getItem("voce.local"))).toBe("[]");
+  expect(await page.evaluate(async () => (await (await caches.open("voce-local")).keys()).length)).toBe(0);
+  await page.reload();
+  await expect(page.locator("#library h1.page")).toHaveText("Read something");
+  await expect(page.locator("#library .doc")).toHaveCount(0);
+});
+
 test("an empty library opens without an error", async ({ page }) => {
   github.repo(LIBRARY, {});
   await page.goto("./");

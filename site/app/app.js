@@ -570,6 +570,18 @@ class Library {
     return out.hash;
   }
 
+  /** Take something off "On this device": its entry, its place and the copies kept in this browser. */
+  async forget(hash) {
+    store.set("local", store.get("local", []).filter((d) => d.hash !== hash));
+    const places = store.get("places", {});
+    if (hash in places) { delete places[hash]; store.set("places", places); }
+    if (!this.repo) delete this.places[hash];
+    delete this.local[hash];
+    this.docs = this.docs.filter((d) => !(d.hash === hash && d.part === "On this device"));
+    const cache = await caches.open("voce-local").catch(() => null);
+    if (cache) await Promise.all([`local/${hash}`, `local-text/${hash}`].map((k) => cache.delete(`${API}/${k}`).catch(() => {})));
+  }
+
   progress(hash) {
     const p = this.places[hash];
     if (!p) return { text: "", ratio: 0 };
@@ -1330,7 +1342,13 @@ function docList(el, docs, fallback = "Library") {
       <span class="name">${esc(d.title)}<small>${d.minutes ? `${Math.round(d.minutes)} min` : ""}</small>
       <span class="bar"><i style="width:${100 * p.ratio}%"></i></span></span>`;
     b.onclick = () => { location.hash = `#/doc/${d.hash}`; };
-    el.append(b);
+    if (d.part !== "On this device") { el.append(b); continue; }
+    const row = document.createElement("div"); row.className = "doc-row";
+    const x = document.createElement("button"); x.className = "icon"; x.textContent = "×";
+    x.setAttribute("aria-label", `Remove ${d.title} from this device`);
+    x.onclick = () => library.forget(d.hash).then(showLibrary);
+    row.append(b, x);
+    el.append(row);
   }
 }
 
