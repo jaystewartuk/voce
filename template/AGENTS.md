@@ -26,7 +26,10 @@ the `###` headings above them:
 - Headings, lists and tables are read in order. Keep tables small; each row is read as one sentence.
 - Use real code in fenced blocks with a language (```` ```python ````). voce reads code the way a person says it,
   operators by the names the language's manual gives them. Keep blocks short; explain them in prose around them.
-- Don't use pictures or diagrams to carry meaning; nothing is said for them.
+- Draw a diagram in a ```` ```diagram ```` (or ```` ```mermaid ````) block: it is shown, not read, so say what it
+  shows in the prose beside it. Pictures are not described either.
+- Put raw HTTP in ```` ```http ```` blocks, read as a person reads a request out, and attack strings in
+  ```` ```payload ```` blocks, read with every symbol named.
 - A `## Quiz` with a numbered list, followed by `## Answers` with the same number of answers, becomes a spoken quiz.
 
 ## Leave these alone

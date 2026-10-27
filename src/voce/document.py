@@ -16,6 +16,7 @@ from pathlib import Path
 from voce import highlight
 from voce.markdown import Block, parse, plain
 from voce.speech import Language, language, sentences, speakable, spoken_code, spoken_line
+from voce.speech.http import http_lines, spoken_symbols
 
 WORDS_PER_MINUTE = 150  # speaking speed at 1x, for time estimates
 
@@ -61,11 +62,37 @@ def spoken_text(block: Block, a: int, z: int, lang: Language) -> str:
     return "".join(out)
 
 
+# Fence labels for pictures drawn in text: shown, never read. The prose around a diagram says what it shows.
+DIAGRAMS = ("diagram", "mermaid", "ascii", "svgbob", "graphviz", "dot", "plantuml")
+# Fence labels for an attacker's input, read with every symbol said: a quote is "quote", < is "less than".
+PAYLOADS = ("payload", "attack")
+
+
+def fence_kind(lang: str) -> str:
+    """What a fence's label asks of the reader: "http", "payload", "diagram", or "" for ordinary code."""
+    word = lang.strip().lower().split()[0] if lang.strip() else ""
+    if word in ("http", "https"):
+        return "http"
+    if word in PAYLOADS:
+        return "payload"
+    return "diagram" if word in DIAGRAMS else ""
+
+
 def code_units(b: int, code: str, lang: str = "") -> list[Unit]:
-    """A code block read line by line, each line the way a person reads it aloud. Blank lines are a pause."""
+    """A code block read line by line, each line the way a person reads it aloud. Blank lines are a pause.
+
+    An HTTP message is read as a person reads one out (see speech/http.py), and a payload with every symbol said.
+    """
+    kind = fence_kind(lang)
+    said = http_lines(code) if kind == "http" else None
     units, offset = [], 0
-    for line in code.split("\n"):
-        say = speakable(spoken_line(line, lang))
+    for k, line in enumerate(code.split("\n")):
+        if said is not None:
+            say = speakable(said[k])
+        elif kind == "payload":
+            say = speakable(spoken_symbols(line))
+        else:
+            say = speakable(spoken_line(line, lang))
         if re.search(r"\w", say):
             units.append(Unit(b, offset, offset + len(line), say, pause=LINE_PAUSE))
         elif units and not line.strip():
@@ -126,6 +153,8 @@ def block_units(blocks: list[Block], b: int, skip_code: bool = False, lang: Lang
         return []
     whole = block.kind.startswith("h") or block.kind == "row"
     if block.kind == "code":
+        if fence_kind(block.lang) == "diagram":
+            return []  # a diagram is for the eye: the prose around it says what it shows
         units = diff_units(b, block.text, block.lang) if highlight.is_diff(block.lang) \
             else code_units(b, block.text, block.lang)
         if units:
