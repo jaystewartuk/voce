@@ -42,7 +42,7 @@ _LETTERS = {"api", "url", "id", "uuid", "ip", "jwt", "sql", "css", "js", "xml", 
 # The characters that carry a payload, by name. Letters and digits are read as they are.
 _SYMBOLS = {
     "'": " quote ", '"': " double quote ", "`": " backtick ", "<": " less than ", ">": " greater than ",
-    "=": " equals ", "&": " and ", ";": " semicolon ", "/": " slash ", "\\": " backslash ", "|": " pipe ",
+    "=": " equals ", "&": " ampersand ", ";": " semicolon ", "/": " slash ", "\\": " backslash ", "|": " pipe ",
     "(": " open bracket ", ")": " close bracket ", "{": " open brace ", "}": " close brace ",
     "[": " open square bracket ", "]": " close square bracket ", "$": " dollar ", "#": " hash ", "%": " percent ",
     "@": " at ", "*": " star ", "!": " bang ", "?": " question mark ", "~": " tilde ", "^": " caret ",
