@@ -84,4 +84,8 @@ to the voice, the quiz pairing, and any sentences long enough to be hard to foll
 - Put code in fenced blocks. It is highlighted and read line by line, the way a person reads code aloud, so keep
   examples short. `--skip-code` shows code without reading it.
 - Use a `<details>` block for anything that is for the eye only. It is shown but never read.
+- Draw diagrams in a `diagram` or `mermaid` fence: shown, never read. Say in the prose what the diagram shows,
+  so a listener away from the screen loses nothing.
+- Put raw HTTP in an `http` fence and attack strings in a `payload` fence. A request is read as its method, path,
+  headers and body; a payload with every symbol named.
 - Lines that are only links, such as breadcrumbs at the top or "Next:" at the bottom, are shown and skipped.

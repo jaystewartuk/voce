@@ -5,6 +5,19 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+### Added
+
+- **HTTP messages read the way a tester reads one out.** A fenced `http` block says a request as its method and
+  path, with the query as names and values ("POST slash account slash email, query redirect equals slash
+  settings"), a response as its status ("302 Found"), and each header as its name and value, with cookies split
+  into names and values. A long opaque value is "a long token" and a JSON web token "a JWT". The body is read in
+  its own format: a form as names and values, JSON as code, HTML as its tags.
+- **Payloads with every symbol said.** A fenced `payload` block reads an attacker's input with each symbol
+  named, since each one matters: `' OR 1=1--` is "quote OR 1 equals 1 dash dash".
+- **Diagrams are shown, not read.** A fenced `diagram` or `mermaid` block (also `ascii`, `svgbob`, `graphviz`,
+  `dot` and `plantuml`) stays on the screen and the voice skips it; the prose around it says what it shows.
+  Before, a box drawing was read out arrow by arrow.
+
 ## [0.4.2] - 2026-10-27
 
 ### Added
