@@ -92,7 +92,7 @@ export class FakeGitHub {
     const anyone = !req.headers().authorization && this.public.has(m && m[1]) && method === "GET";
     if (!m || !(this.installed.has(m[1]) || anyone)) return missing();
     const files = this.repos[m[1]], rest = m[2] || "";
-    if (!rest) return ok({ full_name: m[1] });
+    if (!rest) return ok({ full_name: m[1], private: !this.public.has(m[1]) });
 
     let t;
     if ((t = /^\/git\/trees\/HEAD(?::(.*))?$/.exec(rest))) {

@@ -37,6 +37,8 @@ test("a new person makes a library from the template and hears its playlist", as
   github.repo(LIBRARY, templateFiles());
   await page.locator("#make-install").click();
 
+  await expect(page.locator("#library .course")).toContainText("My voce library");
+  await page.locator("#library .course").click();
   await expect(page.locator("#library .part").first()).toHaveText("Start here");
   expect(await titles(page)).toEqual([
     expect.stringContaining("Welcome to voce"), expect.stringContaining("Code, read aloud"), expect.stringContaining("Filling your library"),
@@ -50,7 +52,7 @@ test("a web page opened while signed in is kept in the library for every device"
   await page.goto("./");
   await page.locator("#signin-link").click();
   await page.locator("#signin-go").click();
-  await expect(page.locator("#library .part").first()).toHaveText("Start here");
+  await expect(page.locator("#library .course")).toContainText("My voce library");
 
   await page.locator("#url").fill("https://example.test/post");
   await page.locator("#open-url button").click();
@@ -139,6 +141,44 @@ test("a playlist in someone's public repository plays without voce being given a
 
   await expect(page.locator("#library")).toContainText("La primera lección");
   await expect(page.locator("#library .error")).toHaveCount(0);
+  await expect(page.locator("#library .course", { hasText: "Un curso" })).toContainText("Public");
+  await page.locator("#library .course", { hasText: "Un curso" }).click();
   await page.locator("#library .doc", { hasText: "La primera lección" }).click();
   await expect(page.locator("#article")).toContainText("Hola.");
+});
+
+test("the home page shows each course, where it comes from and how far through, and a course page lists its parts", async ({ page }) => {
+  const course = "someone/voce-course-appsec";
+  github.repo(LIBRARY, { ...templateFiles(),
+    "items/0000000000000004.json": JSON.stringify({ kind: "playlist", repo: course, path: "README.md", added: "2026-10-27T19:20:00Z" }) });
+  github.repo(course, {
+    "README.md": "# Application security\n\nA course from HTTP up to paid security work.\n\n## Listen in this order\n\n"
+      + "### Part 0. Start here\n1. [The goal](00/01.md) · 7 min\n2. [How it works](00/02.md) · 7 min\n\n"
+      + "### Part 1. The web\n3. [HTTP requests](01/02.md) · 12 min\n4. [Not written yet](01/03.md) · 10 min\n",
+    "00/01.md": "# The goal\n\nGet paid for security work.\n",
+    "00/02.md": "# How it works\n\nListen, then do.\n",
+    "01/02.md": "# HTTP requests\n\nA request is a few lines of text.\n" });
+  await page.goto("./");
+  await page.locator("#signin-link").click();
+  await page.locator("#signin-go").click();
+  await page.locator("#repos button", { hasText: LIBRARY }).click();
+
+  const card = page.locator("#library .course", { hasText: "Application security" });
+  await expect(card).toContainText(course);
+  await expect(card).toContainText("Private");
+  await expect(card).toContainText("0 of 3 done");
+  await expect(card).toContainText("Next: The goal");
+
+  await card.click();
+  await expect(page).toHaveURL(/#\/course\/0000000000000004$/);
+  await expect(page.locator("#library h1.page")).toHaveText("Application security");
+  await expect(page.locator("#library .lead")).toHaveText("A course from HTTP up to paid security work.");
+  expect(await page.locator("#library .part").allTextContents()).toEqual(["Part 0. Start here", "Part 1. The web"]);
+  await expect(page.locator("#library .coming")).toHaveText("1 more listed in the course, not written yet.");
+
+  await page.locator("#library .doc", { hasText: "HTTP requests" }).click();
+  await expect(page.locator("#article")).toContainText("A request is a few lines of text.");
+  await expect(page.locator("#title a")).toHaveText("Application security");
+  await page.locator("#title a").click();
+  await expect(page.locator("#library h1.page")).toHaveText("Application security");
 });

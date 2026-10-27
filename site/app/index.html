@@ -104,8 +104,35 @@ a.btn { text-decoration: none; }
 .doc .mark.done { color: var(--string); }
 .doc .name { flex: 1; min-width: 0; }
 .doc .name small { display: block; color: var(--muted); font-size: 13px; }
-.bar { height: 3px; border-radius: 2px; background: var(--line); margin-top: 6px; overflow: hidden; }
+.bar { display: block; height: 3px; border-radius: 2px; background: var(--line); margin-top: 6px; overflow: hidden; }
 .bar i { display: block; height: 100%; background: var(--accent); }
+h2.section { margin: 26px 0 10px; font-size: 13px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h2.section:first-child { margin-top: 8px; }
+.resume { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 14px 16px; border-radius: var(--radius);
+  background: var(--card); border: 1px solid var(--line); margin: 6px 0 4px; }
+.resume:hover { border-color: var(--accent); }
+.resume .go { flex: none; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: #fff; }
+.resume .go svg { width: 22px; height: 22px; fill: currentColor; margin-left: 2px; }
+.resume .name { flex: 1; min-width: 0; font-weight: 600; }
+.resume .name small { display: block; font-weight: 400; color: var(--muted); font-size: 13px; }
+.resume .left { flex: none; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.courses { display: grid; gap: 10px; }
+.course { display: block; width: 100%; text-align: left; padding: 16px 18px; border-radius: var(--radius); background: var(--card); border: 1px solid var(--line); }
+.course:hover { border-color: var(--accent); }
+.course .head { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
+.course .head b { font-size: 18px; line-height: 1.3; }
+.course small { display: block; color: var(--muted); font-size: 13px; margin-top: 4px; }
+.course small.repo { font-family: var(--mono); font-size: 12.5px; margin-top: 2px; overflow-wrap: anywhere; }
+.course .bar { margin-top: 12px; }
+.vis { flex: none; display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--muted);
+  border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px 2px 6px; margin-left: 8px; vertical-align: middle; }
+.vis.private { color: var(--number); }
+.vis svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.crumb { display: inline-block; margin: 4px 0 0; font-size: 14px; text-decoration: none; }
+p.meta { margin: -8px 0 12px; font-size: 14px; font-family: var(--mono); }
+.summary { margin: 0 0 14px; } .summary small { display: block; color: var(--muted); font-size: 13px; margin-top: 6px; }
+.note.coming { margin: 18px 14px; }
+.top .title a { color: inherit; }
 
 /* ---- reader */
 article { font-size: 18px; line-height: 1.7; }

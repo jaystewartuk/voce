@@ -7,6 +7,12 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ### Added
 
+- **The web app's home page is organised by course.** At the top, one button plays what you were listening to, or
+  what comes next. Below it, each playlist is a course card: its README's title, the repository it is read from,
+  whether that repository is private or public, how many documents are done, the time left, and the next one.
+  Pages and files you added are under Saved. A course card opens the course: its description, a link to the
+  repository, progress, the next document to play, every part, and how many listed files aren't written yet. A
+  document from a course has the course's name in the top bar, which goes back to it.
 - **HTTP messages read the way a tester reads one out.** A fenced `http` block says a request as its method and
   path, with the query as names and values ("POST slash account slash email, query redirect equals slash
   settings"), a response as its status ("302 Found"), and each header as its name and value, with cookies split
