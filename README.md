@@ -247,8 +247,8 @@ A playlist is a README with a `## Listen in this order` section that lists Markd
 ## Listen in this order
 
 ### Part 1. The basics
-1. [Getting started](https://github.com/jaystewartuk/voce/blob/main/basics/start.md) · 12 min
-2. [Core ideas](https://github.com/jaystewartuk/voce/blob/main/basics/ideas.md) · 9 min
+1. [Getting started](basics/start.md) · 12 min
+2. [Core ideas](basics/ideas.md) · 9 min
 ```
 
 Run `voce --playlist path/to/folder` once. After that, `voce` works through the files in order, `voce --menu` lets
