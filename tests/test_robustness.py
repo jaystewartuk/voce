@@ -50,7 +50,8 @@ def test_generics_are_not_html():
 def test_stray_asterisks_parse_quickly():
     start = time.monotonic()
     parse("*a " * 20000)
-    assert time.monotonic() - start < 2
+    # Half a second here, and four times that on a slow CI runner; a parse that went quadratic would take minutes.
+    assert time.monotonic() - start < 10
 
 
 def test_transcripts_with_odd_lines(tmp_path):
