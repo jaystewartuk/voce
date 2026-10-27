@@ -22,6 +22,11 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ### Fixed
 
+- **Kokoro speaks when voce is installed deep in a folder.** espeak-ng, which Kokoro uses for pronunciation,
+  can't find its data when the path to it is 160 characters or more, so a virtual environment inside a project
+  quit at the first sentence with "Error processing file ... phontab". voce now copies that data (19 MB) into its
+  cache, once, when the installed path is too long.
+
 - **The web app's first sentence plays as soon as it is made.** The voice makes one sentence at a time, and it
   made the next three before the one you were on, so on a phone such as an iPhone 11 it seemed stuck on "Making
   the first sentence". It now makes the sentence you are on first.
