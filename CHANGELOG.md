@@ -5,6 +5,8 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-10-27
+
 ### Added
 
 - **Hear each language on the website.** Every line in the landing page's language switcher has a play button,
@@ -19,6 +21,15 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 - **A playlist in a public repository plays without giving voce access to it.** Add a course someone has shared
   in Settings and it is read straight away. A private repository still needs voce given access on GitHub.
+
+### Changed
+
+- **Code sounds the way an engineer says it.** Checked by ear on about 100 real lines in nine languages, through
+  Kokoro and a transcriber. An operator's name is said in one breath ("plus-equals", "null-coalescing"), and the
+  variable `a` is the letter A, not "uh". modulo, init, enum, iterable, Redis and turbofish are pronounced right.
+  Go's `*Server` is "pointer to Server", Rust's `<'a>` is "of lifetime A" and `*ptr` "dereference", Python's
+  `[x for x in xs]` is "a list of", and Java's and C#'s `String[]` is "String array". `--export` says a file's
+  title once when it opens with it as a heading. Lines with these words fetch their audio again, once.
 
 ### Fixed
 
@@ -286,7 +297,8 @@ The first public release.
   durations current.
 - A click on a sentence jumps to it. The mouse wheel scrolls.
 
-[Unreleased]: https://github.com/jaystewartuk/voce/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/jaystewartuk/voce/compare/v0.4.2...HEAD
+[0.4.2]: https://github.com/jaystewartuk/voce/releases/tag/v0.4.2
 [0.4.1]: https://github.com/jaystewartuk/voce/releases/tag/v0.4.1
 [0.4.0]: https://github.com/jaystewartuk/voce/releases/tag/v0.4.0
 [0.3.0]: https://github.com/jaystewartuk/voce/releases/tag/v0.3.0
