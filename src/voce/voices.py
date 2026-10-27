@@ -203,20 +203,48 @@ class Kokoro(Engine):
             return ""
         return f"Downloading the Kokoro voice, once: {self.mb()} of {self.SIZE_MB} MB"
 
+    # espeak-ng, which turns Kokoro's words into sounds, ignores a data folder whose path is 160 characters or more
+    # and quits the whole program looking for the folder it was built in. A virtual environment deep in a project
+    # gets a path that long, so then voce reads from a copy in its cache instead.
+    ESPEAK_PATH_LIMIT = 159
+
+    @staticmethod
+    def espeak_data(installed: Path, version: str) -> Path | None:
+        """A short-enough path to espeak-ng's data: None when the installed one will do, else a copy in the cache."""
+        if len(str(installed)) <= Kokoro.ESPEAK_PATH_LIMIT:
+            return None
+        copy = paths.cache_dir() / f"espeak-ng-{version}"
+        if len(str(copy)) > Kokoro.ESPEAK_PATH_LIMIT:
+            raise RuntimeError(f"The Kokoro voice can't run from {paths.cache_dir()}, as its path is too long. "
+                               "Set XDG_CACHE_HOME to a shorter folder, such as ~/.cache")
+        if not (copy / "phontab").exists():
+            tmp = copy.with_name(copy.name + ".tmp")
+            shutil.rmtree(tmp, ignore_errors=True)
+            shutil.copytree(installed, tmp)
+            shutil.rmtree(copy, ignore_errors=True)
+            tmp.replace(copy)
+        return copy
+
     def _load(self):
         with Kokoro._lock:
             if Kokoro._model is None:
                 self.prepare()
+                import importlib.metadata
                 import logging
 
                 logging.getLogger("kokoro_onnx").setLevel(logging.ERROR)
                 logging.getLogger("phonemizer").setLevel(logging.ERROR)
+                import espeakng_loader
                 import onnxruntime
+                from kokoro_onnx import EspeakConfig
                 from kokoro_onnx import Kokoro as Model
 
                 onnxruntime.set_default_logger_severity(3)
                 model, voices = self.files()
-                Kokoro._model = Model(str(model), str(voices))
+                data = self.espeak_data(Path(espeakng_loader.get_data_path()),
+                                        importlib.metadata.version("espeakng-loader"))
+                espeak = EspeakConfig(data_path=str(data)) if data else None
+                Kokoro._model = Model(str(model), str(voices), espeak_config=espeak)
             return Kokoro._model
 
     def synthesize(self, text: str, out: Path) -> None:

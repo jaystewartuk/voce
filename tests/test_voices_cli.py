@@ -121,6 +121,31 @@ def test_kokoro_fetches_the_small_model_but_keeps_using_a_full_one_already_there
     assert [p.name for p in Kokoro.files()] == ["kokoro-v1.0.onnx", "voices-v1.0.bin"]
 
 
+def test_kokoro_copies_espeak_data_out_of_a_path_too_long_for_espeak(tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
+    short = tmp_path / "data"
+    assert Kokoro.espeak_data(short, "0.2.4") is None  # a short path is used where it is
+
+    installed = tmp_path / ("x" * 160) / "espeak-ng-data"
+    (installed / "en_dict").parent.mkdir(parents=True)
+    (installed / "phontab").write_bytes(b"phonemes")
+    (installed / "en_dict").write_bytes(b"words")
+    copy = Kokoro.espeak_data(installed, "0.2.4")
+    assert copy == tmp_path / "cache" / "voce" / "espeak-ng-0.2.4"
+    assert (copy / "phontab").read_bytes() == b"phonemes" and (copy / "en_dict").read_bytes() == b"words"
+    assert len(str(copy)) <= Kokoro.ESPEAK_PATH_LIMIT
+
+    (installed / "phontab").write_bytes(b"changed")
+    assert (Kokoro.espeak_data(installed, "0.2.4") / "phontab").read_bytes() == b"phonemes"  # copied once
+    assert (Kokoro.espeak_data(installed, "0.2.5") / "phontab").read_bytes() == b"changed"  # again for a new one
+
+
+def test_kokoro_says_what_to_do_when_even_the_cache_path_is_too_long(tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / ("c" * 160)))
+    with pytest.raises(RuntimeError, match="Set XDG_CACHE_HOME to a shorter folder"):
+        Kokoro.espeak_data(tmp_path / ("x" * 160), "0.2.4")
+
+
 def test_kokoro_downloads_the_missing_files_on_one_line_of_progress(tmp_path, monkeypatch, capsys):
     import io
 
