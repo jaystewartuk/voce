@@ -176,38 +176,21 @@ as it is read, with the word being spoken marked, just like a sentence of prose.
 | `grep -r TODO src \| wc -l && echo done` (shell) | grep dash r TODO source pipe W C dash l and then echo done |
 | `SELECT data->>'name' FROM users WHERE meta ? 'admin';` (SQL) | SELECT data extracts as text name FROM users WHERE meta exists admin |
 
-The rules are the ones a person uses without thinking. Names are said as words: `array_values` is "array
-values", `strlen` is "string length", `mb_strlen` is "M B string length", `usort` is "U sort", `isset` is "is
-set", `checkIn` is "check In". A variable's dollar sign is silent, and so are brackets and semicolons. Operators
-get their real names: `->` is "arrow", `=>` is "double arrow", `::` is "double colon", `===` is "is identical to"
-and `==` is "is equal to", the PHP manual's own names rather than the "triple equals" nickname, `??` is "null coalescing", `?:` is "short ternary", `<=>` is "spaceship", `?string` is
-"nullable string", `(int)` is "cast to int", `++` is "increment", `&` on a parameter is "by reference", and `...` is
-"unpack" in a call and "variadic" in a signature. The names are the PHP manual's own. A string
-is read by its contents, so `''` is "the empty string" and `','` is "a comma". A trailing comment is read as
-prose. Inline code in a sentence is read the same way.
+The rules are the ones a person uses without thinking. Names are said as words: `strlen` is "string length",
+`isset` is "is set" and `checkIn` is "check In". Dollar signs, brackets and semicolons are silent. A string is
+read by its contents, so `''` is "the empty string", and comments and doc comments are read as prose.
 
-Because the names are the real ones, you learn them as you listen. After a few sessions, "identical",
-"null coalescing assignment" and "spaceship" come out of your mouth as easily as "equals", which is exactly what you want when
-you pair or review code with someone.
+Operators get the names their language's manual gives them: PHP's `===` is "is identical to", not "triple
+equals", JavaScript's is "is strictly equal to", Go's `:=` is "short variable declaration", Rust's `::<` is
+"turbofish" and Kotlin's `?:` is "elvis". Because the names are the real ones, you learn them as you listen, and
+they come out of your mouth when you pair or review code.
 
-The rules were written for PHP and Laravel first, read right through laravel/framework with
-[docs/hearing/corpus.py](https://github.com/jaystewartuk/voce/blob/main/docs/hearing/corpus.py) to find what came out odd, and checked by ear against the real
-voice with [docs/hearing/check.py](https://github.com/jaystewartuk/voce/blob/main/docs/hearing/check.py). A doc comment is read as a person reads it: `@param
-array|string $columns` is "parameter array or string, columns".
-
-Every other language has its own file of words and operator names in
-[`speech/words/`](https://github.com/jaystewartuk/voce/tree/main/src/voce/speech/words), each naming the manual its operators come from: Python's
-reference, MDN, the TypeScript Handbook, the Go specification, the Rust Reference and Book, the Ruby documentation,
-the Java Language Specification, Microsoft's C# reference, The Swift Programming Language, the Kotlin documentation,
-the Bash manual and the PostgreSQL manual. A Python line says "returns" for `->`, "floor divided by" for `//` and
-"dunder init" for `__init__`; JavaScript says "is strictly equal to" for `===` and "optional chaining" for `?.`;
-Go says "short variable declaration" for `:=` and "bit clear" for `&^`; Rust says "turbofish" for `::<`, which The
-Rust Book does; Ruby says "spaceship" and "hash rocket", which its documentation does; Kotlin says "elvis"; shell
-says "pipe" and "here string"; SQL says "is not equal to" for `<>` and "cast to" for `::`. Each language was read
-through well-known projects in it, and has tests with the exact words. A fenced block is read in the language on
-its fence, a diff in the language of its file, and inline code in a sentence in the language most of the document's
-code is in. Prose inside code, such as a doc comment or a heredoc, is read as prose. Adding a language is one small
-file of data, and welcome.
+Each language is one file of words and operator names in
+[`speech/words/`](https://github.com/jaystewartuk/voce/tree/main/src/voce/speech/words), naming the manual it
+follows, with tests that pin the exact words. Each was read through well-known projects in it with
+[docs/hearing/corpus.py](https://github.com/jaystewartuk/voce/blob/main/docs/hearing/corpus.py) and checked by
+ear against the real voice. A fenced block is read in the language on its fence, a diff in the language of its
+file, and inline code in the language most of the document's code is in.
 
 If you would rather hear only the prose, `--skip-code` shows code without reading it.
 
