@@ -312,3 +312,5 @@ pointers and C#'s attributes; each passes once the rule is in `speech/code.py`.
 ## Licence
 
 [MIT](https://github.com/jaystewartuk/voce/blob/main/LICENSE)
+
+Made by [Jay Stewart](https://jaystewart.co.uk).

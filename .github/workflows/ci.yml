@@ -11,7 +11,8 @@ permissions:
 jobs:
   test:
     name: ${{ matrix.os }} · Python ${{ matrix.python }}
-    runs-on: ${{ matrix.os }}
+    # ubuntu-latest moved to 26.04, which has no Python 3.9 or Playwright 1.56 support yet. Keep the label: checks require this job name.
+    runs-on: ${{ matrix.os == 'ubuntu-latest' && 'ubuntu-24.04' || matrix.os }}
     strategy:
       fail-fast: false
       matrix:
@@ -32,7 +33,7 @@ jobs:
 
   web:
     name: Web app · Chromium
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
