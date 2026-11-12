@@ -357,3 +357,18 @@ def test_the_status_bar_shows_how_far_a_voice_download_has_got(tmp_path):
     r.draw()
     assert r.mode == "loading"
     assert any("45 of 120 MB" in text for y, x, text in r.term.drawn if y == r.term.h - 2)
+
+
+def test_o_opens_the_document_in_the_browser_once_syncing_is_set_up(tmp_path, monkeypatch):
+    r = reader(tmp_path, {"a.md": "First one. Second one."})
+    r.key(ord("o"))
+    assert "voce --sync" in r.message, "with no synced library the browser couldn't find it"
+    handed = []
+    monkeypatch.setattr("voce.handoff.to_browser", lambda state, key, say: handed.append(key))
+    r.background = lambda work: work()
+    r.state.set("sync", "https://example.test/library.git")
+    r.go(1)
+    r.mode = "playing"
+    r.key(ord("o"))
+    assert r.mode in ("paused", "held") and handed == [r.state.key(r.doc.path)]
+    assert r.state.record(r.doc.path), "the place is saved before the browser looks for it"

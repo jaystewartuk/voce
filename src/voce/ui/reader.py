@@ -7,11 +7,12 @@ things sit on the screen is the View's business (view.py); what the screen looks
 from __future__ import annotations
 
 import curses
+import threading
 import time
 from dataclasses import dataclass
 from typing import Callable
 
-from voce import prepared
+from voce import handoff, prepared
 from voce.document import Doc, Unit, load, minutes
 from voce.playlist import Entry
 from voce.sources.clips import ClipError, write_clipboard
@@ -26,7 +27,7 @@ from voce.voices import Voice, remember
 AHEAD = 8              # sentences fetched ahead of the one playing
 SPEEDS = [0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.75, 2.0]
 KEYS = ["space pause", "←→ sentence", "↑↓ paragraph", "[ ] section", "+- speed", "n p file", "v voice", "V engine",
-        "m menu", "r restart", "c copy", "q quit"]
+        "m menu", "r restart", "c copy", "o browser", "q quit"]
 STATUS = {"playing": "▶ reading", "loading": "… fetching the voice", "gap": "▶ reading",
           "gap-start": "▶ next file", "paused": "⏸ paused (space to carry on)",
           "held": "⏸ paused (space to carry on)",
@@ -79,6 +80,8 @@ class Reader:
         self.speed = options.speed
         self.mode = "loading"
         self.message = options.message
+        self.background: Callable[[Callable[[], None]], None] = \
+            lambda work: threading.Thread(target=work, daemon=True).start()
         self.message_at = time.monotonic()
         self.gap_until = 0.0
         self.doc: Doc | None = None
@@ -290,8 +293,22 @@ class Reader:
             self.copy(self.doc.blocks[unit.block].text[unit.start:unit.end], "the sentence")
         elif k == ord("C"):
             self.copy(self.doc.blocks[units[self.pos].block].text, "the paragraph")
+        elif k == ord("o"):
+            self.open_in_browser()
         elif k == ord("?"):
             self.say(" · ".join(KEYS))
+
+    def open_in_browser(self) -> None:
+        """o: pause, push the place to the synced library, and open this document there in the web app."""
+        if not self.state.get("sync"):
+            self.say("The browser finds documents through your synced library. Set it up with voce --sync OWNER/REPO")
+            return
+        if self.mode in ("playing", "loading", "gap", "gap-start"):
+            self.toggle()
+        self.state.place(self.doc.path, self.units, self.pos)
+        self.state.save(force=True)
+        self.say("Saving your place for the browser…")
+        self.background(lambda: handoff.to_browser(self.state, self.state.key(self.doc.path), self.say))
 
     def copy(self, text: str, what: str) -> None:
         """Put text on the clipboard and say so."""

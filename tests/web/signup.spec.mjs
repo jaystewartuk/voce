@@ -100,6 +100,40 @@ test("what was read before signing in, and playlists kept on the device, move in
   await expect(page.locator("#library .part", { hasText: "On this device" })).toHaveCount(0);
 });
 
+test("on a Mac, the Terminal button saves the place and copies the command that carries on there", async ({ browser }) => {
+  const context = await browser.newContext({
+    userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+    baseURL: "http://localhost:8787/app/", permissions: ["clipboard-read", "clipboard-write"] });
+  github = new FakeGitHub();
+  await github.attach(context);
+  github.repo(LIBRARY, templateFiles());
+  const page = await context.newPage();
+  await page.goto("./");
+  await page.locator("#signin-link").click();
+  await page.locator("#signin-go").click();
+  await page.locator("#url").fill("https://example.test/post");
+  await page.locator("#open-url button").click();
+  await expect(page.locator("#article")).toContainText("The cache key ignores the query string.");
+
+  await page.locator("#to-terminal").click();
+  const hash = page.url().match(/#\/doc\/([0-9a-f]{64})$/)[1];
+  await expect(page.locator("#status")).toHaveText(`Copied voce --open ${hash.slice(0, 12)}: paste it in Terminal.`);
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(`voce --open ${hash.slice(0, 12)}`);
+  expect(github.repos[LIBRARY][`places/${hash}.json`], "the place is in the library before the terminal looks").toBeTruthy();
+  await context.close();
+});
+
+test("away from a Mac there is no Terminal button", async ({ page }) => {
+  github.repo(LIBRARY, templateFiles());
+  await page.goto("./");
+  await page.locator("#signin-link").click();
+  await page.locator("#signin-go").click();
+  await page.locator("#url").fill("https://example.test/post");
+  await page.locator("#open-url button").click();
+  await expect(page.locator("#article")).toContainText("The cache key ignores the query string.");
+  await expect(page.locator("#to-terminal")).toBeHidden();
+});
+
 test("something read on this device can be removed from it", async ({ page }) => {
   await page.goto("./");
   await page.locator("#url").fill("https://example.test/post");

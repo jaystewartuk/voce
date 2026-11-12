@@ -11,7 +11,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from voce import __version__, commands, sources, sync, voices
+from voce import __version__, commands, handoff, sources, sync, voices
 from voce.document import load
 from voce.export import ExportError
 from voce.player import find_players, make_player
@@ -29,6 +29,7 @@ examples:
   voce                     carry on where you left off: your playlist, or the last thing you read
   voce --playlist DIR      use DIR/README.md's "Listen in this order" list from now on
   voce --menu              choose a file from the playlist
+  voce --open CODE         carry on in the terminal from the web app (its Terminal button copies this)
   voce --sync you/voce     keep your places and documents in a private GitHub repository, for other devices
 
 keys:
@@ -70,6 +71,7 @@ def parser() -> argparse.ArgumentParser:
     playlist = ap.add_argument_group("playlists")
     playlist.add_argument("--playlist", metavar="DIR", help="use this folder's README.md playlist from now on")
     playlist.add_argument("--menu", action="store_true", help="choose a file from the playlist first")
+    playlist.add_argument("--open", metavar="CODE", help="open the document the web app's Terminal button names")
     playlist.add_argument("--list", action="store_true", help="print the playlist with your progress")
     playlist.add_argument("--quiz", nargs="?", const="", metavar="PART",
                           help="quizzes only: all of them, one part (number or name) or a file")
@@ -289,6 +291,12 @@ def main(argv: list[str] | None = None) -> None:
         playlist, start, quiz_only = quizzes(args.quiz, entries), 0, True
     else:
         (playlist, start), quiz_only = choose(args, state, library), False
+    if args.open:
+        found = handoff.find(args.open, library, state)
+        if found is None:
+            sys.exit(f"Nothing in your playlist or library has the code {args.open}. If you added it a moment ago, "
+                     "try again in a minute; voce fetches the library each time it starts.")
+        playlist, start, quiz_only = library, found, False
     if args.start and not quiz_only:
         state.restart(playlist[start].path)
 

@@ -1026,8 +1026,21 @@ class Reader {
     this.lastSave = Date.now();
     const unit = this.units[this.pos];
     const place = fields || { pos: this.pos, at: unit ? unit.say.slice(0, 80) : "", total: this.units.length, done: false };
-    this.library.save(this.hash, this.doc.title, place).catch((e) => this.ui.status(e.message));
+    return this.library.save(this.hash, this.doc.title, place).catch((e) => this.ui.status(e.message));
   }
+}
+
+/** A Mac with a mouse, where voce may also be in Terminal. An iPad says it is a Mac too, but has a touch screen. */
+const onMac = () => /Macintosh/.test(navigator.userAgent) && !navigator.maxTouchPoints;
+
+/** Carry on in Terminal: save the place to the library, and copy the command that opens the same document there. */
+async function toTerminal() {
+  if (!reader || !reader.doc) return;
+  if (reader.playing) reader.pause();
+  await reader.save();
+  const command = `voce --open ${reader.hash.slice(0, 12)}`;
+  try { await navigator.clipboard.writeText(command); ui.status(`Copied ${command}: paste it in Terminal.`); }
+  catch { ui.status(`In Terminal, run: ${command}`); }
 }
 
 // ---------------------------------------------------------------- the screen
@@ -1604,6 +1617,8 @@ function wire() {
   $("play").onclick = () => { if (!reader) return; reader.playing ? reader.pause() : reader.play(); };
   $("prev").onclick = () => reader && reader.go(reader.pos - 1);
   $("next").onclick = () => reader && reader.go(reader.pos + 1);
+  $("to-terminal").classList.toggle("hidden", !onMac());
+  $("to-terminal").onclick = toTerminal;
   $("speed").onclick = () => { if (!reader) return; const steps = [0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0]; reader.setSpeed(steps[(steps.findIndex((s) => s >= reader.speed - 0.01) + 1) % steps.length]); };
   // A tap on a link follows it; a tap on the sentence being read plays or pauses it; on any other sentence, goes there.
   $("article").onclick = (e) => {
