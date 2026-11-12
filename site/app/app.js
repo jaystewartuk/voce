@@ -31,16 +31,23 @@ const RESUME_WITHIN = 30e3; // ms a pause can last and still pick up mid-sentenc
 const REWIND = 1.2;         // seconds of listening replayed on picking up, so the cut-off word is heard whole
 // iPhone and iPad, including an iPad that says it is a Mac.
 const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-// A tenth of a second of silence, as a WAV: played on a tap so that iOS lets the voice's audio play later.
-const SILENCE = (() => {
-  const rate = 8000, n = rate / 10, b = new DataView(new ArrayBuffer(44 + n));
-  const text = (at, t) => [...t].forEach((c, i) => b.setUint8(at + i, c.charCodeAt(0)));
-  text(0, "RIFF"); b.setUint32(4, 36 + n, true); text(8, "WAVEfmt "); b.setUint32(16, 16, true); b.setUint16(20, 1, true);
-  b.setUint16(22, 1, true); b.setUint32(24, rate, true); b.setUint32(28, rate, true); b.setUint16(32, 1, true);
-  b.setUint16(34, 8, true); text(36, "data"); b.setUint32(40, n, true);
-  for (let i = 0; i < n; i++) b.setUint8(44 + i, 128);
-  return URL.createObjectURL(new Blob([b], { type: "audio/wav" }));
-})();
+/** `seconds` of silence, as a WAV, made once for each length (to a tenth of a second). A tenth of a second is
+    played on a tap so that iOS lets the voice's audio play later; longer ones fill the gaps between sentences. */
+const silence = (seconds) => {
+  const tenths = Math.max(1, Math.round(seconds * 10));
+  if (!silence.made.has(tenths)) {
+    const rate = 8000, n = rate * tenths / 10, b = new DataView(new ArrayBuffer(44 + n));
+    const text = (at, t) => [...t].forEach((c, i) => b.setUint8(at + i, c.charCodeAt(0)));
+    text(0, "RIFF"); b.setUint32(4, 36 + n, true); text(8, "WAVEfmt "); b.setUint32(16, 16, true); b.setUint16(20, 1, true);
+    b.setUint16(22, 1, true); b.setUint32(24, rate, true); b.setUint32(28, rate, true); b.setUint16(32, 1, true);
+    b.setUint16(34, 8, true); text(36, "data"); b.setUint32(40, n, true);
+    for (let i = 0; i < n; i++) b.setUint8(44 + i, 128);
+    silence.made.set(tenths, URL.createObjectURL(new Blob([b], { type: "audio/wav" })));
+  }
+  return silence.made.get(tenths);
+};
+silence.made = new Map();
+const SILENCE = silence(0.1);
 const SPACE = 16;           // Kokoro's token for the gap between words; the ones below it are punctuation
 const WORD = /[\p{L}\p{N}]+(?:['’]\p{L}+)*/gu;
 const HOST = "web";
@@ -752,16 +759,39 @@ class KokoroVoice {
   prefetch(texts) { texts.forEach((t) => this.clip(t).catch(() => {})); }
   async speak(text, speed, onEnd, onError, onStart) {
     const token = this.token = {};
+    this.current = null;
+    // With the screen locked, a phone stops a page that has gone quiet, so keep it sounding while the sentence is made.
+    if (document.hidden && !this.made.has(text)) this.hush(token, true);
     let clip;
     try { clip = await this.clip(text); } catch (e) { if (this.token === token) onError(e.message); return; }
     if (this.token !== token) return;
     this.current = { clip, onError };
+    this.audio.loop = false;
     this.audio.src = clip.url;
     this.audio.playbackRate = speed;
     this.audio.onended = () => { if (this.token === token) onEnd(); };
     this.audio.onerror = () => { if (this.token === token) onError("the clip wouldn't play"); };
     try { await this.audio.play(); } catch (e) { if (this.token === token) onError(e.message); return; }
     if (this.token === token && onStart) onStart();
+  }
+  /** The pause after a sentence, as `seconds` of silence played, then `onEnd`. Played rather than waited on a timer:
+      with the screen locked, a phone holds timers back, and stops a page that has gone quiet. */
+  rest(seconds, onEnd) {
+    const token = this.token = {};
+    this.current = null;
+    if (seconds < 0.05) { onEnd(); return; }
+    this.audio.onended = () => { if (this.token === token) onEnd(); };
+    this.hush(token, false, seconds);
+  }
+  /** Play silence on the voice's element: for `seconds`, or over and over until a sentence takes its place. */
+  hush(token, loop, seconds = 1) {
+    const audio = this.audio;
+    if (loop) audio.onended = null;
+    audio.onerror = null;
+    audio.loop = loop;
+    audio.src = silence(seconds);
+    audio.playbackRate = 1;
+    audio.play().catch(() => { if (this.token === token && audio.onended) audio.onended(); });
   }
   pause() { this.audio.pause(); }
   /** Pick the paused clip up `back` seconds of listening earlier, at the gap before a word. False when there's nothing left to pick up. */
@@ -784,8 +814,8 @@ class KokoroVoice {
     for (const w of words) { if (w.t > this.audio.currentTime) break; at = w.at; }
     return at;
   }
-  stop() { this.token = {}; this.current = null; this.audio.pause(); this.audio.removeAttribute("src"); }
-  setSpeed(speed) { this.audio.playbackRate = speed; }
+  stop() { this.token = {}; this.current = null; this.audio.pause(); this.audio.loop = false; this.audio.removeAttribute("src"); }
+  setSpeed(speed) { if (this.current) this.audio.playbackRate = speed; }
 }
 
 /** The times, in seconds, of the clip's 20 ms frames that are near silent: the gaps between words. */
@@ -937,8 +967,10 @@ class Reader {
   after(unit) {
     if (!this.playing) return;
     this.heard = true;
-    const wait = (unit.wait ? 2.5 : unit.pause) * 1000 / this.speed;
-    this.timer = setTimeout(() => { if (this.playing) this.next(); }, wait);
+    const wait = (unit.wait ? 2.5 : unit.pause) / this.speed;
+    const next = () => { if (this.playing) this.next(); };
+    if (this.voice.rest) this.voice.rest(wait, next);
+    else this.timer = setTimeout(next, wait * 1000);
   }
 
   next() {

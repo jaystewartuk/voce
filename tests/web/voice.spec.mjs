@@ -126,3 +126,32 @@ test("the sentence being played is made before the ones after it", async ({ page
   const plays = await page.evaluate(() => window.__plays);
   expect(plays[1].made, "sentences made before the first was played").toBe(1);
 });
+
+test("with the screen locked, the player keeps sounding between sentences, so the phone doesn't stop it", async ({ page }) => {
+  await page.addInitScript(() => {
+    // the screen, locked or not, as document.hidden says
+    window.__locked = false;
+    Object.defineProperty(Document.prototype, "hidden", { get: () => window.__locked });
+    // the size of each blob the page plays: a sentence from the stand-in model is 9,644 bytes, silence is smaller
+    window.__sizes = {};
+    const make = URL.createObjectURL;
+    URL.createObjectURL = (blob) => { const url = make(blob); window.__sizes[url] = blob.size; return url; };
+    const play = HTMLMediaElement.prototype.play;
+    window.__heard = [];
+    HTMLMediaElement.prototype.play = function () {
+      window.__heard.push({ sentence: window.__sizes[this.src] === 9644, loop: this.loop });
+      return play.call(this);
+    };
+  });
+  await openPage(page);
+  await page.evaluate(() => { window.__locked = true; });
+  await page.locator("#play").click(); // the tap, then the screen locked straight after
+  await expect(page.locator("#status")).toHaveText("Finished.", { timeout: 20e3 });
+  const heard = await page.evaluate(() => window.__heard);
+  const first = heard.findIndex((p) => p.sentence);
+  expect(heard.slice(1, first).some((p) => p.loop), "silence while the first sentence is made").toBe(true);
+  heard.forEach((p, i) => {
+    if (i > first && p.sentence) expect(heard[i - 1].sentence, "a sentence played straight after another, with no pause between").toBe(false);
+  });
+  expect(heard.filter((p) => p.sentence).length).toBeGreaterThan(1);
+});
