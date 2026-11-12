@@ -382,14 +382,24 @@ class Library {
       try { await course(source.id, source, false); }
       catch (e) { notes.push(`Couldn't read the playlist ${source.path} in ${source.repo}: ${e.message}.`); }
     }
-    await Promise.all(courses.map(async (c) => { c.private = await this.visibility(c.repo); }));
-    this.courses = courses;
     Object.entries(this.items).filter(([hash, it]) => it.kind !== "playlist" && this.texts[`${hash}.md`])
       .sort(([, a], [, b]) => (b.added || "").localeCompare(a.added || ""))
       .forEach(([hash, it]) => add({ hash, title: it.title, part: "Added", minutes: it.minutes, sha: this.texts[`${hash}.md`],
                                      name: `${hash}.md`, source: { repo: this.repo.name } }));
     const fresh = new Set(docs.map((d) => d.name));              // a Mac copy of a playlist file is its past: skip it
-    index.documents.filter((d) => prepared[`${d.hash}.json`] && !fresh.has(d.file)).forEach(add);
+    const fromMac = index.documents.filter((d) => prepared[`${d.hash}.json`] && !fresh.has(d.file) && !seen.has(d.hash));
+    // The Mac's playlist is a course too. An index written before it named its playlist: the documents with a part.
+    const mine = new Set(index.playlist ? index.playlist.hashes : fromMac.filter((d) => d.part).map((d) => d.hash));
+    const onMac = fromMac.filter((d) => mine.has(d.hash));
+    if (onMac.length) {
+      courses.push({ key: "mac", mine: true, mac: true, repo: this.repo.name, path: "README.md",
+                     title: (index.playlist && index.playlist.title) || "Your Mac's playlist",
+                     about: (index.playlist && index.playlist.about) || "", coming: 0, hashes: onMac.map((d) => d.hash), private: null });
+      onMac.forEach((d) => { d.course = "mac"; add(d); });
+    }
+    fromMac.forEach(add);
+    await Promise.all(courses.map(async (c) => { c.private = await this.visibility(c.repo); }));
+    this.courses = courses;
     store.get("local", []).forEach((d) => add({ ...d, part: "On this device" }));
     this.docs = docs;
     this.notes = notes;
@@ -1371,7 +1381,7 @@ function courseCard(c) {
   const b = document.createElement("button"); b.className = "course"; b.dataset.course = c.key;
   const status = s.done === s.total ? "Finished" : `${s.done} of ${s.total} done · ${duration(s.left)} left`;
   b.innerHTML = `<span class="head"><b>${esc(c.title)}</b>${visibilityBadge(c)}</span>
-    <small class="repo">${esc(c.repo)}${c.path !== "README.md" ? ` · ${esc(c.path)}` : ""}</small>
+    <small class="repo">${esc(c.repo)}${c.mac ? " · from your Mac" : c.path !== "README.md" ? ` · ${esc(c.path)}` : ""}</small>
     <span class="bar"><i style="width:${s.total ? 100 * s.done / s.total : 0}%"></i></span>
     <small>${status}${s.next ? ` · Next: ${esc(s.next.title)}` : ""}</small>`;
   b.onclick = () => { location.hash = `#/course/${c.key}`; };
@@ -1414,7 +1424,7 @@ async function showCourse(key) {
   const repoUrl = `https://github.com/${c.repo}${c.path !== "README.md" ? `/blob/HEAD/${c.path}` : ""}`;
   el.innerHTML = `<a class="crumb" href="#/">‹ Library</a>
     <h1 class="page">${esc(c.title)}</h1>
-    <p class="meta"><a href="${esc(repoUrl)}" target="_blank" rel="noopener">${esc(c.repo)}</a>${visibilityBadge(c)}</p>
+    <p class="meta"><a href="${esc(repoUrl)}" target="_blank" rel="noopener">${esc(c.repo)}</a>${c.mac ? " · from your Mac" : ""}${visibilityBadge(c)}</p>
     ${c.about ? `<p class="lead">${esc(c.about)}</p>` : ""}
     <div class="summary"><span class="bar"><i style="width:${s.total ? 100 * s.done / s.total : 0}%"></i></span>
       <small>${s.done} of ${s.total} done${s.left ? ` · ${duration(s.left)} left` : ""}</small></div>`;

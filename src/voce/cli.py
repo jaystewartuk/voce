@@ -230,7 +230,7 @@ def main(argv: list[str] | None = None) -> None:
     entries = read_playlist(readme)
     if args.sync is not None:
         try:
-            commands.sync_up(state, entries, args.sync)
+            commands.sync_up(state, entries, args.sync, readme)
         except sync.SyncError as e:
             sys.exit(f"Sync failed: {e}")
         return
@@ -275,7 +275,7 @@ def main(argv: list[str] | None = None) -> None:
             paths = [e.path for e in entries if not wanted or any(part_matches(e.part, p) for p in wanted)]
         if not paths:
             sys.exit("Nothing to prepare: give files, use -r or -c, or set a playlist with --playlist DIR.")
-        commands.prepare(paths, voice, state, entries)
+        commands.prepare(paths, voice, state, entries, readme)
         push_places(state)
         return
 
