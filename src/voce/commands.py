@@ -66,13 +66,14 @@ def print_minutes(readme: Path) -> None:
     print(f"Updated {relative(readme)}: {total:,} words, about {minutes(total) / 60:.1f} hours at 1×.")
 
 
-def prepare(paths: list[Path], voice: Voice, state: State, entries: list[Entry] = ()) -> None:
+def prepare(paths: list[Path], voice: Voice, state: State, entries: list[Entry] = (),
+            readme: Path | None = None) -> None:
     """Fetch the voice for these files ahead of time, so reading them never waits for the voice, and keep a
     prepared copy of each for other devices."""
     docs = [load(p) for p in paths]
     for doc in docs:
         prepared.save(doc, state)
-    prepared.index(state, list(entries))
+    prepared.index(state, list(entries), readme)
     texts = [u.say for doc in docs for u in doc.units]
     todo = [t for t in dict.fromkeys(texts) if not voice.path(t).exists()]
     chars = sum(len(t) for t in todo)
@@ -122,7 +123,7 @@ def export(paths: list[Path], out: Path, voice: Voice, state: State, skip_code: 
     export_mp3([load(p, skip_code=skip_code) for p in paths], out, voice, state)
 
 
-def sync_up(state: State, entries: list[Entry], repo: str) -> None:
+def sync_up(state: State, entries: list[Entry], repo: str, readme: Path | None = None) -> None:
     """Prepare the playlist for other devices, then commit, pull and push the state directory."""
     if repo:
         url = sync.setup(state.root, repo, print)
@@ -137,7 +138,7 @@ def sync_up(state: State, entries: list[Entry], repo: str) -> None:
             prepared.save(load(e.path), state)
         except (OSError, UnicodeDecodeError):
             pass
-    prepared.index(state, entries)
+    prepared.index(state, entries, readme)
     state.save(force=True)
     sync.run(state.root, print)
     if repo:

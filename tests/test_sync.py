@@ -70,6 +70,21 @@ def test_index_lists_the_playlist_in_order_then_the_rest(tmp_path):
     assert all(set(r) == {"hash", "title", "file", "part", "words", "minutes"} for r in d["documents"])
 
 
+def test_index_names_the_playlist_and_its_documents_for_the_web_app(tmp_path):
+    for name in "ab":
+        (tmp_path / f"{name}.md").write_text(f"# {name.upper()}\n\nOne.\n")
+    readme = tmp_path / "README.md"
+    readme.write_text("# Our *course*\n\n[![badge](x.svg)](y)\n\nWhat it is\nabout.\n\n## Listen in this order\n\n"
+                      "1. [A](a.md)\n")
+    state = State(tmp_path / "state")
+    for name in "ab":
+        prepared.save(load(tmp_path / f"{name}.md"), state)
+    d = json.loads(prepared.index(state, [Entry(tmp_path / "a.md", "A", "")], readme).read_text())
+    assert d["playlist"] == {"title": "Our course", "about": "What it is about.",
+                             "hashes": [state.key(tmp_path / "a.md")]}
+    assert "playlist" not in json.loads(prepared.index(state, []).read_text())
+
+
 def test_remote_url_knows_a_github_repo_from_a_url():
     assert sync.remote_url("jay/voce") == "https://github.com/jay/voce.git"
     assert sync.remote_url("git@github.com:jay/voce.git") == "git@github.com:jay/voce.git"

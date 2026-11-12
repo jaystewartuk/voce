@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from voce.document import Doc, minutes, word_count
-from voce.playlist import Entry
+from voce.playlist import Entry, describe
 from voce.state import State
 
 FORMAT = 1  # bump when the shape of these files changes
@@ -85,8 +85,10 @@ def _current(path: Path) -> bool:
         return False
 
 
-def index(state: State, entries: list[Entry]) -> Path:
+def index(state: State, entries: list[Entry], readme: Path | None = None) -> Path:
     """prepared/index.json: every prepared document, the playlist's first and in its order, the rest by title.
+    With the playlist's README, it also says what the playlist is called and which documents are in it, so the web
+    app can show them together as one course.
     A copy of a playlist file made from an older text of it is removed: the file was edited, and this is its past."""
     folder = state.root / "prepared"
     folder.mkdir(parents=True, exist_ok=True)
@@ -109,6 +111,13 @@ def index(state: State, entries: list[Entry]) -> Path:
     rows.sort(key=lambda r: (r.pop("_order"), r["title"].lower()))
     out = folder / "index.json"
     tmp = out.with_suffix(".tmp")
-    tmp.write_text(json.dumps({"voce": FORMAT, "documents": rows}, ensure_ascii=False, indent=1))
+    data: dict = {"voce": FORMAT, "documents": rows}
+    if readme is not None and entries:
+        try:
+            data["playlist"] = {**describe(readme.read_text(encoding="utf-8")),
+                                    "hashes": [r["hash"] for r in rows if r["hash"] in order]}
+        except OSError:
+            pass
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=1))
     tmp.replace(out)
     return out

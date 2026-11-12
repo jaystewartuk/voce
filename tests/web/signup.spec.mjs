@@ -201,6 +201,32 @@ test("the home page shows each course, where it comes from and how far through, 
   await expect(page.locator("#library h1.page")).toHaveText("Application security");
 });
 
+test("the Mac's playlist is a course of its own, apart from what was added on another device", async ({ page }) => {
+  const h = (c) => c.repeat(64);
+  const doc = (hash, title, file, part) => ({ hash, title, file, part, words: 300, minutes: 2 });
+  github.repo(LIBRARY, {
+    "prepared/index.json": JSON.stringify({ voce: 1,
+      playlist: { title: "Claude's Constitution", about: "Read in parts.", hashes: [h("a"), h("b")] },
+      documents: [doc(h("a"), "Preface", "01.md", "Part 1. Preface"), doc(h("b"), "Overview", "02.md", "Part 2. Overview"),
+                  doc(h("c"), "A loose file", "loose.md", "")] }),
+    [`prepared/${h("a")}.json`]: "{}", [`prepared/${h("b")}.json`]: "{}", [`prepared/${h("c")}.json`]: "{}",
+    [`items/${h("d")}.json`]: JSON.stringify({ kind: "page", url: "https://example.com/", title: "Building effective agents", minutes: 18, added: "2026-11-12T17:08:33Z" }),
+    [`texts/${h("d")}.md`]: "# Building effective agents\n\nWords.\n" });
+  await page.goto("./");
+  await page.locator("#signin-link").click();
+  await page.locator("#signin-go").click();
+
+  const card = page.locator("#library .course", { hasText: "Claude's Constitution" });
+  await expect(card).toContainText("from your Mac");
+  await expect(card).toContainText("0 of 2 done");
+  expect(await titles(page)).toEqual(["Building effective agents\n18 min", "A loose file\n2 min"]);
+
+  await card.click();
+  await expect(page.locator("#library h1.page")).toHaveText("Claude's Constitution");
+  await expect(page.locator("#library .lead")).toHaveText("Read in parts.");
+  expect(await page.locator("#library .part").allTextContents()).toEqual(["Part 1. Preface", "Part 2. Overview"]);
+});
+
 test("a Next link at the foot of a course document opens the document it names", async ({ page }) => {
   const course = "someone/voce-course-appsec";
   github.repo(LIBRARY, { ...templateFiles(),
