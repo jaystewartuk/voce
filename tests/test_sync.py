@@ -158,3 +158,16 @@ def test_a_place_removed_on_one_device_and_changed_on_another_survives(tmp_path)
     sync.run(b.root, lambda s: None)
     assert State(b.root).resume(doc_path, doc.units) == 3
     assert "rebase" not in sync.git(b.root, "status")
+
+
+def test_open_finds_the_document_by_the_start_of_its_hash_and_links_the_web_app(tmp_path):
+    from voce import handoff
+    (tmp_path / "a.md").write_text("# A\n\nOne.\n")
+    (tmp_path / "b.md").write_text("# B\n\nTwo.\n")
+    state = State(tmp_path / "state")
+    entries = [Entry(tmp_path / "a.md", "A"), Entry(tmp_path / "b.md", "B")]
+    key = state.key(tmp_path / "b.md")
+    assert handoff.find(key[:12].upper(), entries, state) == 1
+    assert handoff.find(key[:4], entries, state) is None, "too short to be sure"
+    assert handoff.find("0" * 12, entries, state) is None
+    assert handoff.web_link(key) == f"{sync.WEB_APP}#/doc/{key}"
