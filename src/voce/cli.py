@@ -15,7 +15,7 @@ from voce import __version__, commands, sources, sync, voices
 from voce.document import load
 from voce.export import ExportError
 from voce.player import find_players, make_player
-from voce.playlist import Entry, PlaylistError, find_playlist, part_matches, read_playlist
+from voce.playlist import Entry, PlaylistError, added, find_playlist, part_matches, read_playlist
 from voce.state import State
 from voce.voices import ENGINES, Voice
 
@@ -244,10 +244,12 @@ def main(argv: list[str] | None = None) -> None:
         return
     voice = pick_voice(args, state)
 
+    # What to choose from: the playlist, then what was added to the synced library on the phone or in the browser.
+    library = entries + (added(state.root) if state.get("sync") else [])
     if args.list:
-        if not entries:
+        if not library:
             sys.exit("No playlist set. Use --playlist DIR.")
-        commands.print_list(state, entries, voice)
+        commands.print_list(state, library, voice)
         return
     if args.minutes:
         if readme is None:
@@ -286,7 +288,7 @@ def main(argv: list[str] | None = None) -> None:
     if args.quiz is not None:
         playlist, start, quiz_only = quizzes(args.quiz, entries), 0, True
     else:
-        (playlist, start), quiz_only = choose(args, state, entries), False
+        (playlist, start), quiz_only = choose(args, state, library), False
     if args.start and not quiz_only:
         state.restart(playlist[start].path)
 

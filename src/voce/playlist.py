@@ -11,6 +11,7 @@ Any numbered list of links to .md files works; the "· N min" is optional and `v
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -91,6 +92,24 @@ def read_playlist(readme: Path | None) -> list[Entry]:
         if path.exists():
             entries.append(Entry(path, item["title"], item["part"]))
     return entries
+
+
+def added(root: Path) -> list[Entry]:
+    """What was added to the synced library from another device (a web page, a file, shared text), newest first,
+    under "Added". The web app keeps each as items/<hash>.json with its text in texts/<hash>.md, and the hash is
+    of that text, so the place saved on the phone is the place here."""
+    rows = []
+    for f in sorted((root / "items").glob("*.json")):
+        text = root / "texts" / f"{f.stem}.md"
+        try:
+            item = json.loads(f.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if not isinstance(item, dict) or item.get("kind") == "playlist" or not text.exists():
+            continue
+        rows.append((str(item.get("added", "")), Entry(text, str(item.get("title") or f.stem), "Added")))
+    rows.sort(key=lambda r: r[0], reverse=True)
+    return [e for _, e in rows]
 
 
 def part_matches(part: str, wanted: str) -> bool:
