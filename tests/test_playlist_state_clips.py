@@ -4,7 +4,15 @@ import os
 import pytest
 
 from voce.document import load
-from voce.playlist import PlaylistError, find_playlist, parse_playlist, part_matches, read_playlist, update_minutes
+from voce.playlist import (
+    PlaylistError,
+    added,
+    find_playlist,
+    parse_playlist,
+    part_matches,
+    read_playlist,
+    update_minutes,
+)
 from voce.sources.clips import ClipError, save_clip
 from voce.state import State
 
@@ -22,6 +30,24 @@ def make_course(tmp_path):
 def test_reads_entries_with_parts_and_skips_missing_files(tmp_path):
     entries = read_playlist(make_course(tmp_path))
     assert [(e.title, e.part) for e in entries] == [("A", "Part 3. Later"), ("B", "Part 1. First")]
+
+
+def test_added_lists_what_the_web_app_kept_newest_first_and_skips_playlists(tmp_path):
+    (tmp_path / "items").mkdir()
+    (tmp_path / "texts").mkdir()
+    def item(name, data, text=True):
+        (tmp_path / "items" / f"{name}.json").write_text(json.dumps(data))
+        if text:
+            (tmp_path / "texts" / f"{name}.md").write_text(f"# {name}\n\nWords.\n")
+    item("old", {"kind": "page", "title": "Old page", "added": "2026-01-01T00:00:00Z"})
+    item("new", {"kind": "file", "title": "New file", "added": "2026-02-01T00:00:00Z"})
+    item("course", {"kind": "playlist", "repo": "a/b", "path": "README.md"})
+    item("gone", {"kind": "page", "title": "No text"}, text=False)
+    (tmp_path / "items" / "broken.json").write_text("{")
+    entries = added(tmp_path)
+    assert [(e.title, e.part, e.path.name) for e in entries] == [("New file", "Added", "new.md"),
+                                                                 ("Old page", "Added", "old.md")]
+    assert added(tmp_path / "nowhere") == []
 
 
 def test_parse_playlist_is_the_text_alone_with_links_as_written(tmp_path):
