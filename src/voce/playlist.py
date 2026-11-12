@@ -68,6 +68,20 @@ def parse_playlist(text: str) -> list[dict[str, Any]]:
     return items
 
 
+def describe(text: str) -> dict[str, str]:
+    """A README's title (its first heading) and first paragraph of prose, to say what the course is. The web app's
+    readmeAbout does the same with a README it reads from GitHub."""
+    head = SECTION.split(text, maxsplit=1)[0]
+    h1 = re.search(r"^#\s+(.+)$", head, re.M)
+    rest = head[h1.end():] if h1 else head
+    about = next((q.strip() for q in re.split(r"\n\s*\n", rest)
+                  if q.strip() and not re.match(r"(#|[-*+]\s|\d+\.\s|<|!\[|\[!\[|\||```|>)", q.strip())), "")
+    about = plain(re.sub(r"\s*\n\s*", " ", about))
+    if len(about) > 320:
+        about = re.sub(r"\s+\S*$", "", about[:317]) + "…"
+    return {"title": plain(h1.group(1)) if h1 else "", "about": about}
+
+
 def read_playlist(readme: Path | None) -> list[Entry]:
     """The files in the README's playlist that exist, with the part (### heading) each sits under."""
     if readme is None or not readme.exists():
