@@ -5,6 +5,11 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+### Fixed
+
+- **`voce --open CODE` says to set up syncing when it can't find the code and syncing is off.** Before, on a
+  computer with nothing read yet, it said "Nothing to read yet" without looking.
+
 ## [0.4.3] - 2026-11-14
 
 ### Added
