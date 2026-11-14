@@ -55,6 +55,9 @@ Ask Claude Code, Codex or any agent to write you something, and press play. It r
   text. Things meant for the eye stay on the screen.
 - **Follows along.** The sentence being read sits on a pale band, and the word being spoken on a darker one. The
   page scrolls to keep your place, and a click on any sentence jumps there.
+- **Rests your eyes.** You don't have to stare at the text to take it in. Read along, look out of the window, or
+  close your eyes and listen. When you look back, the highlighted word shows you where it is, so you pick up in
+  the middle of the sentence, not at the top of the page.
 - **Knows Claude Code.** `voce -r` reads Claude's latest reply in the folder you are in, with no copying.
 - **Keeps your place.** Quit at any point and it starts from the same sentence next time, even if the file has
   changed. It also reloads a file when it changes on disk.
