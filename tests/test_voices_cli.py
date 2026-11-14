@@ -179,3 +179,14 @@ def test_mac_voices_installed_twice_are_listed_once(monkeypatch):
     monkeypatch.setattr(Mac, "_voices", None)
     monkeypatch.setattr(voices.subprocess, "run", lambda *a, **k: type("R", (), {"stdout": listing})())
     assert Mac().voices == ("Daniel (English (UK))", "Daniel (Enhanced)")
+
+
+@pytest.mark.parametrize("order", ["file first", "flag first"])
+def test_prepare_takes_a_file_on_either_side_of_the_flag(tmp_path, monkeypatch, order):
+    path = tmp_path / "notes.md"
+    path.write_text("# Notes\n\nOne sentence.\n")
+    prepared = []
+    monkeypatch.setattr(cli.commands, "prepare", lambda paths, *rest: prepared.extend(paths))
+    monkeypatch.setattr(cli, "push_places", lambda state: None)
+    cli.main([str(path), "--prepare"] if order == "file first" else ["--prepare", str(path)])
+    assert prepared == [path.resolve()]

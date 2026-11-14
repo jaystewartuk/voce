@@ -268,8 +268,11 @@ def main(argv: list[str] | None = None) -> None:
             sys.exit(str(e))
         return
     if args.prepare is not None:
-        if args.files:
-            paths = existing(args.files)
+        # "voce --prepare notes.md" hands the file to --prepare as a part name: take it as the file it is.
+        given = [p for p in args.prepare if Path(p).expanduser().is_file()]
+        files = [*args.files, *given]
+        if files:
+            paths = existing(files)
         else:
             wanted = args.prepare
             paths = [e.path for e in entries if not wanted or any(part_matches(e.part, p) for p in wanted)]
