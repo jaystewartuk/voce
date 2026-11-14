@@ -117,8 +117,9 @@ class Mac(Engine):
                 out = subprocess.run(["say", "-v", "?"], capture_output=True, text=True, timeout=10).stdout
             except (OSError, subprocess.SubprocessError):
                 out = ""
-            Mac._voices = [m.group(1) for m in re.finditer(r"^(\S.*?)\s+en_\w+\s", out, re.M)
-                           if m.group(1).split(" (")[0] not in self.NOVELTY]
+            # say lists a voice once per installed copy, so the same name can come twice
+            Mac._voices = list(dict.fromkeys(m.group(1) for m in re.finditer(r"^(\S.*?)\s+en_\w+\s", out, re.M)
+                                             if m.group(1).split(" (")[0] not in self.NOVELTY))
         return tuple(Mac._voices)
 
     def synthesize(self, text: str, out: Path) -> None:
