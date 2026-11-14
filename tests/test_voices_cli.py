@@ -169,3 +169,13 @@ def test_kokoro_downloads_the_missing_files_on_one_line_of_progress(tmp_path, mo
     assert Kokoro().ready() and Kokoro().downloading() == ""
     Kokoro().prepare(said.append)  # nothing missing: nothing said
     assert len(said) == 1
+
+
+def test_mac_voices_installed_twice_are_listed_once(monkeypatch):
+    listing = ("Daniel (English (UK)) en_GB    # Hello! My name is Daniel.\n"
+               "Daniel (English (UK)) en_GB    # Hello! My name is Daniel.\n"
+               "Daniel (Enhanced)   en_GB    # Hello! My name is Daniel.\n"
+               "Amélie              fr_CA    # Bonjour, je m’appelle Amélie.\n")
+    monkeypatch.setattr(Mac, "_voices", None)
+    monkeypatch.setattr(voices.subprocess, "run", lambda *a, **k: type("R", (), {"stdout": listing})())
+    assert Mac().voices == ("Daniel (English (UK))", "Daniel (Enhanced)")
