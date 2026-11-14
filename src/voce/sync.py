@@ -17,7 +17,7 @@ import subprocess
 from pathlib import Path
 from typing import Callable
 
-IGNORE = "usage.json\nstate-v1.json\n*.tmp\n.DS_Store\n"
+IGNORE = "usage.json\nstate-v1.json\n*.tmp\n.DS_Store\nclips/\n"
 WEB_APP = "https://jaystewartuk.github.io/voce/app/"
 
 
@@ -85,8 +85,19 @@ def _identity(root: Path) -> list[str]:
     return ["-c", "user.name=voce", "-c", f"user.email=voce@{socket.gethostname() or 'local'}"]
 
 
+def _ignore_clips(root: Path) -> None:
+    """One-off reads stay on this device. Libraries made before that was the rule still list clips/; stop syncing it."""
+    ignore = root / ".gitignore"
+    lines = ignore.read_text().splitlines() if ignore.exists() else []
+    if "clips/" in lines:
+        return
+    ignore.write_text("".join(f"{line}\n" for line in [*lines, "clips/"]))
+    git(root, "rm", "-r", "-q", "--cached", "--ignore-unmatch", "clips")
+
+
 def commit(root: Path) -> str:
     """Stage everything and commit; the message says what changed. Returns the message, or "" for nothing new."""
+    _ignore_clips(root)
     git(root, "add", "-A")
     changed = git(root, "diff", "--cached", "--name-only").splitlines()
     if not changed:

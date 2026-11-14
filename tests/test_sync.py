@@ -171,3 +171,20 @@ def test_open_finds_the_document_by_the_start_of_its_hash_and_links_the_web_app(
     assert handoff.find(key[:4], entries, state) is None, "too short to be sure"
     assert handoff.find("0" * 12, entries, state) is None
     assert handoff.web_link(key) == f"{sync.WEB_APP}#/doc/{key}"
+
+
+@needs_git
+def test_one_off_reads_stay_on_this_device_even_in_an_older_library(tmp_path):
+    remote = bare(tmp_path)
+    a = device(tmp_path, "a", remote)
+    (a.root / ".gitignore").write_text("usage.json\n")  # a library made before clips/ was ignored
+    (a.root / "clips").mkdir()
+    (a.root / "clips" / "reply.md").write_text("Hello.\n")
+    sync.git(a.root, "add", "-f", "clips")
+    sync.run(a.root, lambda s: None)
+    assert "clips/" in (a.root / ".gitignore").read_text().splitlines()
+    assert (a.root / "clips" / "reply.md").exists()
+    assert "clips/" not in sync.git(a.root, "ls-files")
+    b = device(tmp_path, "b", remote)
+    sync.run(b.root, lambda s: None)
+    assert not (b.root / "clips").exists()

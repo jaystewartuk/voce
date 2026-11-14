@@ -148,3 +148,15 @@ def test_clips_are_reused_for_the_same_text(tmp_path):
     assert save_clip("Hello.", "clipboard", tmp_path) == first
     with pytest.raises(ClipError):
         save_clip("  \n", "clipboard", tmp_path)
+
+
+def test_no_place_is_kept_for_a_one_off_read(tmp_path):
+    state = State(tmp_path / "state")
+    clip = save_clip("One. Two. Three.", "reply", state.root / "clips")
+    units = load(clip).units
+    state.place(clip, units, 2)
+    state.done(clip)
+    state.save(force=True)
+    assert not (state.root / "places").exists()
+    assert state.get("last") is None
+    assert State(state.root).resume(clip, units) == 0
