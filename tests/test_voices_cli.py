@@ -188,5 +188,6 @@ def test_prepare_takes_a_file_on_either_side_of_the_flag(tmp_path, monkeypatch, 
     prepared = []
     monkeypatch.setattr(cli.commands, "prepare", lambda paths, *rest: prepared.extend(paths))
     monkeypatch.setattr(cli, "push_places", lambda state: None)
+    monkeypatch.setattr(cli, "pick_voice", lambda args, state: None)  # no voice is set up on some CI runners
     cli.main([str(path), "--prepare"] if order == "file first" else ["--prepare", str(path)])
     assert prepared == [path.resolve()]
