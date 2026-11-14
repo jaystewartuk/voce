@@ -29,6 +29,9 @@ dependencies = [
     # Kokoro, the voice that works out of the box. It needs Python 3.10 to 3.14; on 3.9 voce uses the Mac's voices.
     # onnxruntime has no 3.14 build for Intel Macs, so they keep the Mac's voices there rather than fail to install.
     "kokoro-onnx>=0.4.5; python_version >= '3.10' and python_version < '3.15' and (python_version < '3.14' or sys_platform != 'darwin' or platform_machine == 'arm64')",
+    # Not used directly: Kokoro's phonemizer needs it. segments before 2.2 imports clldutils.dsv, which clldutils
+    # removed, and then Kokoro can't start. A slow network can make pip settle on one that old.
+    "segments>=2.2; python_version >= '3.10' and python_version < '3.15' and (python_version < '3.14' or sys_platform != 'darwin' or platform_machine == 'arm64')",
 ]
 
 [project.optional-dependencies]
