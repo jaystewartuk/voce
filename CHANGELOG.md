@@ -5,6 +5,8 @@ and versions follow [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-11-14
+
 ### Added
 
 - **The web app's home page is organised by course.** At the top, one button plays what you were listening to, or
@@ -23,6 +25,30 @@ and versions follow [Semantic Versioning](https://semver.org).
 - **Diagrams are shown, not read.** A fenced `diagram` or `mermaid` block (also `ascii`, `svgbob`, `graphviz`,
   `dot` and `plantuml`) stays on the screen and the voice skips it; the prose around it says what it shows.
   Before, a box drawing was read out arrow by arrow.
+- **Move between the terminal and the browser at the same place.** On a Mac, `o` in the reader saves your place,
+  syncs it and opens the document in the web app. In the web app, the Terminal button copies `voce --open CODE`,
+  which carries on in the terminal from there.
+- **What you added on the phone or in the browser is in the terminal.** It is listed under "Added" in the menu and
+  `voce --list`, newest first, after the playlist.
+- **The Mac's playlist is a course in the web app**, with its own card, progress and parts, apart from what was
+  added on another device.
+- **Links work in the web app.** "Next:" links open that part of the course, and other links open on GitHub or the
+  web.
+- **Things read on one device can be removed from it**: a × beside each one under "On this device".
+
+### Changed
+
+- **Claude replies, the clipboard and standard input are one-off reads.** No place is kept or synced for them, they
+  aren't what a plain `voce` reopens, and quitting one no longer says "Your place is saved."
+
+### Fixed
+
+- **`voce --prepare notes.md` prepares the file.** It took the file name as a playlist part, and said there was
+  nothing to prepare.
+- **The web app keeps reading with the phone's screen locked.** It used to stop after a sentence or two.
+- **Each Mac voice is listed once** in `voce --voices`, and <kbd>v</kbd> no longer moves to the same voice again.
+- **Kokoro starts on Python 3.14 even when pip picks old dependencies.** An install could end up with a version of
+  `segments` that can't load, and then voce read with the Mac's voice.
 
 ## [0.4.2] - 2026-10-27
 
@@ -316,7 +342,8 @@ The first public release.
   durations current.
 - A click on a sentence jumps to it. The mouse wheel scrolls.
 
-[Unreleased]: https://github.com/jaystewartuk/voce/compare/v0.4.2...HEAD
+[Unreleased]: https://github.com/jaystewartuk/voce/compare/v0.4.3...HEAD
+[0.4.3]: https://github.com/jaystewartuk/voce/releases/tag/v0.4.3
 [0.4.2]: https://github.com/jaystewartuk/voce/releases/tag/v0.4.2
 [0.4.1]: https://github.com/jaystewartuk/voce/releases/tag/v0.4.1
 [0.4.0]: https://github.com/jaystewartuk/voce/releases/tag/v0.4.0
