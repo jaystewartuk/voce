@@ -372,3 +372,17 @@ def test_o_opens_the_document_in_the_browser_once_syncing_is_set_up(tmp_path, mo
     r.key(ord("o"))
     assert r.mode in ("paused", "held") and handed == [r.state.key(r.doc.path)]
     assert r.state.record(r.doc.path), "the place is saved before the browser looks for it"
+
+
+def test_a_one_off_read_is_not_prepared_for_or_opened_in_the_browser(tmp_path):
+    state = State(tmp_path / "state")
+    clip = state.root / "clips" / "reply.md"
+    clip.parent.mkdir(parents=True)
+    clip.write_text("One. Two.")
+    state.set("sync", "you/library")
+    r = Reader(FakeTerm(), FakeTheme(), Options(), state, FakeVoice(), lambda v: None, FakePlayer(),
+               [Entry(clip, "reply")], 0)
+    r.open(0)
+    assert r.units and not (state.root / "prepared").exists()
+    r.open_in_browser()
+    assert "stays on this computer" in r.message

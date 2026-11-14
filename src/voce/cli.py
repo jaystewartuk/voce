@@ -319,8 +319,9 @@ def main(argv: list[str] | None = None) -> None:
 
     player = make_player(mute=args.mute, plain=args.plain)
     play(playlist, start, options, state, voice, switch, player, show_menu=args.menu)
-    print("Your place is saved.")
-    push_places(state)
+    if source is None:  # a reply or clip is read once; there is no place to keep
+        print("Your place is saved.")
+        push_places(state)
 
 
 if __name__ == "__main__":

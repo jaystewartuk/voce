@@ -120,7 +120,7 @@ class Reader:
             self.mode = "end"
             self.say(f"Couldn't read {path.name}: {str(e)[:60]}. n for the next file, q to quit.")
             return
-        if not (self.options.quiz_only or self.options.skip_code):
+        if not (self.options.quiz_only or self.options.skip_code or self.state.one_off(path)):
             try:
                 prepared.save(self.doc, self.state)  # so another device can play it
             except OSError:
@@ -302,6 +302,9 @@ class Reader:
         """o: pause, push the place to the synced library, and open this document there in the web app."""
         if not self.state.get("sync"):
             self.say("The browser finds documents through your synced library. Set it up with voce --sync OWNER/REPO")
+            return
+        if self.state.one_off(self.doc.path):
+            self.say("A reply or clipboard read stays on this computer, so the browser can't open it")
             return
         if self.mode in ("playing", "loading", "gap", "gap-start"):
             self.toggle()

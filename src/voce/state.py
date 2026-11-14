@@ -5,6 +5,7 @@ between machines without conflicts:
 
     settings.json       speed, voice, engine, playlist and the rest: small, rarely written
     places/<hash>.json  one file per document, named by a hash of the document's text
+    clips/              one-off reads (Claude's reply, the clipboard, standard input): no place is kept for these
 
 A place is keyed by what the document says, not where it lives, so the same file resumes on any machine however
 it got there. Two machines reading different documents touch different files; the same document read on both is
@@ -106,8 +107,14 @@ class State:
         except OSError:
             return hashlib.sha256(f"path:{path}".encode()).hexdigest()
 
+    def one_off(self, path: Path) -> bool:
+        """A Claude reply, the clipboard or standard input, read once: its place isn't worth keeping or syncing."""
+        return Path(path).parent == self.root / "clips"
+
     def record(self, path: Path) -> dict[str, Any]:
         """The saved place for a document, empty if it has none."""
+        if self.one_off(path):
+            return {}
         key = self.key(path)
         if key not in self.places and path.is_file():
             self._adopt(key, path)
@@ -125,7 +132,9 @@ class State:
         self.dirty.update((key, old_key))
 
     def file(self, path: Path) -> dict[str, Any]:
-        """The place for a document, to be written to; it is saved on the next save."""
+        """The place for a document, to be written to; it is saved on the next save, unless it is a one-off."""
+        if self.one_off(path):
+            return {}
         self.record(path)
         key = self.key(path)
         f = self.places.setdefault(key, {})
@@ -151,7 +160,8 @@ class State:
         f["pos"] = i
         f["at"] = units[i].say[:80] if 0 <= i < len(units) else ""
         f["total"] = len(units)
-        self.set("last", str(path))
+        if not self.one_off(path):
+            self.set("last", str(path))
 
     def resume(self, path: Path, units: list) -> int:
         """Where to start: the saved sentence, found again by its text if the file has changed since."""
