@@ -191,3 +191,12 @@ def test_prepare_takes_a_file_on_either_side_of_the_flag(tmp_path, monkeypatch, 
     monkeypatch.setattr(cli, "pick_voice", lambda args, state: None)  # no voice is set up on some CI runners
     cli.main([str(path), "--prepare"] if order == "file first" else ["--prepare", str(path)])
     assert prepared == [path.resolve()]
+
+
+def test_open_without_syncing_says_to_set_it_up(monkeypatch):
+    engine = type("E", (), {"prepare": lambda self, say: None})()
+    monkeypatch.setattr(cli, "pick_voice", lambda args, state: type("V", (), {"engine": engine, "kind": "kokoro"})())
+    monkeypatch.setattr(cli, "needs_player", lambda args: None)
+    with pytest.raises(SystemExit) as stopped:
+        cli.main(["--open", "abcdef123456"])
+    assert "voce --sync OWNER/REPO" in str(stopped.value)  # not "Nothing to read yet"

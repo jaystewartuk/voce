@@ -290,16 +290,19 @@ def main(argv: list[str] | None = None) -> None:
             sys.exit(str(e))
         print(f"{e}. Using the Mac voice for now.")
         voice = voices.make("mac", "", state)
-    if args.quiz is not None:
-        playlist, start, quiz_only = quizzes(args.quiz, entries), 0, True
-    else:
-        (playlist, start), quiz_only = choose(args, state, library), False
     if args.open:
         found = handoff.find(args.open, library, state)
+        if found is None and not state.get("sync"):
+            sys.exit(f"Nothing here has the code {args.open}. The web app's documents reach this computer through "
+                     "your synced library: run voce --sync OWNER/REPO, then try again.")
         if found is None:
             sys.exit(f"Nothing in your playlist or library has the code {args.open}. If you added it a moment ago, "
                      "try again in a minute; voce fetches the library each time it starts.")
         playlist, start, quiz_only = library, found, False
+    elif args.quiz is not None:
+        playlist, start, quiz_only = quizzes(args.quiz, entries), 0, True
+    else:
+        (playlist, start), quiz_only = choose(args, state, library), False
     if args.start and not quiz_only:
         state.restart(playlist[start].path)
 
